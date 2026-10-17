@@ -1,0 +1,6 @@
+/*
+  X-Content-Type-Options: nosniff
+/js/*
+  Cache-Control: public, max-age=300
+/css/*
+  Cache-Control: public, max-age=300

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="회사에서 살아남는 배틀로얄. 고과가 체력, 서류가 무기, 최후의 1인만 대표실로.">
+<meta name="theme-color" content="#2a3036">
+<title>오피스 로얄</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+<canvas id="game" aria-label="오피스 로얄 게임 화면"></canvas>
+
+<div class="hud">
+  <div class="idcard">
+    <div class="row"><span>사원증 · 오피스로얄</span><span class="grade" id="grade">B</span></div>
+    <div class="who" id="pname">나 · 인턴</div>
+    <div class="bar" id="gbarWrap"><i id="gbar"></i></div>
+    <div class="gnum"><span>고과</span><b id="gval">50</b></div>
+    <div class="promo"><span id="promoT">대리까지 10</span><i><b id="promoB"></b></i></div>
+    <div class="buffs" id="buffs"></div>
+  </div>
+  <div class="tower" id="tower"></div>
+</div>
+<div id="notice" hidden><b>사내 메신저 · 공지</b><span id="noticeText"></span></div>
+<div id="feed" aria-live="polite"></div>
+<div class="hint" id="hint" hidden>왼쪽을 드래그해서 이동</div>
+<div id="stick" hidden><div id="knob"></div></div>
+<div class="pills" id="pills"></div>
+<div id="keybar" hidden></div>
+<button id="greetBtn" class="rbtn" aria-label="상호작용" disabled><span id="actLabel">상호작용</span></button>
+<button id="skillBtn" class="rbtn" aria-label="팀장 스킬" hidden><span id="skillLabel">스킬</span></button>
+<div id="slots" class="slots"></div>
+<button id="throwBtn" class="rbtn" aria-label="서류 던지기"><span id="throwLabel">서류<br>투척</span></button>
+<div id="callBox" hidden>
+  <div class="who" id="callWho">부장님</div>
+  <div class="q" id="callQ">"그거 어떻게 됐어?"</div>
+  <div class="tm"><i id="callTm"></i></div>
+  <div class="opts" id="callOpts"></div>
+</div>
+<div id="branchBox" hidden><div class="who">팀장 승진! 어느 팀을 맡을까요?</div><div class="tm"><i id="branchTm"></i></div><div class="bopts" id="branchOpts"></div></div>
+<div id="countdown" hidden><span id="cdName"></span><b id="cdNum"></b></div>
+<div id="cine" hidden><div class="box"><div class="tower" id="cineTower"></div><h2 id="cineT">1층 폐쇄</h2><p id="cineS"></p></div></div>
+
+<section class="sheet" id="intro">
+  <div class="memo">
+    <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span>인사-2026-1016-3</span></div>
+    <div class="stampmark">결재</div>
+    <h1>오피스 로얄</h1>
+    <p class="subj">제목: 4분기 구조조정 시행 안내</p>
+    <ul class="rules">
+      <li><b>업무</b>로 고과를 쌓아 승진하고, <b>서류</b>를 던져 남의 고과를 깎으세요.</li>
+      <li>고과 0이면 권고사직. 마지막 1명이 <b>CEO층</b>으로.</li>
+      <li>40초마다 <b>아래층부터 폐쇄</b>. 위층으로 올라가세요.</li>
+      <li>부장님과 눈이 마주치면 <b>먼저 인사</b>.</li>
+      <li>팀장이 되면 <b>팀을 골라</b> 특수능력을 얻습니다.</li>
+      <li>아이템: <b style="color:#2f9e57">초록 회복</b> · <b style="color:#d23b2e">빨강 공격</b> · <b style="color:#2f74c4">파랑 방어</b> · <b style="color:#b39516">노랑 이동</b> · <b style="color:#8d4bbf">보라 방해</b></li>
+    </ul>
+    <p class="controls">PC: WASD 이동 · Space/마우스 클릭 던지기 · E 상호작용 · F/우클릭 공격 아이템 · Q 팀장 스킬 · Shift 달리기(부장님 앞·젖은 바닥 주의) · Tab 지도<br>폰: 왼쪽 드래그 이동(끝까지 밀면 달리기) · 회복·방어·이동 아이템은 줍는 즉시 효과, 공격 아이템은 한 개만 들고 다니다가 아이템 칸을 탭해서 사용 · 승진할수록 공격력이 세져요(대리 1.3배, 팀장 1.6배, 임원 2배)</p>
+    <div class="btns"><button class="btn" id="startBtn">출근하기</button></div>
+  </div>
+</section>
+
+<section class="sheet" id="result" hidden>
+  <div class="memo">
+    <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span>인사명령</span></div>
+    <div class="stampmark big" id="rStamp">권고<br>사직</div>
+    <h1 id="rTitle">권고사직 통보</h1>
+    <dl class="result-meta">
+      <dt>최종 순위</dt><dd id="rPlace">-</dd>
+      <dt>근속 시간</dt><dd id="rTime">-</dd>
+      <dt>최종 직급</dt><dd id="rRank">-</dd>
+      <dt>최고 도달</dt><dd id="rFloor">-</dd>
+      <dt>제출한 업무</dt><dd id="rTasks">-</dd>
+    </dl>
+    <p class="note" id="rNote"></p>
+    <div class="btns"><button class="btn" id="againBtn">다시 출근</button><button class="btn ghost" id="watchBtn">관전하기</button></div>
+  </div>
+</section>
+
+<script defer src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+<script defer src="js/sim/00-core.js"></script>
+<script defer src="js/sim/10-building.js"></script>
+<script defer src="js/sim/20-geometry.js"></script>
+<script defer src="js/sim/30-state.js"></script>
+<script defer src="js/sim/40-npc.js"></script>
+<script defer src="js/sim/50-actions.js"></script>
+<script defer src="js/sim/60-bots.js"></script>
+<script defer src="js/sim/70-events.js"></script>
+<script defer src="js/sim/80-step.js"></script>
+<script defer src="js/client/00-env.js"></script>
+<script defer src="js/client/10-input.js"></script>
+<script defer src="js/client/20-render.js"></script>
+<script defer src="js/client/30-hud.js"></script>
+<script defer src="js/client/40-main.js"></script>
+</body>
+</html>
