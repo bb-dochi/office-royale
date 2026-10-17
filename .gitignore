@@ -1,4 +1,5 @@
 node_modules/
 .wrangler/
 dist/
+server/src/sim.gen.js
 .DS_Store

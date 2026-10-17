@@ -88,14 +88,16 @@ body{background:var(--void);color:var(--ink);font-family:var(--body);overflow:hi
 .tower .zone{font-size:10.5px;margin-top:5px;text-align:center;font-weight:600;line-height:1.35}
 .tower.warn .zone{color:#ffb4aa}
 
-#notice{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 196px);width:min(92vw,400px);background:var(--paper);border:2px solid var(--msg);border-radius:8px;
-  padding:7px 10px 8px;box-shadow:0 4px 14px rgba(0,0,0,.35);pointer-events:none;z-index:3}
-#notice b{display:block;font-size:10px;letter-spacing:.06em;color:var(--msg);margin-bottom:2px}
-#notice span{font-size:13px;font-weight:800;line-height:1.4}
-#feed{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 196px);display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;width:min(92vw,420px)}
-#notice:not([hidden])~#feed{top:calc(env(safe-area-inset-top,0px) + 262px)}
-.fi{background:rgba(251,250,246,.93);border:1px solid var(--ink);border-radius:4px;padding:3px 9px;font-size:12px;font-weight:600;transition:opacity .5s;max-width:100%;text-align:center}
-.fi.hot{background:var(--stamp);color:var(--paper);border-color:var(--stamp)}
+/* Messages sit right around the player (camera keeps them at screen center): notice above, feed below. No box, outlined text. */
+#notice{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(50% + 76px);width:min(94vw,560px);text-align:center;pointer-events:none;z-index:3;
+  text-shadow:-2px -2px 0 var(--paper),2px -2px 0 var(--paper),-2px 2px 0 var(--paper),2px 2px 0 var(--paper),0 0 10px var(--paper)}
+#notice b{display:block;font-size:13px;letter-spacing:.06em;color:var(--msg);margin-bottom:2px}
+#notice span{font-size:20px;font-weight:900;line-height:1.35;color:var(--ink)}
+#feed{position:fixed;left:50%;transform:translateX(-50%);top:calc(50% + 46px);display:flex;flex-direction:column;align-items:center;gap:2px;pointer-events:none;width:min(94vw,560px)}
+.fi{font-size:19px;font-weight:900;line-height:1.3;color:var(--ink);transition:opacity .5s;max-width:100%;text-align:center;
+  text-shadow:-2px -2px 0 var(--paper),2px -2px 0 var(--paper),-2px 2px 0 var(--paper),2px 2px 0 var(--paper),0 0 8px var(--paper)}
+.fi+.fi{font-size:16px;opacity:.85}
+.fi.hot{color:var(--stamp)}
 .fi.out{opacity:0}
 
 .rbtn{position:fixed;border-radius:50%;border:2.5px solid var(--ink);color:var(--ink);box-shadow:0 4px 0 var(--ink),0 6px 16px rgba(0,0,0,.25);touch-action:none;cursor:pointer;font-family:var(--display);line-height:1.1;padding:0;transition:transform .08s,opacity .15s}
@@ -167,6 +169,22 @@ button:focus-visible{outline:3px solid var(--stamp);outline-offset:3px}
 .btns{display:flex;gap:8px;flex-wrap:wrap}
 .btn{font-family:var(--display);font-size:19px;background:var(--ink);color:var(--paper);border:0;border-radius:6px;padding:11px 20px;cursor:pointer;box-shadow:0 3px 0 #000}
 .btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--ink);box-shadow:none}
+.btn.small{font-size:14px;padding:6px 12px}
+.btn:disabled{opacity:.45;cursor:default}
+/* online lobby */
+#lobby .field{display:flex;flex-direction:column;gap:4px;margin:12px 0 10px;font-size:12px;font-weight:800;color:var(--muted)}
+#lobby input{font:900 18px var(--display);color:var(--ink);background:#fff;border:2px solid var(--ink);border-radius:6px;padding:9px 12px;min-width:0;width:100%}
+#lobby .joinrow{display:flex;gap:8px;margin:12px 0 4px}
+#lobby .joinrow input{flex:1;text-transform:uppercase;letter-spacing:.12em}
+#lobby .roomcode{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0 10px}
+#lobby .roomcode span{font-size:12px;font-weight:800;color:var(--muted)}
+#lobby .roomcode b{font:900 34px var(--display);letter-spacing:.14em;color:var(--stamp)}
+#lobby .players{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:6px}
+#lobby .players li{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed #c9cdd0;padding:6px 2px;font-weight:800}
+#lobby .players li.me{color:var(--msg)}
+#lobby .players small{font-weight:700;color:var(--muted)}
+#lobby .note{min-height:1.5em;margin:10px 0 12px}
+#lobby .note.err{color:var(--stamp);font-weight:800}
 .stampmark{position:absolute;right:18px;top:40px;width:78px;height:78px;border:3px solid var(--stamp);border-radius:50%;color:var(--stamp);display:grid;place-items:center;
   font-family:var(--display);font-size:19px;transform:rotate(-14deg);opacity:.85;text-align:center;line-height:1}
 .stampmark.big{width:104px;height:104px;font-size:22px;top:30px}

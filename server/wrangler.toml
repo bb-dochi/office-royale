@@ -1,7 +1,17 @@
-# Cloudflare Worker for future online play. Not deployed yet.
-name = "office-royale-server"
+# Cloudflare Worker for online play: serves public/ and runs one Durable Object per room.
+name = "office-royale"
 main = "src/index.js"
 compatibility_date = "2025-09-01"
+
+# Bundle the rule files into src/sim.gen.js before every dev/deploy.
+[build]
+command = "node ../tools/build-server.mjs"
+watch_dir = "../public/js/sim"
+
+# The game itself, served from the same origin so the client can open /room/CODE.
+[assets]
+directory = "../public"
+binding = "ASSETS"
 
 [[durable_objects.bindings]]
 name = "ROOM"

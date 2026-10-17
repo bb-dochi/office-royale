@@ -2,6 +2,7 @@
 let G=null;
 const NAMES=['김민지','이준호','박서연','최도윤','정하은','강지훈','조수아','윤태민','장예린','임건우','한소율','오세훈','신유나','배준영','송다은','홍민재','문가영','양지성','권나래'];
 const TYPES=['성실파','정치꾼','루팡','폭주','아부꾼','성실파','정치꾼','폭주','루팡','아부꾼','성실파','정치꾼','폭주','성실파','아부꾼','루팡','정치꾼','폭주','성실파'];
+const HUMAN_COLORS=['#2b6cb0','#d6457a','#1f9d8a','#e07b1f','#7b4fd6','#3a8f3a','#c43d3d','#2f8fc4'];
 const SHIRTS=['#d9a441','#7a9e7e','#b5651d','#8e6c8a','#4f7c99','#c46b6b','#6f8f3a','#9a7b4f','#5b6fa8','#a35d7a','#3f8f8f','#b0803a','#6a7fb0','#8f5e3a','#a86f9a','#4c8a6a','#b55a4a','#7a6aa8','#5e9aa0'];
 let NID=0;
 function mk(name,isPlayer,type,color,pos){
@@ -25,12 +26,15 @@ function assignSeats(f){
   const al=G.actors.filter(a=>a.alive).sort(()=>Math.random()-.5);
   al.forEach((a,i)=>{const s=seats.at(i);if(s){s.owner=a;a.seats[f]=s;}else a.seats[f]=null;});
 }
-function newGame(){
+/* opts.humans: [{key,name}] for online rooms; default is one local player called '나'. Bots fill the rest up to TOTAL. */
+function newGame(opts={}){
   NID=0;
   const actors=[],spots=[];
   const pickPos=()=>{for(let i=0;i<300;i++){const p=randFree(0,90);if(p.y>K(480)&&spots.every(s=>dist(s,p)>80)){spots.push(p);return p;}}const p=randFree(0,90);spots.push(p);return p;};
-  const me=mk('나',true,'플레이어','#2b6cb0',pickPos());actors.push(me);
-  for(let i=0;i<NAMES.length;i++){const b=mk(NAMES[i],false,TYPES[i],SHIRTS[i],pickPos());b.pref=Math.random()<.3?1:0;actors.push(b);}
+  const hs=(opts.humans||[{key:'me',name:'나'}]).slice(0,TOTAL);
+  for(const h of hs){const a=mk(h.name,true,'플레이어',HUMAN_COLORS[actors.length%HUMAN_COLORS.length],pickPos());a.key=h.key;actors.push(a);}
+  const me=actors[0];
+  for(let i=0;i<TOTAL-hs.length;i++){const b=mk(NAMES[i],false,TYPES[i],SHIRTS[i],pickPos());b.pref=Math.random()<.3?1:0;actors.push(b);}
   G={t:0,actors,me,proj:[],items:[],traps:[],tasks:[],drops:[],wet:[],pops:[],dings:[],bursts:[],closed:0,nextClose:INTERVAL,warn:false,final:false,finalT:0,over:false,itemT:0,winner:null,
      npcs:[],doors:[],events:[],notice:null,ceo:null,blackout:null,cake:null,fire:0,star:null,audit:null,taskId:0,fillT:0,lunch:null,airdrops:[]};
   for(let f=0;f<NF;f++){
@@ -85,15 +89,18 @@ const alive=()=>G.actors.filter(a=>a.alive);
 const aliveCount=()=>alive().length;
 const leader=()=>alive().sort((a,b)=>b.g-a.g)[0];
 
-function feed(msg,hot){UI.feed(msg,hot);}
+/* Feed lines go to every human; msg may be a function of the viewer (v=>...) so each player reads '내가' about themself. */
+function feed(msg,hot){UI.feed(msg,hot,null);}
+function tell(a,msg,hot){if(a.isPlayer)UI.feed(msg,hot,a);}
+const humans=()=>G.actors.filter(a=>a.isPlayer);
 function notice(text,dur=5){G.notice={text,t:dur};UI.notice(text);}
 function pop(f,x,y,text,color){G.pops.push({f,x,y,text,color,t:0});}
 function burst(p){for(const a of G.actors){if(a===p.o||!a.alive||a.f!==p.f||a.inRest||ally(p.o,a))continue;if(Math.hypot(a.x-p.x,a.y-p.y)<95)hit(a,p.o,7,'서류 폭탄 -7',p);}G.bursts.push({f:p.f,x:p.x,y:p.y,t:0});}
 function dmg(a,n,cause){if(!a.alive)return;a.g-=n;a.cause=cause;}
 function gain(a,n){
   if(!a.alive)return;a.g=Math.min(100,a.g+n);
-  if(a.g>a.peak){a.peak=a.g;const r=rankOf(a.peak);if(r!==a.rank){a.rank=r;if(a.isPlayer){pop(a.f,a.x,a.y-40,'승진! '+r,'#2f7d4f');feed(`승진했습니다: ${r}`);}
-    if((r==='팀장'||r==='임원')&&!a.branch){if(a.isPlayer)UI.branch();else a.branch=pick(Object.keys(BRANCH));}}}
+  if(a.g>a.peak){a.peak=a.g;const r=rankOf(a.peak);if(r!==a.rank){a.rank=r;if(a.isPlayer){pop(a.f,a.x,a.y-40,'승진! '+r,'#2f7d4f');tell(a,`승진했습니다: ${r}`);}
+    if((r==='팀장'||r==='임원')&&!a.branch){if(a.isPlayer){a.branchAsk=G.t+10;UI.branch(a);}else a.branch=pick(Object.keys(BRANCH));}}}
 }
 const locked=a=>!!a.call||a.lockT>0||a.stunT>0;
 function stand(a){if(a.sit){a.sit.occ=null;a.sit=null;}}
@@ -105,7 +112,7 @@ function hit(t,o,n,label,p){
   if(t.inv>0){pop(t.f,t.x,t.y-26,'도착 보호','#5d666e');return;}
   if(t.shieldN>0){t.shieldN--;pop(t.f,t.x,t.y-26,'결재 도장으로 막음','#cf3626');return;}
   dmg(t,n,'paper');t.lastHitBy=o;t.lastHitT=G.t;t.flash=.22;pop(t.f,t.x,t.y-26,label||('-'+n),'#cf3626');
-  if(t.isPlayer)UI.shake(.15);
+  UI.shake(.15,t);
   stand(t);
   if(t.chan&&t.chan.pad==='stair'){t.chan=null;pop(t.f,t.x,t.y-44,'계단 오르다 맞음','#cf3626');}
   if(t.carry){t.carry=false;G.drops.push({f:t.f,x:t.x+rnd(-14,14),y:t.y+rnd(-14,14)});pop(t.f,t.x,t.y-44,'출력물 떨어뜨림','#cf3626');}

@@ -26,7 +26,7 @@ function fireEvent(ev){
     showCine('점심시간!','부장님 식사 중 · 옥상에서 흡연 동맹 난투전',2);feed('점심시간: 부장님 부재 · 업무·구조조정 일시정지',true);}
   else if(ev.kind==='fire'){G.fire=15;feed('소방 훈련 시작: 엘리베이터 정지 15초',true);}
   else if(ev.kind==='audit'){if(isOpen(ev.f)){G.audit={f:ev.f,t:20};feed(`감사팀 감사 시작: ${FLOORS[ev.f].name} 아이템 사용 금지`,true);}}
-  else if(ev.kind==='star'){const l=leader();if(l){G.star={a:l,t:10};feed(`이달의 우수사원: ${l.isPlayer?'나':l.name} (${FLOORS[Math.max(0,l.f)].short}) · 10초간 위치 공개`,true);}}
+  else if(ev.kind==='star'){const l=leader();if(l){G.star={a:l,t:10};feed(v=>`이달의 우수사원: ${l===v?'나':l.name} (${FLOORS[Math.max(0,l.f)].short}) · 10초간 위치 공개`,true);}}
 }
 function updEvents(dt){
   for(const ev of G.events){
@@ -42,12 +42,12 @@ function updEvents(dt){
     G.airdrops=G.airdrops.filter(d=>d.t<1.2);
     if(L.t<=0){G.lunch=null;G.airdrops=[];G.items=G.items.filter(i=>i.f!==ROOF);G.traps=G.traps.filter(t=>t.f!==ROOF);
       for(const a of G.actors){if(!a.alive)continue;const back=isOpen(a.preLunchF)?a.preLunchF:G.closed;if(a.transit&&a.transit.to===ROOF)a.transit.to=back;
-        if(a.f===ROOF){const pk=a.side==='L'?'stair':'elev';a.side=null;if(a.preLunchG!=null&&a.g<a.preLunchG){a.g=a.preLunchG;if(a.isPlayer)feed('점심 동안 깎인 고과 복구');}arrive(a,back,pk);}}
+        if(a.f===ROOF){const pk=a.side==='L'?'stair':'elev';a.side=null;if(a.preLunchG!=null&&a.g<a.preLunchG){a.g=a.preLunchG;tell(a,'점심 동안 깎인 고과 복구');}arrive(a,back,pk);}}
       showCine('점심시간 끝','모두 업무 복귀',1.4);feed('점심시간 끝: 옥상 인원은 원래 있던 층으로 복귀',true);}}
   if(G.blackout){G.blackout.t-=dt;if(G.blackout.t<=0)G.blackout=null;}
   if(G.fire>0){G.fire-=dt;if(G.fire<=0)feed('소방 훈련 종료: 엘리베이터 운행 재개');}
   if(G.audit){G.audit.t-=dt;if(G.audit.t<=0)G.audit=null;}
   if(G.star){G.star.t-=dt;if(G.star.t<=0)G.star=null;}
-  if(G.cake){const a=alive().find(a=>a.f===G.cake.f&&Math.hypot(a.x-G.cake.x,a.y-G.cake.y)<30);if(a){gain(a,8);pop(a.f,a.x,a.y-34,'생일 케이크 +8','#2f7d4f');feed(`${a.isPlayer?'내가':a.name+'님이'} 케이크를 먹었다`);G.cake=null;}else if(!isOpen(G.cake.f))G.cake=null;}
+  if(G.cake){const a=alive().find(a=>a.f===G.cake.f&&Math.hypot(a.x-G.cake.x,a.y-G.cake.y)<30);if(a){gain(a,8);pop(a.f,a.x,a.y-34,'생일 케이크 +8','#2f7d4f');feed(v=>`${a===v?'내가':a.name+'님이'} 케이크를 먹었다`);G.cake=null;}else if(!isOpen(G.cake.f))G.cake=null;}
   if(G.notice){G.notice.t-=dt;if(G.notice.t<=0){G.notice=null;UI.noticeEnd();}}
 }

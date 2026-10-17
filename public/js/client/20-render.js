@@ -382,7 +382,7 @@ function poseChar(m,o,dt,isNpc){
 }
 
 /* ---------- dynamic pools ---------- */
-const actorM=new Map(),npcM=new Map(),coneM=new Map();
+const actorM=new Map(),npcM=new Map(),coneM=new Map(),OTHER_HUMAN='#7b4fd6'; /* other people in an online room */
 function syncSet(map,list,make,upd){
   const seen=new Set();
   for(const o of list){let m=map.get(o);if(!m){m=make(o);if(!m)continue;map.set(o,m);scene.add(m);}seen.add(o);upd(o,m);}
@@ -487,7 +487,7 @@ function scr(x,y,h){pv.set(x*U,h,y*U).project(cam3);if(pv.z>1||pv.z<-1)return nu
 function screenToWorld(cx,cy){ndc.set(cx/VW*2-1,-(cy/VH)*2+1);rc.setFromCamera(ndc,cam3);return rc.ray.intersectPlane(gplane,hitV)?{x:hitV.x/U,y:hitV.z/U}:{x:G.me.x,y:G.me.y};}
 let mouse={x:0,y:0,t:-1e9};
 cv.addEventListener('pointermove',e=>{if(e.pointerType==='mouse')mouse={x:e.clientX,y:e.clientY,t:performance.now()};});
-const aimAngle=a=>{if(a.isPlayer&&performance.now()-mouse.t<1500){const w=screenToWorld(mouse.x,mouse.y);return Math.atan2(w.y-a.y,w.x-a.x);}return autoAim(a);};
+const aimAngle=a=>{if(a===G.me&&performance.now()-mouse.t<1500){const w=screenToWorld(mouse.x,mouse.y);return Math.atan2(w.y-a.y,w.x-a.x);}return autoAim(a);};
 
 /* ---------- overlay helpers (screen space, drawn on the 2D canvas above the 3D view) ---------- */
 function tag(x,y,text,bg,fg,size=12){
@@ -503,7 +503,7 @@ function glyph(k,x,y,s){
 /* ---------- main render ---------- */
 const tmpV=new THREE.Vector3(),dirV=new THREE.Vector3();
 function render(dt){
-  if(!G)return;
+  if(!G||!G.me)return; // online: nothing to draw until the first snapshot
   const me=G.me;
   const focus=me.alive?me:(leader()||me);if(focus.f>=0)viewF=focus.f;
   const f=viewF;
@@ -529,11 +529,11 @@ function render(dt){
   /* actors */
   for(const a of G.actors){
     let m=actorM.get(a);if(!m){m=makeChar(a.color,null,a.id);actorM.set(a,m);}
-    const vis=a.alive&&a.f===f&&!a.transit&&(a===me||seenBy(me,a))&&!(a.cloakT>0&&!a.isPlayer&&!ally(me,a));
+    const vis=a.alive&&a.f===f&&!a.transit&&(a===me||seenBy(me,a))&&!(a.cloakT>0&&a!==me&&!ally(me,a));
     m.visible=vis;if(!vis)continue;
     poseChar(m,a,dt,false);const u=m.userData;
     setCloak(u,a.cloakT>0?.4:1);
-    u.ring.visible=a.isPlayer||ally(me,a);if(u.ring.visible)u.ring.material.color.set(a.isPlayer?'#2b6cb0':'#3fbf6a');
+    u.ring.visible=a.isPlayer||ally(me,a);if(u.ring.visible)u.ring.material.color.set(a===me?'#2b6cb0':ally(me,a)?'#3fbf6a':OTHER_HUMAN);
     const aura=a.ammo>0?CAT.atk.c:a.speedT>0?CAT.move.c:a.shieldN>0||a.vipT>0?CAT.def.c:null;
     u.aura.visible=!!aura;if(aura){u.aura.material.color.set(aura);u.aura.scale.setScalar(.8+Math.sin(G.t*6)*.06);}
     u.carry.visible=!!a.carry;
@@ -606,12 +606,12 @@ function render(dt){
   /* actor labels */
   for(const a of G.actors){const m=actorM.get(a);if(!m||!m.visible)continue;
     const p=scr(a.x,a.y,1.75);if(!p)continue;const x=p[0],y=p[1];
-    const label=a.isPlayer?`나 · ${rankName(a)}`:`${a.name} ${rankName(a)}`;
-    tag(x,y-12,label,a.isPlayer?'#2b6cb0':'rgba(251,250,246,.94)',a.isPlayer?'#fbfaf6':'#1d2328');
+    const label=a===me?`나 · ${rankName(a)}`:`${a.name} ${rankName(a)}`;
+    tag(x,y-12,label,a===me?'#2b6cb0':a.isPlayer?OTHER_HUMAN:'rgba(251,250,246,.94)',a===me||a.isPlayer?'#fbfaf6':'#1d2328');
     ctx.fillStyle='#1d2328';ctx.fillRect(x-18,y+1,36,5);ctx.fillStyle=a.g<30?'#cf3626':'#2f7d4f';ctx.fillRect(x-17,y+2,34*Math.max(0,a.g)/100,3);
-    if(a.items.length&&!a.isPlayer)glyph(a.items[0],x+28,y-12,14);
-    if(ally(me,a)&&!a.isPlayer)outlined('동맹',x,y+20,F(800,11),'#2f9e57');
-    if(a.ammo>0&&a.isPlayer){const q=scr(a.x,a.y,0);if(q)outlined(`스테이플 ${a.ammo}`,q[0],q[1]+26,F(800,10),'#3f6f99');}
+    if(a.items.length&&a!==me)glyph(a.items[0],x+28,y-12,14);
+    if(ally(me,a)&&a!==me)outlined('동맹',x,y+20,F(800,11),'#2f9e57');
+    if(a.ammo>0&&a===me){const q=scr(a.x,a.y,0);if(q)outlined(`스테이플 ${a.ammo}`,q[0],q[1]+26,F(800,10),'#3f6f99');}
     const st=a.stunT>0?'회식 중':a.lockT>0?a.lockWhy:a.call?'호출당함':a.sit?(a.sit.owner===a?'휴식 중':''):'';
     if(st)outlined(st,x,y-30,F(800,12),'#c08a1e');
     if(G.star&&G.star.a===a)outlined('★ 우수사원',x,y-(st?48:30),DF(16),'#c08a1e');

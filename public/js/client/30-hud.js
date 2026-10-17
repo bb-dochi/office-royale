@@ -45,19 +45,20 @@ const KB=k=>isTouch?'':`<kbd class="kb in">${k}</kbd>`;
 if(!isTouch){[['greetBtn','E'],['throwBtn','Space'],['skillBtn','Q']].forEach(([id,k])=>$(id).insertAdjacentHTML('beforeend',`<kbd class="kb">${k}</kbd>`));}
 let branchT=0;
 function openBranch(){branchT=10;$('branchOpts').innerHTML=Object.entries(BRANCH).map(([k,v],i)=>`<button data-b="${k}"><b>${isTouch?'':(i+1)+'. '}${v.n}</b><span>${v.d}</span></button>`).join('');$('branchBox').hidden=false;}
-function chooseBranch(k){if(!G||!k)return;const me=G.me;if(me.branch){$('branchBox').hidden=true;return;}me.branch=k;$('branchBox').hidden=true;branchT=0;feed(`${BRANCH[k].n}이 되었습니다`);pop(me.f,me.x,me.y-44,BRANCH[k].n,'#2f7d4f');}
-$('branchOpts').addEventListener('pointerdown',e=>{const b=e.target.closest('button');if(!b)return;e.preventDefault();e.stopPropagation();chooseBranch(b.dataset.b);});
+/* the rules pick a team by themselves when the 10 s run out (me.branchAsk) */
+function pickBranch(k){if(!G||!k)return;$('branchBox').hidden=true;branchT=0;if(!G.me.branch)ACT.branch(k);}
+$('branchOpts').addEventListener('pointerdown',e=>{const b=e.target.closest('button');if(!b)return;e.preventDefault();e.stopPropagation();pickBranch(b.dataset.b);});
 let lastCd='';
 function countdown(){
-  const el=$('countdown');if(!G||!running||G.lunch||G.closed>=NF-1||G.nextClose>5||G.nextClose<=0){if(lastCd){el.hidden=true;lastCd='';}return;}
+  const el=$('countdown');if(!G||!G.me||!running||G.lunch||G.closed>=NF-1||G.nextClose>5||G.nextClose<=0){if(lastCd){el.hidden=true;lastCd='';}return;}
   const n=Math.ceil(G.nextClose),f=G.closed,key=n+'|'+f;if(key===lastCd)return;lastCd=key;
   $('cdName').textContent=`${f===0?'로비':(f+1)+'층'} 폐쇄까지`;$('cdNum').textContent=n;el.classList.toggle('mine',G.me.f===f);el.hidden=false;
   if(!reduceMotion)el.animate([{transform:'translate(-50%,-50%) scale(1.35)',opacity:.4},{transform:'translate(-50%,-50%) scale(1)',opacity:1}],{duration:280,easing:'ease-out'});
 }
 function hud(dt){
-  if(branchT>0&&G){branchT-=dt;$('branchTm').style.width=Math.max(0,branchT/10*100)+'%';if(branchT<=0&&!G.me.branch)chooseBranch(pick(Object.keys(BRANCH)));}
+  if(branchT>0&&G&&G.me){branchT=G.me.branchAsk?Math.max(0,G.me.branchAsk-G.t):branchT-dt;$('branchTm').style.width=Math.max(0,branchT/10*100)+'%';if(branchT<=0||G.me.branch){$('branchBox').hidden=true;branchT=0;}}
   if(cineT>0){cineT-=dt;if(cineT<=0)$('cine').hidden=true;}
-  if(!G)return;const me=G.me;
+  if(!G||!G.me)return;const me=G.me;
   // call box (every frame)
   if(me.call&&me.alive){
     if(lastCall!==me.call){lastCall=me.call;$('callWho').textContent=me.call.n.kind==='ceo'?'대표님':'부장님이 부릅니다';$('callQ').textContent=me.call.line.q;
@@ -92,7 +93,7 @@ function hud(dt){
   tb.disabled=!!(me.sit||locked(me));
   const ik=me.items.join(',');if(ik!==lastItem){lastItem=ik;
     $('slots').innerHTML=[0].map(i=>{const k=me.items[i],it=k&&ITEMS[k];return it?`<button class="slot on" data-i="${i}" style="--ic:${it.c}" aria-label="${i+1}번 ${it.n}"><span class="n">사용</span><i class="gl" style="background:${it.c}">${it.g}</i></button>`:`<button class="slot empty" data-i="${i}" aria-label="공격 아이템 빈칸"><span class="n">빈칸</span></button>`;}).join('');}
-  const act=running&&me.alive?contextAction():null;
+  const act=running&&me.alive?myAction():null;
   const ph=act?act.label+'|'+act.cls:'';
   if(ph!==lastPills){lastPills=ph;$('actLabel').textContent=act?act.label:'상호작용';gb.disabled=!act;gb.className='rbtn'+(act&&act.cls?' '+act.cls:'');}
 }
