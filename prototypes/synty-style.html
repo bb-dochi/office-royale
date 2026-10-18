@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Synty-style office test</title>
+<!-- Art direction test: flat-shaded low poly office built from code (no model files). ?view=close for a close shot. -->
+<style>html,body{margin:0;height:100%;background:#2a3036;overflow:hidden}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js"}}</script>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'three';
+
+const view = new URLSearchParams(location.search).get('view') || 'game';
+const R = new THREE.WebGLRenderer({ antialias: true });
+R.setPixelRatio(Math.min(devicePixelRatio, 2)); R.setSize(innerWidth, innerHeight);
+R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
+R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.05;
+document.body.appendChild(R.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#2a3036');
+const cam = new THREE.PerspectiveCamera(view === 'close' ? 38 : 45, innerWidth / innerHeight, .1, 200);
+if (view === 'close') { cam.position.set(3.6, 3.6, 8.6); cam.lookAt(4.6, .9, 3.6); }
+else { cam.position.set(5.6, 10.5, 12.2); cam.lookAt(5.6, 0, 3.9); }
+addEventListener('resize', () => { R.setSize(innerWidth, innerHeight); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); });
+
+/* lights: warm key from the windows, cool sky fill */
+scene.add(new THREE.HemisphereLight('#dfe9f5', '#7a6a5c', 1.1));
+const sun = new THREE.DirectionalLight('#fff1dc', 2.2); sun.position.set(-6, 16, 10); sun.target.position.set(5.5, 0, 4);
+sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 14, bottom: -14, near: 1, far: 50 });
+sun.shadow.bias = -.0004; sun.shadow.normalBias = .02; scene.add(sun, sun.target);
+
+/* ---------- material + shape helpers (flat shaded = the faceted Synty look) ---------- */
+const MC = new Map();
+const mat = (c, o = {}) => { const k = c + JSON.stringify(o); if (!MC.has(k)) MC.set(k, new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: .82, metalness: 0, ...o })); return MC.get(k); };
+const glow = (c, i = .9) => mat(c, { emissive: c, emissiveIntensity: i, roughness: .4 });
+function mesh(geo, m, p, parent, r) { const o = new THREE.Mesh(geo, m); o.position.set(...p); if (r) o.rotation.set(...r); o.castShadow = o.receiveShadow = true; (parent || scene).add(o); return o; }
+const box = (w, h, d, c, p, parent, r) => mesh(new THREE.BoxGeometry(w, h, d), typeof c === 'string' ? mat(c) : c, p, parent, r);
+const cyl = (rt, rb, h, seg, c, p, parent, r) => mesh(new THREE.CylinderGeometry(rt, rb, h, seg), typeof c === 'string' ? mat(c) : c, p, parent, r);
+const ico = (rad, det, c, p, parent, s) => { const o = mesh(new THREE.IcosahedronGeometry(rad, det), mat(c), p, parent); if (s) o.scale.set(...s); return o; };
+const grp = (p = [0, 0, 0], parent, ry = 0) => { const g = new THREE.Group(); g.position.set(...p); g.rotation.y = ry; (parent || scene).add(g); return g; };
+
+/* ---------- room ---------- */
+function carpet() {
+  const c = document.createElement('canvas'); c.width = c.height = 512; const x = c.getContext('2d');
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) {
+    const v = ((i * 7 + j * 13) % 5) * 4; x.fillStyle = `rgb(${128 + v},${74 + v},${62 + v})`; x.fillRect(i * 64, j * 64, 64, 64);
+    x.fillStyle = 'rgba(255,220,190,.07)'; x.fillRect(i * 64 + 8, j * 64 + 8, 48, 48);
+    x.strokeStyle = 'rgba(0,0,0,.12)'; x.lineWidth = 2; x.strokeRect(i * 64 + 1, j * 64 + 1, 62, 62);
+    x.fillStyle = 'rgba(255,255,255,.04)'; for (let k = 0; k < 6; k++) x.fillRect(i * 64 + ((k * 23 + j * 9) % 60), j * 64 + ((k * 37 + i * 5) % 60), 3, 1);
+  }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 2.2); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+}
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(12, 9), new THREE.MeshStandardMaterial({ map: carpet(), roughness: .95 }));
+floor.rotation.x = -Math.PI / 2; floor.position.set(5, 0, 3.5); floor.receiveShadow = true; scene.add(floor);
+const WALL = '#efe6d8', LOWER = '#c9b49a', TRIM = '#7a5b42';
+box(12, 3, .2, WALL, [5, 1.5, -1.1]); box(.2, 3, 9, WALL, [-1.1, 1.5, 3.5]);
+box(12, .9, .03, LOWER, [5, .45, -.99]); box(.03, .9, 9, LOWER, [-.99, .45, 3.5]);      // two-tone wall
+box(12, .06, .06, TRIM, [5, .92, -.97]); box(.06, .06, 9, TRIM, [-.97, .92, 3.5]);     // chair rail
+box(12, .14, .06, TRIM, [5, .07, -.98]); box(.06, .14, 9, TRIM, [-.98, .07, 3.5]);
+/* windows on the back wall with mullions and blinds */
+for (const wx of [2.6, 7.4]) {
+  box(2.6, 1.5, .05, mat('#a9d2ea', { emissive: '#bfe3f7', emissiveIntensity: .35, roughness: .2 }), [wx, 1.75, -.99]);
+  box(2.75, .08, .14, '#d9d6cf', [wx, 1.0, -.95]); box(2.75, .08, .1, '#d9d6cf', [wx, 2.52, -.97]);
+  for (const dx of [-1.33, 0, 1.33]) box(.06, 1.55, .1, '#d9d6cf', [wx + dx, 1.75, -.97]);
+  for (let i = 0; i < 5; i++) box(2.5, .03, .06, '#f2efe9', [wx, 2.4 - i * .07, -.92]);
+}
+/* poster + clock on the side wall */
+box(.04, .8, 1.1, '#2b4a6b', [-.98, 1.8, 4.6]); box(.03, .6, .9, mat('#cf3626', { emissive: '#cf3626', emissiveIntensity: .12 }), [-.95, 1.8, 4.6]);
+/* whiteboard with scribbles */
+box(.05, 1.0, 1.9, '#b4b9be', [-.97, 1.6, 1.6]); box(.02, .9, 1.8, mat('#fbfaf6', { roughness: .3 }), [-.94, 1.6, 1.6]);
+for (const [y, w, c] of [[1.9, .9, '#2b6cb0'], [1.75, 1.2, '#2b6cb0'], [1.6, .7, '#cf3626'], [1.42, 1.0, '#2f7d4f']]) box(.01, .04, w, c, [-.925, y, 1.3 + w / 2 - .5]);
+cyl(.32, .32, .05, 12, '#f4f2ec', [5, 2.55, -.97], null, [Math.PI / 2, 0, 0]); cyl(.36, .36, .04, 12, '#3a3f45', [5, 2.55, -.99], null, [Math.PI / 2, 0, 0]);
+
+/* ---------- props ---------- */
+function officeChair(p, ry, parent) {
+  const g = grp(p, parent, ry);
+  for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; const leg = box(.42, .05, .07, '#2c3036', [Math.cos(a) * .2, .1, Math.sin(a) * .2], g); leg.rotation.y = -a;
+    cyl(.04, .04, .05, 6, '#1d2024', [Math.cos(a) * .4, .03, Math.sin(a) * .4], g); }
+  cyl(.035, .035, .35, 6, '#9aa0a6', [0, .3, 0], g);
+  box(.52, .09, .5, '#30353c', [0, .5, 0], g);
+  box(.48, .55, .07, '#30353c', [0, .86, -.24], g, [-.08, 0, 0]);
+  box(.06, .04, .3, '#2c3036', [.27, .7, 0], g); box(.06, .04, .3, '#2c3036', [-.27, .7, 0], g);
+  box(.04, .18, .04, '#2c3036', [.27, .6, 0], g); box(.04, .18, .04, '#2c3036', [-.27, .6, 0], g);
+  return g;
+}
+function monitor(p, ry, parent, hue) {
+  const g = grp(p, parent, ry);
+  box(.24, .02, .16, '#2a2d31', [0, .01, 0], g); box(.05, .26, .04, '#2a2d31', [0, .15, -.02], g);
+  box(.62, .38, .04, '#1f2226', [0, .38, 0], g);
+  const c = document.createElement('canvas'); c.width = 128; c.height = 80; const x = c.getContext('2d');
+  x.fillStyle = hue; x.fillRect(0, 0, 128, 80); x.fillStyle = 'rgba(255,255,255,.85)'; x.fillRect(0, 0, 128, 9);
+  for (let i = 0; i < 6; i++) { x.fillStyle = `rgba(255,255,255,${.35 + (i % 2) * .2})`; x.fillRect(10, 16 + i * 10, 40 + ((i * 29) % 60), 4); }
+  x.fillStyle = '#e5483a'; x.fillRect(90, 50, 8, 22); x.fillStyle = '#f3d77a'; x.fillRect(102, 40, 8, 32); x.fillStyle = '#5fd38a'; x.fillRect(114, 30, 8, 42);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Mesh(new THREE.PlaneGeometry(.56, .32), new THREE.MeshStandardMaterial({ map: t, emissive: '#ffffff', emissiveMap: t, emissiveIntensity: .55 }));
+  s.position.set(0, .38, .021); g.add(s); return g;
+}
+function deskSet(p, ry, opts = {}) {
+  const g = grp(p, null, ry);
+  box(1.6, .05, .8, '#f1eee8', [0, .74, 0], g);                      // top
+  box(1.6, .02, .8, '#c9c4bb', [0, .71, 0], g);
+  for (const sx of [-.76, .76]) box(.05, .7, .7, '#7d8187', [sx, .36, 0], g); // panel legs
+  box(.42, .6, .7, '#9aa0a6', [.52, .32, 0], g); for (let i = 0; i < 3; i++) box(.38, .16, .02, '#b4b9be', [.52, .5 - i * .19, .36], g); // drawers
+  monitor([-.15, .765, -.2], 0, g, opts.screen || '#2f6fb3'); if (opts.dual) monitor([.48, .765, -.16], -.35, g, '#3a8f6a');
+  box(.48, .02, .16, '#2c3036', [-.15, .775, .12], g); box(.07, .02, .1, '#2c3036', [.2, .775, .14], g);  // keyboard, mouse
+  cyl(.045, .04, .1, 8, opts.mug || '#cf3626', [-.62, .82, .05], g);                                     // mug
+  for (let i = 0; i < 3; i++) box(.22, .012, .3, i % 2 ? '#f6f3ea' : '#ffffff', [.45, .775 + i * .012, .1], g, [0, .12 * i, 0]); // paper stack
+  for (const [sx, c] of [[-.5, '#f3d77a'], [-.43, '#f29bb0'], [.15, '#9fe0a8']]) box(.07, .07, .005, c, [sx, 1.03, -.17], g);  // sticky notes on monitor
+  officeChair([-.15, 0, .7], Math.PI, g);
+  return g;
+}
+function cubicle(cx, cz) {
+  const PANEL = mat('#5f7a96'), FRAME = '#b8bcc0';
+  box(3.4, 1.2, .07, PANEL, [cx, .6, cz]); box(3.44, .04, .1, FRAME, [cx, 1.22, cz]);              // centre spine
+  box(.07, 1.2, 3.0, PANEL, [cx, .6, cz]); box(.1, .04, 3.04, FRAME, [cx, 1.22, cz]);              // cross panel
+  for (const sx of [-1.7, 1.7]) { box(.07, 1.2, 1.5, PANEL, [cx + sx, .6, cz - .75]); box(.1, .04, 1.54, FRAME, [cx + sx, 1.22, cz - .75]); }
+  /* pin board scraps on the panels */
+  for (const [dx, c] of [[-1.1, '#f6f3ea'], [-.85, '#f3d77a'], [.9, '#ffffff']]) box(.22, .28, .01, c, [cx + dx, .95, cz - .04]);
+  deskSet([cx - .85, 0, cz - .45], 0, { screen: '#2f6fb3', mug: '#cf3626' });
+  deskSet([cx + .85, 0, cz - .45], 0, { screen: '#3b5998', dual: true, mug: '#2b6cb0' });
+  deskSet([cx - .85, 0, cz + .45], Math.PI, { screen: '#2f7d4f', mug: '#e0c23d' });
+  deskSet([cx + .85, 0, cz + .45], Math.PI, { screen: '#6b4fa0', mug: '#fbfaf6' });
+}
+function waterCooler(p) {
+  const g = grp(p);
+  box(.36, .95, .36, '#eceae5', [0, .48, 0], g); box(.3, .05, .05, '#9aa0a6', [0, .7, .19], g);
+  box(.05, .06, .04, '#2b6cb0', [-.06, .78, .19], g); box(.05, .06, .04, '#cf3626', [.06, .78, .19], g);
+  cyl(.15, .15, .45, 10, mat('#7fc2ea', { transparent: true, opacity: .75, roughness: .15 }), [0, 1.2, 0], g); cyl(.07, .14, .08, 10, '#7fc2ea', [0, 1.46, 0], g);
+  return g;
+}
+function copier(p, ry) {
+  const g = grp(p, null, ry);
+  box(1.0, .9, .7, '#d4d7da', [0, .45, 0], g); box(1.0, .08, .7, '#b4b9be', [0, .94, 0], g);
+  box(.5, .03, .3, '#2c3036', [-.15, .99, .05], g); box(.22, .1, .03, glow('#5fd38a', .6), [.3, .97, .3], g);
+  for (let i = 0; i < 2; i++) box(.9, .03, .02, '#9aa0a6', [0, .25 + i * .25, .36], g);
+  box(.4, .02, .3, '#ffffff', [-.15, 1.02, .05], g);
+  return g;
+}
+function cabinet(p, ry) { const g = grp(p, null, ry); box(.5, 1.3, .6, '#8d949b', [0, .65, 0], g); for (let i = 0; i < 4; i++) { box(.44, .26, .02, '#a7aeb5', [0, .2 + i * .31, .31], g); box(.12, .03, .03, '#5d666e', [0, .27 + i * .31, .33], g); } return g; }
+function plant(p, s = 1) {
+  const g = grp(p); g.scale.setScalar(s);
+  cyl(.2, .15, .38, 8, '#b06a3b', [0, .19, 0], g); cyl(.21, .21, .04, 8, '#8c5230', [0, .38, 0], g);
+  for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2, h = .7 + (i % 3) * .18;
+    const leaf = mesh(new THREE.ConeGeometry(.09, h, 4), mat(i % 2 ? '#4f8f45' : '#3f7a3a'), [Math.cos(a) * .1, .4 + h / 2, Math.sin(a) * .1], g);
+    leaf.rotation.set(Math.sin(a) * .45, 0, -Math.cos(a) * .45); }
+  return g;
+}
+function bin(p) { cyl(.16, .13, .36, 8, '#3d4a54', p); }
+function janitorCart(p, ry) {
+  const g = grp(p, null, ry);
+  box(.8, .08, .45, '#e0c23d', [0, .2, 0], g); box(.8, .08, .45, '#e0c23d', [0, .7, 0], g);
+  for (const [x, z] of [[-.38, -.2], [.38, -.2], [-.38, .2], [.38, .2]]) { box(.04, .7, .04, '#9aa0a6', [x, .45, z], g); cyl(.06, .06, .05, 8, '#1d2024', [x, .06, z], g, [Math.PI / 2, 0, 0]); }
+  cyl(.2, .17, .32, 8, '#cf3626', [-.15, .4, 0], g); cyl(.08, .08, .26, 6, '#2b6cb0', [.25, .87, -.05], g); cyl(.07, .07, .2, 6, '#3fbf6a', [.1, .84, .08], g);
+  box(.02, 1.3, .02, '#8a6a4a', [.42, .85, .18], g, [.15, 0, .1]); box(.3, .06, .14, '#e9e6df', [.47, .2, .25], g);
+  return g;
+}
+
+function meetingTable(p) {
+  const g = grp(p);
+  cyl(.75, .75, .05, 10, '#a8865f', [0, .74, 0], g); cyl(.08, .1, .7, 8, '#5d666e', [0, .37, 0], g); cyl(.4, .45, .04, 10, '#5d666e', [0, .02, 0], g);
+  for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + .4; officeChair([Math.cos(a) * 1.05, 0, Math.sin(a) * 1.05], Math.atan2(-Math.cos(a), -Math.sin(a)), g); }
+  box(.3, .02, .22, '#2c3036', [.1, .775, -.1], g); box(.28, .18, .01, '#9edceb', [.1, .87, -.2], g, [-.3, 0, 0]);  // laptop
+  cyl(.04, .035, .1, 8, '#fbfaf6', [-.3, .82, .2], g); box(.2, .015, .28, '#ffffff', [.35, .775, .3], g, [0, .4, 0]);
+  return g;
+}
+function shelf(p, ry) {
+  const g = grp(p, null, ry), BIND = ['#cf3626', '#2b6cb0', '#e0c23d', '#2f7d4f', '#8e5c8a', '#fbfaf6'];
+  box(1.4, 1.8, .04, '#7a5b42', [0, .9, -.18], g); for (const sx of [-.68, .68]) box(.04, 1.8, .4, '#8c6d4a', [sx, .9, 0], g); box(1.4, .04, .4, '#8c6d4a', [0, 1.8, 0], g);
+  for (let lv = 0; lv < 4; lv++) { box(1.32, .03, .36, '#a8865f', [0, .12 + lv * .44, .03], g);
+    for (let i = 0; i < 9; i++) box(.1, .32 + (i % 3) * .03, .28, BIND[(i + lv * 2) % 6], [-.56 + i * .14, .3 + lv * .44, .05], g); }
+  return g;
+}
+function coffeeCounter(p) {
+  const g = grp(p);
+  box(1.8, .9, .6, '#e8e2d3', [0, .45, 0], g); box(1.86, .05, .66, '#fbf8f0', [0, .92, 0], g);
+  box(.35, .45, .35, '#2a3036', [-.5, 1.17, 0], g); box(.1, .04, .1, glow('#f3d77a', .8), [-.5, 1.25, .18], g);
+  for (let i = 0; i < 3; i++) cyl(.04, .035, .1, 8, ['#cf3626', '#fbfaf6', '#2b6cb0'][i], [.1 + i * .14, 1.0, .1], g);
+  box(.4, .3, .3, '#d0d4d6', [.6, 1.1, -.05], g);
+  return g;
+}
+
+cubicle(4.0, 3.6); cubicle(8.0, 3.6);
+meetingTable([1.3, 0, 6.4]);
+waterCooler([.2, 0, -.55]); copier([1.4, 0, -.5], 0); shelf([10.1, 0, -.75], 0); coffeeCounter([6.0, 0, -.6]);
+cabinet([3.3, 0, -.6], 0); cabinet([3.85, 0, -.6], 0);
+plant([-.5, 0, 3.4], 1.1); plant([10.8, 0, .2], 1); plant([10.7, 0, 7.4], 1.2); bin([6.1, .18, 2.0]); bin([2.0, .18, 5.0]);
+janitorCart([8.6, 0, 6.6], -.4);
+
+/* ---------- people: realistic proportions, chunky low-poly faces ---------- */
+function person(o) {
+  const root = grp(o.p, null, o.ry || 0), body = grp([0, 0, 0], root);
+  const SKIN = o.skin || '#e8b896', SH = o.shirt, PT = o.pants || '#2f3540', SHOE = o.shoes || '#1d2024';
+  const hip = grp([0, .92, 0], body);
+  box(.36, .2, .22, PT, [0, -.02, 0], hip);
+  const torso = grp([0, .1, 0], hip);
+  const chest = mesh(new THREE.CylinderGeometry(.21, .18, .52, 6), mat(o.jacket || SH), [0, .27, 0], torso); chest.scale.z = .62;
+  if (o.jacket) { box(.1, .42, .02, mat(SH), [0, .3, .125], torso); }                     // shirt showing under the jacket
+  if (o.tie) { box(.05, .3, .015, o.tie, [0, .3, .14], torso); box(.07, .05, .02, o.tie, [0, .47, .135], torso); }
+  if (o.badge) { box(.07, .1, .01, '#fbfaf6', [.08, .2, .135], torso); box(.005, .22, .005, '#2b6cb0', [.06, .36, .13], torso, [0, 0, .3]); }
+  if (o.apron) { box(.34, .5, .02, o.apron, [0, .12, .14], torso); }
+  box(.1, .08, .1, SKIN, [0, .57, 0], torso);                                                 // neck
+  const head = grp([0, .66, 0], torso);
+  const hd = box(.27, .3, .26, SKIN, [0, .14, 0], head);
+  box(.035, .035, .02, '#1d2024', [-.06, .17, .132], head); box(.035, .035, .02, '#1d2024', [.06, .17, .132], head);   // eyes
+  box(.07, .018, .02, o.brow || '#3a2a20', [-.06, .215, .132], head); box(.07, .018, .02, o.brow || '#3a2a20', [.06, .215, .132], head);
+  mesh(new THREE.ConeGeometry(.03, .07, 4), mat(SKIN), [0, .12, .14], head, [Math.PI / 2, 0, 0]);                       // nose
+  box(.08, .015, .02, '#9c5b4a', [0, .06, .132], head);                                                                  // mouth
+  if (o.glasses) { for (const sx of [-.06, .06]) box(.08, .06, .01, mat('#1d2024', { transparent: true, opacity: .55 }), [sx, .17, .14], head); box(.04, .01, .01, '#1d2024', [0, .18, .14], head); }
+  if (o.hair === 'bald') { box(.29, .12, .2, o.hairC, [0, .17, -.05], head); }
+  else if (o.hair === 'bun') { box(.29, .1, .28, o.hairC, [0, .32, -.01], head); box(.29, .22, .06, o.hairC, [0, .2, -.13], head); ico(.08, 0, o.hairC, [0, .38, -.12], head); }
+  else if (o.hair === 'scarf') { box(.3, .12, .29, o.hairC, [0, .31, 0], head); box(.08, .1, .06, o.hairC, [0, .26, -.16], head); }
+  else { box(.29, .09, .28, o.hairC, [0, .32, -.01], head); box(.29, .14, .06, o.hairC, [0, .23, -.13], head); box(.12, .05, .05, o.hairC, [-.07, .29, .12], head); }
+  const arm = side => {
+    const sh = grp([side * .26, .48, 0], torso);
+    const up = grp([0, 0, 0], sh); box(.11, .3, .12, o.jacket || SH, [0, -.15, 0], up);
+    const el = grp([0, -.3, 0], up); box(.1, .27, .1, o.sleeves === 'short' ? SKIN : (o.jacket || SH), [0, -.13, 0], el);
+    box(.09, .09, .09, SKIN, [0, -.3, 0], el); return { sh, up, el };
+  };
+  const leg = side => {
+    const th = grp([side * .1, -.08, 0], hip); box(.15, .42, .16, PT, [0, -.21, 0], th);
+    const kn = grp([0, -.42, 0], th); box(.13, .4, .14, PT, [0, -.2, 0], kn); box(.14, .07, .26, SHOE, [0, -.42, .05], kn); return { th, kn };
+  };
+  const L = { armL: arm(-1), armR: arm(1), legL: leg(-1), legR: leg(1), hip, torso, head, root, mode: o.mode, path: o.path, t: Math.random() * 6 };
+  return L;
+}
+const people = [
+  person({ p: [4.5, 0, 6.8], ry: .5, shirt: '#e8ecef', jacket: '#4a4f57', tie: '#b8322a', pants: '#3a3f47', hair: 'bald', hairC: '#9a9aa0', glasses: true, brow: '#7d7d82', mode: 'walk', path: { cx: 5.8, cz: 6.4, r: 2.2 } }),
+  person({ p: [3.15, 0, 2.45], ry: 0, shirt: '#f4f6f8', tie: '#2b5c9e', badge: true, pants: '#2f3540', hairC: '#2a211b', mode: 'type' }),
+  person({ p: [4.85, 0, 4.75], ry: Math.PI, shirt: '#c9d8e6', sleeves: 'short', pants: '#7a6a58', hair: 'bun', hairC: '#5a3b28', skin: '#d9a07a', mode: 'type' }),
+  person({ p: [8.85, 0, 2.45], ry: 0, shirt: '#f7e3c8', pants: '#3d4a54', badge: true, hairC: '#3a2a20', skin: '#c98d6a', mode: 'type' }),
+  person({ p: [8.2, 0, 6.1], ry: -1.0, shirt: '#e98a5a', apron: '#4f7c99', pants: '#4b555d', hair: 'scarf', hairC: '#cf6f8a', skin: '#e2ae8a', shoes: '#f2efe9', mode: 'idle' }),
+  person({ p: [.55, 0, .5], ry: .8, shirt: '#ffffff', jacket: '#2b3a55', tie: '#d9a441', pants: '#2b3a55', hairC: '#1d1a18', mode: 'idle' }),
+];
+
+/* ?view=cast: everyone in a row in front of the cubicles */
+if (view === 'cast') {
+  people.forEach((P, i) => { P.mode = 'idle'; P.root.position.set(3.05 + i * .95, 0, 7.6); P.root.rotation.y = 0; });
+  cam.position.set(5.45, 1.8, 14.2); cam.lookAt(5.45, .9, 7.6); cam.fov = 34; cam.updateProjectionMatrix();
+}
+/* ---------- procedural animation: walk loop, typing, idle breathing ---------- */
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  for (const P of people) {
+    P.t += dt; const t = P.t;
+    if (P.mode === 'walk') {
+      const a = t * .55, { cx, cz, r } = P.path;
+      P.root.position.set(cx + Math.cos(a) * r, 0, cz + Math.sin(a) * r * .6); P.root.rotation.y = Math.atan2(-Math.sin(a) * r, Math.cos(a) * r * .6);
+      const s = Math.sin(t * 7);
+      P.legL.th.rotation.x = s * .55; P.legR.th.rotation.x = -s * .55; P.legL.kn.rotation.x = Math.max(0, -s) * .7; P.legR.kn.rotation.x = Math.max(0, s) * .7;
+      P.armL.up.rotation.x = -s * .45; P.armR.up.rotation.x = s * .45; P.armL.el.rotation.x = P.armR.el.rotation.x = -.25;
+      P.hip.position.y = .92 + Math.abs(Math.cos(t * 7)) * .035; P.torso.rotation.y = s * .08;
+    } else if (P.mode === 'type') {
+      P.hip.position.y = .52; P.legL.th.rotation.x = P.legR.th.rotation.x = -1.45; P.legL.kn.rotation.x = P.legR.kn.rotation.x = 1.45;
+      P.armL.up.rotation.x = P.armR.up.rotation.x = -.9; P.armL.el.rotation.x = -.7 + Math.sin(t * 18) * .06; P.armR.el.rotation.x = -.7 + Math.sin(t * 18 + 1.7) * .06;
+      P.head.rotation.x = .12 + Math.sin(t * .7) * .03; P.torso.rotation.x = .1;
+    } else {
+      P.torso.position.y = .1 + Math.sin(t * 2) * .006; P.head.rotation.y = Math.sin(t * .6) * .25;
+      P.armL.up.rotation.z = -.06; P.armR.up.rotation.z = .06; P.armR.el.rotation.x = -.15;
+    }
+  }
+  R.render(scene, cam); requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

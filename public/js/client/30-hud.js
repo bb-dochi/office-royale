@@ -89,10 +89,9 @@ function hud(dt){
   tb.style.setProperty('--cd',Math.max(0,me.cd)/me.lastCd);
   const sb=$('skillBtn'),B=me.branch&&BRANCH[me.branch];sb.hidden=!(me.alive&&B&&B.cd);
   if(!sb.hidden){sb.style.setProperty('--cd',Math.max(0,me.skillCd)/B.cd);$('skillLabel').textContent=me.skillCd>0?Math.ceil(me.skillCd)+'초':B.sk;}
-  const tl=me.ammo>0?`스테이플<br>${me.ammo}발`:'서류<br>투척';if(tl!==lastTl){lastTl=tl;$('throwLabel').innerHTML=tl;tb.classList.toggle('staple',me.ammo>0);}
+  const held=me.items[0]&&ITEMS[me.items[0]],tl=me.ammo>0?`스테이플<br>${me.ammo}발`:held?held.n.replace(' ','<br>'):'서류<br>투척';
+  if(tl!==lastTl){lastTl=tl;$('throwLabel').innerHTML=tl;tb.classList.toggle('staple',me.ammo>0||!!held);tb.style.setProperty('--ic',held?held.c:'');}
   tb.disabled=!!(me.sit||locked(me));
-  const ik=me.items.join(',');if(ik!==lastItem){lastItem=ik;
-    $('slots').innerHTML=[0].map(i=>{const k=me.items[i],it=k&&ITEMS[k];return it?`<button class="slot on" data-i="${i}" style="--ic:${it.c}" aria-label="${i+1}번 ${it.n}"><span class="n">사용</span><i class="gl" style="background:${it.c}">${it.g}</i></button>`:`<button class="slot empty" data-i="${i}" aria-label="공격 아이템 빈칸"><span class="n">빈칸</span></button>`;}).join('');}
   const act=running&&me.alive?myAction():null;
   const ph=act?act.label+'|'+act.cls:'';
   if(ph!==lastPills){lastPills=ph;$('actLabel').textContent=act?act.label:'상호작용';gb.disabled=!act;gb.className='rbtn'+(act&&act.cls?' '+act.cls:'');}

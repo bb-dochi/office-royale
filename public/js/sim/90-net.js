@@ -53,7 +53,7 @@ function pubSnap(){
     D:G.drops.map(d=>({n:nk(d),f:d.f,x:r1(d.x),y:r1(d.y)})),
     B:G.bursts.map(b=>({n:nk(b),f:b.f,x:r1(b.x),y:r1(b.y),t:r2(b.t)})),
     AD:G.airdrops.map(d=>({n:nk(d),x:r1(d.x),y:r1(d.y),t:r2(d.t),k:d.k})),
-    PO:G.pops.map(p=>({n:nk(p),f:p.f,x:r1(p.x),y:r1(p.y),text:p.text,color:p.color,t:r2(p.t)})),
+    PO:G.pops.map(p=>({n:nk(p),f:p.f,x:r1(p.x),y:r1(p.y),text:p.text,color:p.color,t:r2(p.t),say:p.say||undefined,by:p.by??undefined})),
     DI:G.dings.map(d=>({n:nk(d),f:d.f,t:r2(d.t)})),
     DV:G.doors.map(d=>d.v?{type:d.v.type,t:r1(d.v.t),ph:d.v.ph}:null),
     seats:sendSeats?seats:undefined,fdoors,
@@ -76,7 +76,6 @@ NET.start=function(players){
     result:(win,ms,a)=>push(a,{k:'result',win,ms}),
     snapCam:a=>push(a,{k:'snapCam'}),
     reset:()=>{},
-    itemKey:'F·우클릭·아이템 칸',
   });
   newGame({humans:players.map(p=>({key:p.key,name:String(p.name).slice(0,10)}))});
   G.nid=0;

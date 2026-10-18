@@ -26,9 +26,9 @@ let lastKb='';
 function keybar(){
   if(isTouch||!G||!G.me)return;const me=G.me,kb=$('keybar');kb.hidden=!running||!me.alive;if(kb.hidden)return;
   const act=myAction(),B=me.branch&&BRANCH[me.branch];
-  const ch=[[ 'Space',me.ammo>0?`스테이플 ${me.ammo}`:`던지기 -${Math.round(5*dmgMul(me))}`,me.ammo>0?'atk':'',Math.max(0,me.cd)/me.lastCd],
+  const held=me.items[0]&&ITEMS[me.items[0]];
+  const ch=[[ 'Space',me.ammo>0?`스테이플 ${me.ammo}`:held?held.n:`던지기 -${Math.round(5*dmgMul(me))}`,me.ammo>0||held?'atk':'',Math.max(0,me.cd)/me.lastCd,held&&held.c],
     ['E',act?act.label:'상호작용',act?(act.cls||''):'off'],
-    ...(me.items.length?me.items.map((k,i)=>['F',ITEMS[k].n,'',0,ITEMS[k].c]):[['F','공격템 없음','off']]),
     ...(B&&B.cd?[['Q',me.skillCd>0?`${B.sk} ${Math.ceil(me.skillCd)}초`:B.sk,me.skillCd>0?'off':'go']]:[]),
     ['Shift',me.sprint?'달리는 중':'달리기','']];
   const h=ch.map(([k,t,c,cd,col])=>`<div class="kc ${c||''}"${col?` style="border-color:${col};box-shadow:0 0 12px ${col}"`:''}><kbd>${k}</kbd><span>${t}</span>${cd>0?`<i class="cd" style="width:${cd*100}%"></i>`:''}</div>`).join('');
@@ -50,7 +50,7 @@ function showLobby(){
   if(!r){$('nameIn').value=$('nameIn').value||store.get('or-name')||'';if(roomParam())$('codeIn').value=roomParam();lobbyNote('');return;}
   $('roomCode').textContent=r.code;
   $('players').innerHTML=r.players.map(p=>`<li class="${p.key===r.you?'me':''}"><span>${esc(p.name)}${p.key===r.you?' (나)':''}</span><small>${p.host?'방장':''}${p.inGame?' · 게임 중':''}</small></li>`).join('')+
-    `<li><span>봇</span><small>${TOTAL-r.players.length}명이 자리를 채움</small></li>`;
+    `<li class="bots"><span>봇 ${TOTAL-r.players.length}명</span><small>빈자리 채움</small></li>`;
   const host=r.players[0]&&r.players[0].key===r.you;
   $('goBtn').hidden=!host;$('goBtn').disabled=r.state!=='lobby';
   lobbyNote(r.state==='playing'?'게임이 진행 중이에요. 끝나면 다음 판에 같이 들어가요.':host?'다 모이면 시작하기를 누르세요.':'방장이 시작하길 기다리는 중…');
@@ -104,7 +104,6 @@ Object.assign(UI,{
   result:(win,ms,a)=>{if(forMe(a))setTimeout(()=>showResult(win),ms);},
   reset:()=>{$('feed').textContent='';},
   snapCam:a=>{if(forMe(a))cam={x:a.x,y:a.y};},
-  itemKey:isTouch?'아이템 칸 탭':'F 또는 우클릭',
 });
 newGame();requestAnimationFrame(frame);
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{builtF=-1;});

@@ -3,4 +3,4 @@
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const pick=arr=>arr[Math.floor(Math.random()*arr.length)];
 const NOINPUT={vx:0,vy:0,run:false};
-const UI={feed(){},notice(){},noticeEnd(){},branch(){},shake(){},vibrate(){},cine(){},closure(){},result(){},reset(){},snapCam(){},itemKey:'F'};
+const UI={feed(){},notice(){},noticeEnd(){},branch(){},shake(){},vibrate(){},cine(){},closure(){},result(){},reset(){},snapCam(){}};

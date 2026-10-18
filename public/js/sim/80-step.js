@@ -46,7 +46,7 @@ function step(dt){
     if(!me.chan&&!me.sit)drive(me,vx,vy,dt);
     if(me.sprint&&me.f>=0){
       if(me.runCd<=0){const n=watchers(me).find(n=>!immune(me,n)&&sees(n,me));
-        if(n){me.runCd=4;dmg(me,4,'boss');pop(me.f,me.x,me.y-40,`"${n.kind==='ceo'?'자네':'복도에서'} 뛰지 마!" -4`,'#cf3626');tell(me,`${n.kind==='ceo'?'대표님':'부장님'}: "복도에서 뛰지 마!" 고과 -4`,true);}}
+        if(n){me.runCd=4;dmg(me,4,'boss');say(n,`${n.kind==='ceo'?'자네':'복도에서'} 뛰지 마!`,'#cf3626');pop(me.f,me.x,me.y-40,'-4','#cf3626');tell(me,`${n.kind==='ceo'?'대표님':'부장님'}: "복도에서 뛰지 마!" 고과 -4`,true);}}
       if(me.fallCd<=0&&onWet(me)){me.fallCd=3;me.stunT=1;me.sprint=false;dmg(me,4,'slip');pop(me.f,me.x,me.y-40,'꽈당! -4','#cf3626');tell(me,'뛰다가 미끄러졌다: 고과 -4',true);UI.shake(.2,me);}
     }
     if(inp.fire)throwPaper(me,autoAim(me));
@@ -100,7 +100,8 @@ function step(dt){
       if(it.k==='coffee'){gain(a,12);pop(a.f,a.x,a.y-30,'+12 아이스 아메리카노','#7a4b2a');}
       else if(it.k==='food'){gain(a,15);pop(a.f,a.x,a.y-30,'+15 '+pick(['치킨','짜장면','피자','김밥','떡볶이']),'#2f7d4f');}
       else if(!STORE.has(it.k)){applyItem(a,it.k);if(a.isPlayer){const I=ITEMS[it.k];tell(a,`${CAT[I.cat].n} · ${I.n}: ${I.d}`);}}
-      else{a.items.push(it.k);if(a.isPlayer){const I=ITEMS[it.k];pop(a.f,a.x,a.y-30,I.n+' 획득',I.c);tell(a,`${I.n} 획득: ${I.d} · ${UI.itemKey}으로 사용`);}}}
+      else if(it.k==='stapler'){a.ammo=15;pop(a.f,a.x,a.y-30,'스테이플러 장전 15발',ITEMS.stapler.c);tell(a,'스테이플러 장전: 공격하면 15발 연사');}
+      else{a.items.push(it.k);if(a.isPlayer){const I=ITEMS[it.k];pop(a.f,a.x,a.y-30,I.n+' 들었다',I.c);tell(a,`${I.n}: ${I.d} · 다음 공격 때 사용`);}}}
   }
   for(let i=G.drops.length-1;i>=0;i--){const d=G.drops[i];const a=al.find(a=>a.f===d.f&&!a.carry&&Math.hypot(a.x-d.x,a.y-d.y)<22);
     if(a){G.drops.splice(i,1);a.carry=true;pop(a.f,a.x,a.y-30,'출력물 주움','#1d2328');tell(a,'떨어진 출력물을 주웠다: 결재함으로 배달');}}
@@ -149,6 +150,6 @@ function step(dt){
     if(w){feed(v=>`${w===v?'내가':w.name+'님이'} CEO실에 입성했습니다`,true);G.winner=w;}
     for(const h of humans())UI.result(h===w,1200,h);
   }
-  for(const p of G.pops)p.t+=dt;G.pops=G.pops.filter(p=>p.t<1.1);
+  for(const p of G.pops)p.t+=dt;G.pops=G.pops.filter(p=>p.t<(p.say?2.4:1.1));
 
 }

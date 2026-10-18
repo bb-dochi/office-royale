@@ -49,16 +49,23 @@
     <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span>인사-2026-1016-3</span></div>
     <div class="stampmark">결재</div>
     <h1>오피스 로얄</h1>
-    <p class="subj">제목: 4분기 구조조정 시행 안내</p>
+    <p class="subj">제목: 4분기 구조조정 안내</p>
     <ul class="rules">
-      <li><b>업무</b>로 고과를 쌓아 승진하고, <b>서류</b>를 던져 남의 고과를 깎으세요.</li>
-      <li>고과 0이면 권고사직. 마지막 1명이 <b>CEO층</b>으로.</li>
-      <li>40초마다 <b>아래층부터 폐쇄</b>. 위층으로 올라가세요.</li>
+      <li><b>업무</b>로 고과를 쌓고, <b>서류</b>를 던져 남의 고과를 깎으세요.</li>
+      <li>고과 0이면 권고사직. 최후의 1인만 <b>CEO층</b>으로.</li>
+      <li>40초마다 <b>아래층부터 폐쇄</b>돼요. 계속 위로 올라가세요.</li>
       <li>부장님과 눈이 마주치면 <b>먼저 인사</b>.</li>
-      <li>팀장이 되면 <b>팀을 골라</b> 특수능력을 얻습니다.</li>
-      <li>아이템: <b style="color:#2f9e57">초록 회복</b> · <b style="color:#d23b2e">빨강 공격</b> · <b style="color:#2f74c4">파랑 방어</b> · <b style="color:#b39516">노랑 이동</b> · <b style="color:#8d4bbf">보라 방해</b></li>
+      <li>승진할수록 공격이 세지고, 팀장이 되면 <b>팀 스킬</b>이 생겨요.</li>
     </ul>
-    <p class="controls">PC: WASD 이동 · Space/마우스 클릭 던지기 · E 상호작용 · F/우클릭 공격 아이템 · Q 팀장 스킬 · Shift 달리기(부장님 앞·젖은 바닥 주의) · Tab 지도<br>폰: 왼쪽 드래그 이동(끝까지 밀면 달리기) · 회복·방어·이동 아이템은 줍는 즉시 효과, 공격 아이템은 한 개만 들고 다니다가 아이템 칸을 탭해서 사용 · 승진할수록 공격력이 세져요(대리 1.3배, 팀장 1.6배, 임원 2배)</p>
+    <p class="items"><b style="color:#2f9e57">●회복</b><b style="color:#d23b2e">●공격</b><b style="color:#2f74c4">●방어</b><b style="color:#b39516">●이동</b><b style="color:#8d4bbf">●방해</b><span>공격 아이템은 주우면 바로 들고, 공격할 때 나가요. 다 쓰기 전엔 다른 공격 아이템을 못 주워요.</span></p>
+    <ul class="keys pc-only">
+      <li><kbd>WASD</kbd>이동</li><li><kbd>Shift</kbd>달리기</li><li><kbd>Space</kbd><svg class="mouse" viewBox="0 0 12 16" role="img" aria-label="좌클릭"><rect x=".75" y=".75" width="10.5" height="14.5" rx="5.25"/><path d="M6 .75A5.25 5.25 0 0 0 .75 6v1H6z"/></svg>공격</li><li><kbd>E</kbd>모든 상호작용</li>
+      <li><kbd>Q</kbd>팀 스킬</li><li><kbd>Tab</kbd>지도</li>
+    </ul>
+    <ul class="keys touch-only">
+      <li><kbd>왼쪽 드래그</kbd>이동</li><li><kbd>끝까지 밀기</kbd>달리기</li><li><kbd>서류 투척</kbd>공격</li>
+      <li><kbd>상호작용</kbd>모든 상호작용</li><li><kbd>스킬</kbd>팀 스킬</li>
+    </ul>
     <div class="btns"><button class="btn" id="startBtn">혼자 하기</button><button class="btn ghost" id="multiBtn">같이 하기</button></div>
   </div>
 </section>
@@ -67,19 +74,20 @@
   <div class="memo">
     <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span>합동 출근</span></div>
     <h1>같이 하기</h1>
-    <p class="subj">친구와 같은 방에 들어가면 남는 자리는 봇이 채워요 (최대 8명)</p>
+    <p class="subj">방 코드로 친구와 같이 출근해요. 최대 8명, 빈자리는 봇이 채워요.</p>
     <div id="lobbyJoin">
       <label class="field"><span>내 이름</span><input id="nameIn" maxlength="10" autocomplete="nickname" placeholder="신입"></label>
-      <div class="btns"><button class="btn" id="createBtn">방 만들기</button></div>
-      <div class="joinrow"><input id="codeIn" maxlength="6" placeholder="방 코드" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="방 코드"><button class="btn ghost" id="joinBtn">참가</button></div>
+      <button class="btn wide" id="createBtn">새 방 만들기</button>
+      <div class="or"><span>또는 코드로 참가</span></div>
+      <div class="joinrow"><input id="codeIn" maxlength="6" placeholder="ABC12" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="방 코드"><button class="btn" id="joinBtn">참가</button></div>
     </div>
     <div id="lobbyRoom" hidden>
-      <div class="roomcode"><span>방 코드</span><b id="roomCode"></b><button class="btn ghost small" id="copyBtn">초대 링크 복사</button></div>
+      <div class="roomcode"><div><span>방 코드</span><b id="roomCode"></b></div><button class="btn ghost small" id="copyBtn">초대 링크 복사</button></div>
       <ul class="players" id="players"></ul>
       <div class="btns"><button class="btn" id="goBtn">시작하기</button><button class="btn ghost" id="leaveBtn">방 나가기</button></div>
     </div>
     <p class="note" id="lobbyNote" aria-live="polite"></p>
-    <div class="btns"><button class="btn ghost small" id="backBtn">처음으로</button></div>
+    <button class="link" id="backBtn">← 처음으로</button>
   </div>
 </section>
 

@@ -95,6 +95,8 @@ function tell(a,msg,hot){if(a.isPlayer)UI.feed(msg,hot,a);}
 const humans=()=>G.actors.filter(a=>a.isPlayer);
 function notice(text,dur=5){G.notice={text,t:dur};UI.notice(text);}
 function pop(f,x,y,text,color){G.pops.push({f,x,y,text,color,t:0});}
+/* a spoken line: drawn as a speech bubble that follows the speaker (o = actor or npc; or any {f,x,y} spot) */
+function say(o,text,color){if(!o||o.f<0)return;const by=o.id??null;if(by!=null)G.pops=G.pops.filter(p=>!(p.say&&p.by===by));G.pops.push({f:o.f,x:o.x,y:o.y,text,color:color||'#1d2328',t:0,say:true,by});}
 function burst(p){for(const a of G.actors){if(a===p.o||!a.alive||a.f!==p.f||a.inRest||ally(p.o,a))continue;if(Math.hypot(a.x-p.x,a.y-p.y)<95)hit(a,p.o,7,'서류 폭탄 -7',p);}G.bursts.push({f:p.f,x:p.x,y:p.y,t:0});}
 function dmg(a,n,cause){if(!a.alive)return;a.g-=n;a.cause=cause;}
 function gain(a,n){

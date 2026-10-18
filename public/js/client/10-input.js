@@ -10,7 +10,6 @@ addEventListener('keydown',e=>{
   if(!$('branchBox').hidden&&/^(Digit|Numpad)[1-4]$/.test(c)){pickBranch(Object.keys(BRANCH).at(Number(c.slice(-1))-1));return;}
   if(c==='Space')ACT.throw(aimAngle(me));
   else if(c==='KeyE')doInteract();
-  else if(c==='KeyF')ACT.item(0);
   else if(c==='KeyQ')ACT.skill();
   else if(c==='KeyM'||c==='Tab'){mapMode=mapMode==='building'?'floor':'building';hudT=0;}
 });
@@ -21,7 +20,7 @@ addEventListener('blur',()=>keys.clear());
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 cv.addEventListener('pointerdown',e=>{
   if(!running)return;e.preventDefault();
-  if(e.pointerType==='mouse'){if(e.button===2){ACT.item(0);return;}const w=screenToWorld(e.clientX,e.clientY);ACT.throw(Math.atan2(w.y-G.me.y,w.x-G.me.x));return;}
+  if(e.pointerType==='mouse'){if(e.button===2)return;const w=screenToWorld(e.clientX,e.clientY);ACT.throw(Math.atan2(w.y-G.me.y,w.x-G.me.x));return;}
   if(e.clientX<VW*.55&&joy.id===null){
     joy={id:e.pointerId,ox:e.clientX,oy:e.clientY,dx:0,dy:0};cv.setPointerCapture(e.pointerId);
     const s=$('stick');s.style.left=e.clientX+'px';s.style.top=e.clientY+'px';s.hidden=false;$('knob').style.transform='';$('hint').hidden=true;

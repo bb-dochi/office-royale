@@ -33,6 +33,7 @@ export class RoomCore {
   }
   message(peer, m) {
     if (!m || typeof m !== 'object' || !this.peers.includes(peer)) return;
+    if (m.t === 'ping') return typeof m.ct === 'number' && this.send(peer, { t: 'pong', ct: m.ct }); // client measures round trip
     if (m.t === 'start') {
       if (peer !== this.host()) return this.send(peer, { t: 'err', m: '방장만 시작할 수 있어요' });
       if (this.state !== 'lobby') return;

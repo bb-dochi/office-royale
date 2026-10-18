@@ -2,7 +2,10 @@ const aimOf=a=>a.isPlayer&&a.aim!=null?a.aim:autoAim(a);
 /* ================= actions ================= */
 function throwPaper(a,ang){
   if(a.cd>0||!a.alive||a.f<0||locked(a)||a.sit||a.chan)return false;
-  const base=a.isPlayer?(G.final?.38:.6):(G.final?.8:1.5),staple=a.ammo>0;if(staple)a.ammo--;
+  const base=a.isPlayer?(G.final?.38:.6):(G.final?.8:1.5),staple=a.ammo>0;
+  /* a human holding an attack item fires it with the attack button (bots decide in botItems) */
+  if(a.isPlayer&&a.items.length&&!staple){a.face=ang;a.cd=a.lastCd=base;useItem(a,0,ang);return true;}
+  if(staple)a.ammo--;
   a.cd=base*(staple?.35:1);a.lastCd=a.cd;a.face=ang;a.cloakT=0;
   G.proj.push({f:a.f,x:a.x+Math.cos(ang)*(R+4),y:a.y+Math.sin(ang)*(R+4),ox:a.x,oy:a.y,dx:Math.cos(ang),dy:Math.sin(ang),d:0,o:a,spin:Math.random()*6,staple,sp:staple?720:560,rng:staple?300:340});
   if(staple&&a.ammo===0)tell(a,'스테이플러를 다 썼다');
@@ -23,14 +26,15 @@ function nearest(a,range,need){
 }
 function autoAim(a){const b=nearest(a,340,true);return b?Math.atan2(b.y-a.y,b.x-a.x):a.face;}
 const STORE=new Set(['stapler','bundle','spill','card']);
-const canTake=(a,k)=>!STORE.has(k)||a.items.length<1;
-function useItem(a,i=0){
+/* one attack item at a time: no new one until the held one (or the stapler's ammo) is used up */
+const canTake=(a,k)=>!STORE.has(k)||(a.items.length<1&&a.ammo<=0);
+function useItem(a,i=0,ang){
   const k=a.items[i];if(!k||!a.alive||a.f<0||locked(a))return false;
   a.items.splice(i,1);
   if(G.audit&&G.audit.f===a.f){dmg(a,5,'audit');pop(a.f,a.x,a.y-44,'감사팀: 압수 -5','#cf3626');tell(a,'감사팀에 아이템 압수 -5',true);return true;}
-  return applyItem(a,k);
+  return applyItem(a,k,ang);
 }
-function applyItem(a,k){
+function applyItem(a,k,aim){
   const it=ITEMS[k];
   const say=t=>pop(a.f,a.x,a.y-44,t,it.c);
   if(k==='stapler'){a.ammo=15;say('스테이플러 장전 15발');}
@@ -39,7 +43,7 @@ function applyItem(a,k){
   else if(k==='vip'){a.vipT=10;say('임원 인맥 발동');}
   else if(k==='spill'){G.traps.push({f:a.f,x:a.x+Math.cos(a.face)*34,y:a.y+Math.sin(a.face)*34,o:a,t:0});say('커피를 쏟았다');}
   else if(k==='card'){let n=0;for(const o of G.actors)if(o!==a&&o.alive&&o.f===a.f&&dist(a,o)<200&&o.inv<=0&&!ally(a,o)){o.stunT=3;o.chan=null;stand(o);n++;pop(o.f,o.x,o.y-44,'회식 참석','#c08a1e');}say(n?`회식 소집 (${n}명)`:'아무도 안 옴');}
-  else if(k==='bundle'){const ang=aimOf(a);G.proj.push({f:a.f,x:a.x+Math.cos(ang)*(R+4),y:a.y+Math.sin(ang)*(R+4),ox:a.x,oy:a.y,dx:Math.cos(ang),dy:Math.sin(ang),d:0,o:a,spin:0,bundle:true,sp:420,rng:260});a.cloakT=0;a.face=ang;
+  else if(k==='bundle'){const ang=aim??aimOf(a);G.proj.push({f:a.f,x:a.x+Math.cos(ang)*(R+4),y:a.y+Math.sin(ang)*(R+4),ox:a.x,oy:a.y,dx:Math.cos(ang),dy:Math.sin(ang),d:0,o:a,spin:0,bundle:true,sp:420,rng:260});a.cloakT=0;a.face=ang;
     say('서류 뭉치 투척!');for(const n of watchers(a))if(!immune(a,n)&&sees(n,a)){caught(a,n,'act');break;}}
   else if(k==='coffee'){gain(a,12);say('+12 커피');}
   if(k!=='coffee')tell(a,`${it.n} 사용`);
@@ -109,7 +113,7 @@ function openDoor(a){
   const d=G.doors[a.f];if(!d||!d.v)return;const v=d.v;d.v=null;d.cd=rnd(18,32);
   if(v.type==='cleaner'){gain(a,4);a.cleanFriend=true;pop(a.f,a.x,a.y-40,'청소 아주머니 +4','#2f7d4f');tell(a,'청소 아주머니였다 +4 · 이제 젖은 바닥에서 안 미끄러짐');}
   else if(v.type==='courier'){spawnItem(a.f,null,{x:DOOR.x+rnd(-30,30),y:DOOR.y-40});pop(a.f,a.x,a.y-40,'택배 도착','#2f7d4f');tell(a,'택배 기사였다: 아이템 상자');}
-  else if(v.type==='sales'){dmg(a,4,'sales');a.lockT=3;a.lockWhy='영업 당하는 중';pop(a.f,a.x,a.y-40,'"잠깐 설명 좀…" -4','#cf3626');tell(a,'영업사원이었다 -4 · 3초 붙잡힘',true);}
+  else if(v.type==='sales'){dmg(a,4,'sales');a.lockT=3;a.lockWhy='영업 당하는 중';say({f:a.f,x:DOOR.x,y:DOOR.y-30},'잠깐 설명 좀 드릴게요…','#cf3626');pop(a.f,a.x,a.y-40,'-4','#cf3626');tell(a,'영업사원이었다 -4 · 3초 붙잡힘',true);}
   else if(v.type==='interview'){gain(a,6);pop(a.f,a.x,a.y-40,'면접자 안내 +6','#2f7d4f');tell(a,'면접자를 안내했다 +6');}
 }
 function submitTask(a,t){
