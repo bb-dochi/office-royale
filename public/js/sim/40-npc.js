@@ -1,6 +1,7 @@
 /* ================= NPC senses ================= */
 const VIS={boss:{len:230,half:.52,pres:80,sound:260},ceo:{len:345,half:.7,pres:120,sound:390},busy:{len:120,half:.6,pres:0,sound:0}};
 function npcActive(n){
+  if(G.tutorial&&!n.tut)return false; // the tutorial switches NPCs on one at a time
   if(n.kind==='ceo')return true;
   if(!isOpen(n.f))return false;
   if(n.kind!=='cleaner'&&G.lunch)return false;

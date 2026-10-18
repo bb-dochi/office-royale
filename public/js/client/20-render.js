@@ -78,7 +78,7 @@ function ownMat(m){m.userData.own=true;return m;}
 let extras=[];
 const EXTRA_COLORS=['#4f7c99','#8e6c8a','#6f8f3a','#b0803a','#5b6fa8','#a35d7a','#3f8f8f','#c46b6b'];
 function buildExtras(f,fl){
-  for(const e of extras)scene.remove(e.m);extras=[];
+  extras=[];
   if(f===ROOF||f===0)return;
   /* free seats first, then seats whose owner may drop out later */
   const order=fl.seats.map((s,i)=>[s,i]).sort((p,q)=>(!!p[0].owner-!!q[0].owner)||((p[1]*7)%5-(q[1]*7)%5));
@@ -86,10 +86,34 @@ function buildExtras(f,fl){
     const m=makeChar(EXTRA_COLORS[(i+f)%EXTRA_COLORS.length],null,1000+f*100+i);m.position.set(s.x*U,0,s.y*U);m.rotation.y=toYaw(s.face);m.visible=false;
     m.userData.walk=i*1.3;extras.push({s,m});});
 }
-function buildFloor(f){
-  if(floorGroup){scene.remove(floorGroup);disposeGroup(floorGroup);}
+/* Building a floor takes ~90 ms (big canvas texture + mesh merging), which showed up as a hitch on every floor change.
+   Built floors are cached (most recent FLOOR_KEEP) and the floors you are likely to visit next are built in idle time. */
+const FLOOR_KEEP=4,FC=new Map();
+const floorState=()=>({g:floorGroup,f:builtF,wallMs,doorMs,seatMs,staticTags,floorAnim,extras,bg:scene.background});
+function applyFloor(c){
+  if(floorGroup&&floorGroup!==c.g){floorGroup.visible=false;for(const e of extras)e.m.visible=false;}
+  ({g:floorGroup,f:builtF,wallMs,doorMs,seatMs,staticTags,floorAnim,extras}=c);scene.background=c.bg;floorGroup.visible=true;c.used=performance.now();
+}
+function dropFloor(c){scene.remove(c.g);disposeGroup(c.g);for(const e of c.extras)scene.remove(e.m);}
+function getFloor(f){
+  let c=FC.get(f);
+  if(!c){const prev=floorGroup?floorState():null;makeFloor(f);c=floorState();FC.set(f,c);if(prev&&prev.g!==c.g){c.g.visible=false;for(const e of c.extras)e.m.visible=false;applyFloor(prev);}
+    for(const[k,o]of[...FC].sort((a,b)=>(a[1].used||0)-(b[1].used||0)))if(FC.size>FLOOR_KEEP&&o.g!==floorGroup&&k!==f){dropFloor(o);FC.delete(k);}}
+  return c;
+}
+function buildFloor(f){applyFloor(getFloor(f));}
+function resetFloors(){for(const c of FC.values())dropFloor(c);FC.clear();floorGroup=null;builtF=-1;}
+let prewarmT=0;
+function prewarmFloors(){
+  if(!G||performance.now()<prewarmT)return;prewarmT=performance.now()+400;
+  const want=[G.closed,G.closed+1,G.closed+2,G.closed+3].filter(f=>f>=0&&f<NF&&!FC.has(f));
+  if(!want.length)return;
+  const go=()=>{if(!FC.has(want[0]))getFloor(want[0]);};
+  if(window.requestIdleCallback)requestIdleCallback(go,{timeout:2000});else setTimeout(go,50);
+}
+function makeFloor(f){
   floorAnim=[];const fl=FLOORS[f],g=new THREE.Group();floorGroup=g;builtF=f;wallMs=[];doorMs=[];seatMs=[];staticTags=[];
-  scene.background=new THREE.Color(f===ROOF?'#9fc6e0':'#2a3036');
+  scene.background=new THREE.Color(f===ROOF?'#9fc6e0':'#2a3036');extras=[];
   const pl=new THREE.Mesh(new THREE.PlaneGeometry(W3,D3),ownMat(new THREE.MeshLambertMaterial({map:floorTex(f)})));
   pl.rotation.x=-Math.PI/2;pl.position.set(W3/2,0,D3/2);pl.receiveShadow=true;g.add(pl);
   /* perimeter: back and side walls full height, the camera-facing front wall kept low */
@@ -447,7 +471,6 @@ const CG={head:SG(new THREE.SphereGeometry(.3,22,16)),torso:SG(new THREE.Capsule
   back:SG(new THREE.CapsuleGeometry(.2,.18,4,14))};
 const bodyGeo=CG.torso,headGeo=CG.head,eyeGeo=CG.eye;
 const ringGeo=new THREE.RingGeometry(.46,.56,36),shGeo=new THREE.CircleGeometry(.34,20);
-const eyeMat=basic('#2b2b2b'),blushMat=basic('#f5a3a3');
 const HAIRS=['#3a2d28','#6b3e2e','#2e2a28','#8a5a3a','#4a3a35','#1f1b1a','#7a5a40'];
 const SHIRTS_L=['#f4f6f8','#dfe8f2','#f7e8d6','#e6efe1','#f3e3ea'],TIES=['#b8322a','#2b5c9e','#d9a441','#2f7d4f','#5a3b6e'],PANTS=['#2f3540','#3d4a54','#5a4632','#4b555d','#2b3a55','#6b5a48'];
 const SKINS=['#ffe4cc','#fbd8bb','#f3c7a4','#e6b48f','#ffeadb'];
@@ -470,6 +493,39 @@ function outfitFor(kind,seed,color){
   if(look!==1&&r(5)<.7)top.tie=pk(TIES,6);
   return{skin,hair:{style:long?pk(['long','bun'],7):pk(['short','side','short'],7),color:pk(HAIRS,8)},face:{glasses:r(10)<.2?1:0},
     top,bottom:{pants:pk(PANTS,11),skirt:long&&r(12)<.5,shoes:r(13)<.5?'#1d2024':'#5a4632'}};
+}
+const _m4=new THREE.Matrix4(),_m3=new THREE.Matrix3(),_v=new THREE.Vector3();
+function bakeParts(group,mat){
+  const list=group.children.filter(c=>c.isMesh);if(!list.length)return;
+  let nv=0,ni=0;for(const m of list){const gm=m.geometry;nv+=gm.attributes.position.count;ni+=gm.index?gm.index.count:gm.attributes.position.count;}
+  const pos=new Float32Array(nv*3),nor=new Float32Array(nv*3),col=new Float32Array(nv*3),idx=new Uint32Array(ni);let vo=0,io=0;
+  for(const m of list){
+    m.updateMatrix();_m4.copy(m.matrix);_m3.getNormalMatrix(_m4);
+    const gm=m.geometry,P=gm.attributes.position,N=gm.attributes.normal,c=m.material.color;
+    for(let i=0;i<P.count;i++){_v.fromBufferAttribute(P,i).applyMatrix4(_m4);pos.set([_v.x,_v.y,_v.z],(vo+i)*3);
+      _v.fromBufferAttribute(N,i).applyMatrix3(_m3).normalize();nor.set([_v.x,_v.y,_v.z],(vo+i)*3);col.set([c.r,c.g,c.b],(vo+i)*3);}
+    if(gm.index){const I=gm.index.array;for(let i=0;i<I.length;i++)idx[io++]=I[i]+vo;}else for(let i=0;i<P.count;i++)idx[io++]=vo+i;
+    vo+=P.count;group.remove(m);
+  }
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(pos,3));geo.setAttribute('normal',new THREE.BufferAttribute(nor,3));
+  geo.setAttribute('color',new THREE.BufferAttribute(col,3));geo.setIndex(new THREE.BufferAttribute(idx,1));geo.computeBoundingSphere();
+  const mesh=new THREE.Mesh(geo,mat);mesh.castShadow=true;group.add(mesh);
+}
+/* ---------- dressing room choices (also sent to the server, which cleans them the same way: server/src/outfit.js) ---------- */
+const FIT={hair:['short','side','long','bun','bald'],top:['shirt','jacket','cardigan','vest'],bottom:['pants','skirt'],
+  hairC:['#1f1b1a','#3a2d28','#6b3e2e','#8a5a3a','#c9a25a','#9a9aa0','#cf6f8a','#2b6cb0'],skin:['#ffe4cc','#fbd8bb','#f3c7a4','#e6b48f','#c98d6a'],
+  topC:['#2b6cb0','#4a4f57','#1f2228','#8e6c8a','#c46b6b','#3f8f8f','#9fcf9f','#e0c23d','#f4f6f8'],shirtC:['#f4f6f8','#dfe8f2','#f7e8d6','#e6efe1','#f3e3ea','#2f3540'],
+  tie:[null,'#b8322a','#2b5c9e','#d9a441','#2f7d4f','#5a3b6e'],bottomC:['#2f3540','#3d4a54','#2b3a55','#5a4632','#6b5a48','#c8b89a','#4b555d']};
+const DEFAULT_FIT={hair:'short',hairC:'#3a2d28',skin:'#fbd8bb',top:'jacket',topC:'#2b6cb0',shirtC:'#f4f6f8',tie:'#b8322a',badge:true,glasses:false,bottom:'pants',bottomC:'#2f3540'};
+function cleanFit(f){
+  if(!f||typeof f!=='object')return null;const col=v=>typeof v==='string'&&/^#[0-9a-fA-F]{6}$/.test(v)?v.toLowerCase():null,pk=(v,l)=>l.includes(v)?v:l[0];
+  return{hair:pk(f.hair,FIT.hair),hairC:col(f.hairC)||'#3a2d28',skin:col(f.skin)||'#fbd8bb',top:pk(f.top,FIT.top),topC:col(f.topC)||'#2b6cb0',shirtC:col(f.shirtC)||'#f4f6f8',
+    tie:col(f.tie),badge:!!f.badge,glasses:!!f.glasses,bottom:pk(f.bottom,FIT.bottom),bottomC:col(f.bottomC)||'#2f3540'};
+}
+function myFit(){try{return cleanFit(JSON.parse(localStorage.getItem('or-fit')))||{...DEFAULT_FIT};}catch{return{...DEFAULT_FIT};}}
+function fitToOutfit(c){
+  const top={shirt:c.top==='shirt'?c.topC:c.shirtC,badge:c.badge};if(c.top!=='shirt')top[c.top]=c.topC;if(c.tie)top.tie=c.tie;
+  return{skin:c.skin,hair:{style:c.hair,color:c.hairC},face:{glasses:c.glasses?1:0},top,bottom:{pants:c.bottomC,skirt:c.bottom==='skirt',shoes:'#1d2024'}};
 }
 function makeChar(color,kind,seed,outfit){
   const g=new THREE.Group(),inner=new THREE.Group();g.add(inner);
@@ -500,8 +556,7 @@ function makeChar(color,kind,seed,outfit){
   /* head slot: face + hair */
   const head=piv(inner,0,1.17,0);
   add(head,CG.head,o.skin,0,0,0);
-  for(const sx of[-1,1]){const e=new THREE.Mesh(eyeGeo,eyeMat);e.position.set(sx*.1,.0,.27);head.add(e);
-    const b=new THREE.Mesh(eyeGeo,blushMat);b.scale.set(1.3,.7,.5);b.position.set(sx*.18,-.07,.245);head.add(b);}
+  for(const sx of[-1,1]){add(head,eyeGeo,'#2b2b2b',sx*.1,.0,.27);add(head,eyeGeo,'#f5a3a3',sx*.18,-.07,.245,1.3,.7,.5);}
   const F=o.face||{},H=o.hair;
   if(F.glasses)for(const sx of[-.1,.1])add(head,GEO.box,'#2a2d31',sx,.0,.285,.11,.075,.02);
   if(F.mustache)add(head,GEO.box,H.color,0,-.09,.27,.16,.035,.04);
@@ -530,8 +585,12 @@ function makeChar(color,kind,seed,outfit){
   const sh=new THREE.Mesh(shGeo,basic('#1d2328',{transparent:true,opacity:.18,depthWrite:false}));sh.rotation.x=-Math.PI/2;sh.position.y=.012;g.add(sh);
   const ring=new THREE.Mesh(ringGeo,basic('#2b6cb0',{transparent:true,opacity:.9}));ring.rotation.x=-Math.PI/2;ring.position.y=.016;ring.visible=false;g.add(ring);
   const aura=new THREE.Mesh(GEO.disc,basic('#e5483a',{transparent:true,opacity:.3,depthWrite:false,blending:THREE.AdditiveBlending}));aura.rotation.x=-Math.PI/2;aura.position.y=.02;aura.scale.setScalar(.85);aura.visible=false;g.add(aura);
-  const bm=mt(main);
-  g.userData={inner,bm,base:bm.color.clone(),mats,ring,aura,carry,cloak:false,rig:{legL,legR,armL,armR,head},slots:{head,top,bottom},outfit:o,walk:0};
+  /* ~30 little parts would cost ~30 draw calls per character (twice with shadows); bake each rigid piece into one mesh */
+  const cm=new THREE.MeshLambertMaterial({vertexColors:true});
+  for(const p of[bottom,legL,legR,top,armL,armR,head])bakeParts(p,cm);
+  for(const m of Object.values(M))m.dispose();
+  const keep=mats.filter(m=>!Object.values(M).includes(m));
+  g.userData={inner,bm:cm,mats:[cm,...keep],ring,aura,carry,cloak:false,rig:{legL,legR,armL,armR,head},slots:{head,top,bottom},outfit:o,walk:0};
   scene.add(g);return g;
 }
 const tmpC=new THREE.Color(),WHITE=new THREE.Color('#ffffff');
@@ -693,13 +752,18 @@ const tmpV=new THREE.Vector3(),dirV=new THREE.Vector3();
 function render(dt){
   if(!G||!G.me)return; // online: nothing to draw until the first snapshot
   const me=G.me;
-  const focus=me.alive?me:(leader()||me);if(focus.f>=0)viewF=focus.f;
+  const focus=me.alive?me:(specTarget()||leader()||me);if(focus.f>=0)viewF=focus.f;
   const f=viewF;
   if(builtF!==f)buildFloor(f);
+  prewarmFloors();
   for(const fn of floorAnim)fn(dt);
   const k=Math.min(1,dt*7);cam.x+=(focus.x-cam.x)*k;cam.y+=(focus.y-cam.y)*k;
   const zoom=VW<VH?1.4:VW<700?1.15:1,sx=shake>0?(Math.random()-.5)*.35:0,sz=shake>0?(Math.random()-.5)*.35:0;
   cam3.position.set(cam.x*U+sx,16.5*zoom,cam.y*U+10.5*zoom+sz);cam3.lookAt(cam.x*U,0,cam.y*U-.4);
+  /* dressing room: a close look at me, framed above the menu card */
+  /* (the view offset slides the picture so I stand in the free space above the card) */
+  if(G.plaza&&typeof PZ!=='undefined'&&PZ.dress){const n=VW<700;cam3.position.set(me.x*U,n?2.6:2.1,me.y*U+(n?6.2:4.0));cam3.lookAt(me.x*U,.75,me.y*U);cam3.setViewOffset(VW,VH,0,VH*(VW<700?.3:.2),VW,VH);}
+  else if(cam3.view&&cam3.view.enabled)cam3.clearViewOffset();
   const onFloor=me.alive&&me.f===f&&!me.transit;
   fogOn=onFloor&&!(G.blackout&&G.blackout.f===f);
 
@@ -716,7 +780,7 @@ function render(dt){
   for(const[n,m]of npcM)if(!G.npcs.includes(n)){scene.remove(m);npcM.delete(n);}
   /* actors */
   for(const a of G.actors){
-    let m=actorM.get(a);if(!m){m=makeChar(a.color,null,a.id);actorM.set(a,m);}
+    let m=actorM.get(a);if(!m){m=makeChar(a.color,null,a.id,a.fit?fitToOutfit(a.fit):null);actorM.set(a,m);}
     const vis=a.alive&&a.f===f&&!a.transit&&(a===me||seenBy(me,a))&&!(a.cloakT>0&&a!==me&&!ally(me,a));
     m.visible=vis;if(!vis)continue;
     poseChar(m,a,dt,false);const u=m.userData;
@@ -725,7 +789,7 @@ function render(dt){
     const aura=a.ammo>0?CAT.atk.c:a.speedT>0?CAT.move.c:a.shieldN>0||a.vipT>0?CAT.def.c:null;
     u.aura.visible=!!aura;if(aura){u.aura.material.color.set(aura);u.aura.scale.setScalar(.8+Math.sin(G.t*6)*.06);}
     u.carry.visible=!!a.carry;
-    u.bm.color.copy(u.base);if(a.flash>0)u.bm.color.lerp(WHITE,Math.min(.8,a.flash*2.5));
+    u.bm.emissive.setScalar(a.flash>0?Math.min(.55,a.flash*2):0);
   }
   for(const e of extras){const s=e.s;e.m.visible=!s.occ&&!(s.owner&&s.owner.alive);if(e.m.visible)poseRig(e.m.userData,'sit',dt);}
   /* npcs + cones */
@@ -795,9 +859,9 @@ function render(dt){
   /* actor labels */
   for(const a of G.actors){const m=actorM.get(a);if(!m||!m.visible)continue;
     const p=scr(a.x,a.y,1.75);if(!p)continue;const x=p[0],y=p[1];
-    const label=a===me?`나 · ${rankName(a)}`:`${a.name} ${rankName(a)}`;
+    const label=G.plaza?(a===me?`나 · ${a.name}`:a.name):a===me?`나 · ${rankName(a)}`:`${a.name} ${rankName(a)}`;
     tag(x,y-12,label,a===me?'#2b6cb0':a.isPlayer?OTHER_HUMAN:'rgba(251,250,246,.94)',a===me||a.isPlayer?'#fbfaf6':'#1d2328');
-    ctx.fillStyle='#1d2328';ctx.fillRect(x-18,y+1,36,5);ctx.fillStyle=a.g<30?'#cf3626':'#2f7d4f';ctx.fillRect(x-17,y+2,34*Math.max(0,a.g)/100,3);
+    if(!G.plaza){ctx.fillStyle='#1d2328';ctx.fillRect(x-18,y+1,36,5);ctx.fillStyle=a.g<30?'#cf3626':'#2f7d4f';ctx.fillRect(x-17,y+2,34*Math.max(0,a.g)/100,3);}
     if(a.items.length&&a!==me)glyph(a.items[0],x+28,y-12,14);
     if(ally(me,a)&&a!==me)outlined('동맹',x,y+20,F(800,11),'#2f9e57');
     if(a.ammo>0&&a===me){const q=scr(a.x,a.y,0);if(q)outlined(`스테이플 ${a.ammo}`,q[0],q[1]+26,F(800,10),'#3f6f99');}
@@ -833,6 +897,9 @@ function render(dt){
       ctx.fillStyle='#e5483a';ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*12,cy2+Math.sin(a)*12);ctx.lineTo(cx+Math.cos(a+2.4)*10,cy2+Math.sin(a+2.4)*10);ctx.lineTo(cx+Math.cos(a-2.4)*10,cy2+Math.sin(a-2.4)*10);ctx.fill();}
   }
   for(const p of G.pops){if(p.f!==f||p.say)continue;const s=scr(p.x,p.y,1.9+p.t*1.2);if(!s)continue;ctx.globalAlpha=Math.max(0,1-p.t/1.1);outlined(p.text,s[0],s[1],F(800,15),p.color);ctx.globalAlpha=1;}
+  /* tutorial: a bouncing arrow over whatever the current step is about */
+  if(typeof TUT!=='undefined'&&TUT.on&&TUT.target&&(TUT.target.f??f)===f){const t=TUT.target,p=scr(t.x,t.y,2.6+Math.sin(G.t*5)*.18);
+    if(p){ctx.fillStyle='#f3d77a';ctx.strokeStyle='#1d2328';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(p[0]-16,p[1]-22);ctx.lineTo(p[0]+16,p[1]-22);ctx.lineTo(p[0],p[1]);ctx.closePath();ctx.fill();ctx.stroke();}}
   /* speech bubbles follow whoever is talking; hidden while the speaker is out of sight */
   for(const p of G.pops){if(!p.say||p.f!==f)continue;
     let x=p.x,y=p.y;

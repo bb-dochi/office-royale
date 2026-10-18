@@ -9,7 +9,7 @@ const seatRef=s=>s?[s.f,FLOORS[s.f].seats.indexOf(s)]:null;
 const idOf=o=>o?o.id:null;
 const clampN=(v,lo,hi)=>typeof v==='number'&&isFinite(v)?Math.max(lo,Math.min(hi,v)):0;
 /* fields every client needs about every actor (labels, poses, auras), with the value a client assumes when one is left out */
-const PUB_A={id:0,name:'',color:'',isPlayer:false,f:0,x:0,y:0,face:0,g:0,peak:0,rank:'',alive:false,branch:null,flash:0,items:[],ammo:0,cloakT:0,carry:false,inRest:false,stunT:0,lockT:0,lockWhy:'',sprint:false,side:null,speedT:0,shieldN:0,vipT:0,slowT:0,intelT:0,place:0,kills:0,revived:false,tasksDone:0,maxF:0};
+const PUB_A={id:0,name:'',color:'',isPlayer:false,f:0,x:0,y:0,face:0,g:0,peak:0,rank:'',alive:false,branch:null,flash:0,items:[],ammo:0,cloakT:0,carry:false,inRest:false,stunT:0,lockT:0,lockWhy:'',sprint:false,side:null,speedT:0,shieldN:0,vipT:0,slowT:0,intelT:0,place:0,kills:0,revived:false,tasksDone:0,maxF:0,fit:null};
 /* empty values (0, false, null, '', [], spent timers) are left out of public actor data to keep snapshots small */
 const empty=v=>v===null||v===false||v===''||v===undefined||(typeof v==='number'&&v<=0&&v>-1e-9)||(Array.isArray(v)&&!v.length);
 /* bot brain and bookkeeping that never leaves the server */
@@ -77,7 +77,7 @@ NET.start=function(players){
     snapCam:a=>push(a,{k:'snapCam'}),
     reset:()=>{},
   });
-  newGame({humans:players.map(p=>({key:p.key,name:String(p.name).slice(0,10)}))});
+  newGame({humans:players.map(p=>({key:p.key,name:String(p.name).slice(0,10),fit:p.fit||null}))});
   G.nid=0;
 };
 NET.step=dt=>step(dt);

@@ -8,6 +8,7 @@ import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { RoomCore } from '../server/src/room.js';
+import { PlazaCore } from '../server/src/plaza.js';
 
 const PORT = +(process.argv[2] || process.env.PORT || 8787);
 const PUB = fileURLToPath(new URL('../public/', import.meta.url));
@@ -24,6 +25,7 @@ function createSim() {
 }
 
 const rooms = new Map();
+const plaza = new PlazaCore({ send: (p, o) => p.sock.sendText(JSON.stringify(o)) });
 function roomFor(code) {
   let r = rooms.get(code);
   if (!r) { r = new RoomCore(code, { createSim, send: (p, o) => p.sock.sendText(JSON.stringify(o)), onEmpty: () => rooms.delete(code) }); rooms.set(code, r); }
@@ -43,19 +45,19 @@ const server = createServer((req, res) => {
 });
 
 server.on('upgrade', (req, sock) => {
-  const m = new URL(req.url, 'http://x').pathname.match(/^\/room\/([A-Z0-9]{4,8})$/);
+  const path = new URL(req.url, 'http://x').pathname, m = path.match(/^\/room\/([A-Z0-9]{4,8})$/), isPlaza = path === '/plaza';
   const key = req.headers['sec-websocket-key'];
-  if (!m || !key || req.headers.upgrade?.toLowerCase() !== 'websocket') { sock.end('HTTP/1.1 400 Bad Request\r\n\r\n'); return; }
+  if ((!m && !isPlaza) || !key || req.headers.upgrade?.toLowerCase() !== 'websocket') { sock.end('HTTP/1.1 400 Bad Request\r\n\r\n'); return; }
   const accept = createHash('sha1').update(key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
   sock.write(`HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ${accept}\r\n\r\n`);
   sock.setNoDelay(true);
-  const room = roomFor(m[1]), peer = { sock: wrap(sock) };
+  const room = isPlaza ? plaza : roomFor(m[1]), peer = { sock: wrap(sock) };
   let joined = false;
   peer.sock.onText = txt => {
     let msg; try { msg = JSON.parse(txt); } catch { return; }
     if (!joined) {
       if (msg.t !== 'hello') return;
-      const err = room.join(peer, msg.name);
+      const err = room.join(peer, msg.name, msg.fit);
       if (err) { peer.sock.sendText(JSON.stringify({ t: 'err', m: err })); peer.sock.close(); return; }
       joined = true; return;
     }

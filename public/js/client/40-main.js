@@ -22,6 +22,12 @@ function showResult(win){
   $('result').hidden=false;$('callBox').hidden=true;
 }
 if(!isTouch)document.body.classList.add('pc');
+function setInputMode(touch){
+  if(touch===isTouch)return;isTouch=touch;document.body.classList.toggle('pc',!touch);
+  if(typeof TUT!=='undefined'){TUT_STEPS=tutSteps();if(TUT.on)tutShow();}
+}
+addEventListener('keydown',e=>{if(/^(Key[WASDEQF]|Arrow|Space|Shift|Digit)/.test(e.code))setInputMode(false);},true);
+addEventListener('touchstart',()=>setInputMode(true),{passive:true,capture:true});
 let lastKb='';
 function keybar(){
   if(isTouch||!G||!G.me)return;const me=G.me,kb=$('keybar');kb.hidden=!running||!me.alive;if(kb.hidden)return;
@@ -34,10 +40,9 @@ function keybar(){
   const h=ch.map(([k,t,c,cd,col])=>`<div class="kc ${c||''}"${col?` style="border-color:${col};box-shadow:0 0 12px ${col}"`:''}><kbd>${k}</kbd><span>${t}</span>${cd>0?`<i class="cd" style="width:${cd*100}%"></i>`:''}</div>`).join('');
   if(h!==lastKb){lastKb=h;kb.innerHTML=h;}
 }
-function startScreens(){$('countdown').hidden=true;lastCd='';$('branchBox').hidden=true;branchT=0;$('cineTower').hidden=false;running=true;lastItem='x';lastPills='x';lastCall=null;
-  $('intro').hidden=true;$('lobby').hidden=true;$('result').hidden=true;$('cine').hidden=true;$('notice').hidden=true;$('callBox').hidden=true;$('feed').textContent='';cineT=0;if(isTouch)$('hint').hidden=false;}
-function start(){netClose();newGame();startScreens();}
-$('startBtn').addEventListener('click',start);
+function startScreens(){plazaStop();if(typeof TUT!=='undefined')tutStop();$('home').hidden=true;$('countdown').hidden=true;lastCd='';$('branchBox').hidden=true;branchT=0;$('cineTower').hidden=false;running=true;lastItem='x';lastPills='x';lastCall=null;
+  $('lobby').hidden=true;$('result').hidden=true;$('cine').hidden=true;$('notice').hidden=true;$('callBox').hidden=true;$('feed').textContent='';cineT=0;if(isTouch)$('hint').hidden=false;}
+function start(){netClose();newGame({humans:[{key:'me',name:'나',fit:myFit()}]});startScreens();}
 $('againBtn').addEventListener('click',()=>{if(NETC.room)showLobby();else start();});
 
 /* ---------- online lobby ---------- */
@@ -45,7 +50,7 @@ const store={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},se
 const roomParam=()=>(new URLSearchParams(location.search).get('room')||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
 function lobbyNote(t,err){const n=$('lobbyNote');n.textContent=t||'';n.classList.toggle('err',!!err);}
 function showLobby(){
-  running=false;$('intro').hidden=true;$('result').hidden=true;$('lobby').hidden=false;
+  running=false;$('result').hidden=true;$('home').hidden=true;$('lobby').hidden=false;
   const r=NETC.room;$('lobbyJoin').hidden=!!r;$('lobbyRoom').hidden=!r;$('backBtn').hidden=!!r;
   if(!r){$('nameIn').value=$('nameIn').value||store.get('or-name')||'';if(roomParam())$('codeIn').value=roomParam();lobbyNote('');return;}
   $('roomCode').textContent=r.code;
@@ -66,23 +71,43 @@ function joinRoom(code){
   },err=>{NETC.room=null;running=false;showLobby();lobbyNote(err,true);});
 }
 const newCode=()=>Array.from({length:5},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*32)]).join('');
-$('multiBtn').addEventListener('click',showLobby);
 $('createBtn').addEventListener('click',()=>joinRoom(newCode()));
 $('joinBtn').addEventListener('click',()=>{const c=$('codeIn').value.toUpperCase().replace(/[^A-Z0-9]/g,'');if(c.length<4){lobbyNote('방 코드를 확인해 주세요',true);return;}joinRoom(c);});
 $('codeIn').addEventListener('keydown',e=>{if(e.key==='Enter')$('joinBtn').click();});
 $('goBtn').addEventListener('click',()=>netSend({t:'start'}));
 $('leaveBtn').addEventListener('click',()=>{netClose();history.replaceState(null,'',location.pathname);showLobby();});
-$('backBtn').addEventListener('click',()=>{$('lobby').hidden=true;$('intro').hidden=false;});
+$('backBtn').addEventListener('click',()=>{$('lobby').hidden=true;if(PZ.on)$('home').hidden=false;else plazaStart();});
 $('copyBtn').addEventListener('click',async()=>{const url=location.href;try{await navigator.clipboard.writeText(url);lobbyNote('초대 링크를 복사했어요');}catch{lobbyNote(url);}});
-if(roomParam()){$('intro').hidden=true;showLobby();}
-$('watchBtn').addEventListener('click',()=>{$('result').hidden=true;});
+
+/* ---------- spectating ---------- */
+let specId=null;
+const watching=()=>running&&G&&G.me&&!G.me.alive&&$('result').hidden;
+function specTarget(){
+  if(!G)return null;let a=G.actors.find(o=>o.id===specId&&o.alive);
+  if(!a){a=(G.me.killer&&G.me.killer.alive?G.me.killer:null)||leader()||null;specId=a?a.id:null;}
+  return a;
+}
+function specCycle(d){const al=G.actors.filter(a=>a.alive);if(!al.length)return;const cur=specTarget(),i=Math.max(0,al.indexOf(cur));specId=al[(i+d+al.length)%al.length].id;}
+function specExit(){$('spec').hidden=true;specId=null;if(NETC.room)showLobby();else plazaStart();}
+let lastSpec='';
+function specHud(){
+  const show=watching();if($('spec').hidden===show)$('spec').hidden=!show;if(!show)return;
+  const a=specTarget(),t=a?`${a.name} ${rankName(a)}|${a.f>=0?FLOORS[a.f].short:''}`:'';
+  if(t!==lastSpec){lastSpec=t;const[n,f]=t.split('|');$('specName').textContent=n||'-';$('specFloor').textContent=f||'';}
+}
+$('watchBtn').addEventListener('click',()=>{$('result').hidden=true;specId=null;specTarget();});
+$('specPrev').addEventListener('click',()=>specCycle(-1));
+$('specNext').addEventListener('click',()=>specCycle(1));
+$('specExit').addEventListener('click',specExit);
 
 let last=performance.now();
 function frame(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;
   shake=Math.max(0,shake-dt);
   if(running&&G){readInput();if(NETC.on){netSendInput();netFrame(dt);}else if(!G.net)step(dt);}
-  render(dt);hud(dt);keybar();countdown();
+  else if(PZ.on){readInput();plazaFrame(dt);}
+  if(TUT.on)tutFrame(dt);
+  render(dt);hud(dt);keybar();countdown();specHud();
   requestAnimationFrame(frame);
 }
 function feedDOM(msg,hot){
@@ -105,5 +130,5 @@ Object.assign(UI,{
   reset:()=>{$('feed').textContent='';},
   snapCam:a=>{if(forMe(a))cam={x:a.x,y:a.y};},
 });
-newGame();requestAnimationFrame(frame);
-if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{builtF=-1;});
+requestAnimationFrame(frame);
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{resetFloors();});

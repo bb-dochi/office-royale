@@ -64,7 +64,7 @@ function step(dt){
           else{a.transit={to,t:1.1};a.f=-1;G.dings.push({f:to,t:1.1});tell(a,'엘리베이터 탑승');}
         }}}
     }
-    if(!a.isPlayer&&a.f>=0)updBot(a,dt);
+    if(!a.isPlayer&&a.f>=0&&!a.dummy)updBot(a,dt);
   }
   const al=alive().filter(a=>a.f>=0);
   // seats, restroom, pantry

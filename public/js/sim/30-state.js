@@ -32,9 +32,11 @@ function newGame(opts={}){
   const actors=[],spots=[];
   const pickPos=()=>{for(let i=0;i<300;i++){const p=randFree(0,90);if(p.y>K(480)&&spots.every(s=>dist(s,p)>80)){spots.push(p);return p;}}const p=randFree(0,90);spots.push(p);return p;};
   const hs=(opts.humans||[{key:'me',name:'나'}]).slice(0,TOTAL);
-  for(const h of hs){const a=mk(h.name,true,'플레이어',HUMAN_COLORS[actors.length%HUMAN_COLORS.length],pickPos());a.key=h.key;actors.push(a);}
+  for(const h of hs){const a=mk(h.name,true,'플레이어',HUMAN_COLORS[actors.length%HUMAN_COLORS.length],pickPos());a.key=h.key;a.fit=h.fit||null;actors.push(a);}
   const me=actors[0];
-  for(let i=0;i<TOTAL-hs.length;i++){const b=mk(NAMES[i],false,TYPES[i],SHIRTS[i],pickPos());b.pref=Math.random()<.3?1:0;actors.push(b);}
+  /* opts.bots: how many bots (default: fill to TOTAL). opts.tutorial: a practice floor with no closures or events */
+  const nb=opts.bots??TOTAL-hs.length;
+  for(let i=0;i<nb;i++){const b=mk(NAMES[i],false,TYPES[i],SHIRTS[i],pickPos());b.pref=Math.random()<.3?1:0;actors.push(b);}
   G={t:0,actors,me,proj:[],items:[],traps:[],tasks:[],drops:[],wet:[],pops:[],dings:[],bursts:[],closed:0,nextClose:INTERVAL,warn:false,final:false,finalT:0,over:false,itemT:0,winner:null,
      npcs:[],doors:[],events:[],notice:null,ceo:null,blackout:null,cake:null,fire:0,star:null,audit:null,taskId:0,fillT:0,lunch:null,airdrops:[]};
   for(let f=0;f<NF;f++){
@@ -54,6 +56,7 @@ function newGame(opts={}){
   if(kinds.indexOf('ceo')>2){kinds.splice(kinds.indexOf('ceo'),1);kinds.splice(1,0,'ceo');}
   [rnd(28,38),rnd(62,72),rnd(150,165),rnd(195,210)].forEach((at,i)=>G.events.push({at,kind:kinds.at(i),stage:0}));
   G.events.push({at:rnd(96,104),kind:'lunch',stage:0});
+  if(opts.tutorial){G.tutorial=true;G.events=[];G.nextClose=1e9;for(const b of actors)if(!b.isPlayer)b.dummy=true;}
   UI.snapCam(me);
   UI.reset();
 }

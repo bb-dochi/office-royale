@@ -8,6 +8,9 @@
 - 부장님 시야에 들어가면 먼저 인사. 임원이 되면 부장님이 먼저 인사한다
 - 점심시간엔 옥상에서 흡연 동맹 난투전, 하늘에서 보급품이 떨어진다
 - **혼자 하기**: 나 + 봇 19명 · **같이 하기**: 방 코드로 친구와 최대 8명, 남는 자리는 봇
+- 시작 화면은 **로비**: 지금 접속한 사람들이 1층 로비를 같이 돌아다니고 미리 정해진 인사말로 인사할 수 있다(봇 몇 명 포함)
+- **튜토리얼**: 이동 → 달리기 → 업무 → 부장님 인사 → 서류 던지기 → 공격 아이템 → 층 이동을 차례로 연습
+- 탈락 후 **관전**: ◀ ▶(←/→)로 보는 사람 바꾸기, 나가기(Esc)로 로비·대기실
 
 플레이: https://office-royale.bb-dochi.workers.dev
 
@@ -39,8 +42,11 @@ public/                 정적 사이트 (Cloudflare Pages가 그대로 서빙)
     90-net.js           온라인 방용: 여러 명 시작, 입력·명령 적용, 상태 스냅샷 (소켓·타이머 없음)
   js/client/            브라우저 전용: 3D 렌더(three.js), HUD, 입력, 시작 화면
     05-net.js           온라인 접속, 스냅샷으로 화면용 상태 복원, ACT(행동을 규칙/서버로 보내는 곳)
+    45-plaza.js         시작 화면 로비(접속자 위치 공유, 인사말, 로컬 봇)
+    46-tutorial.js      튜토리얼 단계 진행
 server/                 온라인 대전용 Cloudflare Worker + Durable Object
   src/room.js           방 로직(대기실·방장·시작·틱·스냅샷 전송). 로컬 서버와 Worker가 같이 씀
+  src/plaza.js          시작 화면 로비(/plaza): 접속자 위치·인사말 중계. 같은 Durable Object 클래스의 '__plaza' 인스턴스
   src/index.js          Worker: public/ 서빙 + 방마다 Durable Object 하나
 tools/
   dev-server.mjs        로컬 서버: public/ 서빙 + 멀티 방 (의존성 없음)

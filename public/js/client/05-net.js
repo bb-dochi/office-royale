@@ -26,7 +26,7 @@ function netConnect(code,name,onRoom,onFail){
   netClose();
   let ws;try{ws=new WebSocket(netURL(code));}catch(e){onFail('서버 주소가 잘못됐어요');return;}
   NETC.ws=ws;NETC.code=code;let opened=false;
-  ws.onopen=()=>{opened=true;ws.send(JSON.stringify({t:'hello',name}));};
+  ws.onopen=()=>{opened=true;ws.send(JSON.stringify({t:'hello',name,fit:myFit()}));};
   ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch{return;}
     if(m.t==='room'){NETC.room=m;NETC.you=m.you;onRoom(m);}
     else if(m.t==='start'){NETC.you=m.you;netBegin();}

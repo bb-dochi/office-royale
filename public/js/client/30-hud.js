@@ -55,6 +55,34 @@ function countdown(){
   $('cdName').textContent=`${f===0?'로비':(f+1)+'층'} 폐쇄까지`;$('cdNum').textContent=n;el.classList.toggle('mine',G.me.f===f);el.hidden=false;
   if(!reduceMotion)el.animate([{transform:'translate(-50%,-50%) scale(1.35)',opacity:.4},{transform:'translate(-50%,-50%) scale(1)',opacity:1}],{duration:280,easing:'ease-out'});
 }
+/* the effects bar: everything currently acting on me, as coloured chips with time or uses left */
+let fxSeen=new Set(),fxSig='';
+function fxBar(me){
+  const E=[],I=ITEMS,C=k=>CAT[k].c,sec=v=>`${Math.ceil(v)}초`;
+  if(!running||!me.alive||G.plaza){if(fxSig){fxSig='';$('fx').innerHTML='';}return;}
+  if(me.contact)E.push({k:'contact',g:'!',t:me.contact.n.kind==='ceo'?'대표님과 눈 마주침! 인사':'부장님과 눈 마주침! 인사',bad:1});
+  if(me.items[0]){const it=I[me.items[0]];E.push({k:'held',g:it.g,c:it.c,t:`${it.n} 들고 있음 · 공격하면 사용`});}
+  if(me.ammo>0)E.push({k:'ammo',g:I.stapler.g,c:I.stapler.c,t:`스테이플러 ${me.ammo}발`,bar:me.ammo/15});
+  if(me.shieldN>0)E.push({k:'shield',g:I.stamp.g,c:I.stamp.c,t:`결재 도장 · ${me.shieldN}번 막기`});
+  if(me.speedT>0)E.push({k:'speed',g:I.ticket.g,c:I.ticket.c,t:`야근 식권 · 빨라짐 ${sec(me.speedT)}`,bar:me.speedT/8});
+  if(me.vipT>0)E.push({k:'vip',g:I.vip.g,c:I.vip.c,t:`임원 인맥 · 감지 면제 ${sec(me.vipT)}`,bar:me.vipT/10});
+  if(me.stampT>G.t)E.push({k:'stampT',g:'눈',c:C('def'),t:`눈도장 · 호출 면제 ${sec(me.stampT-G.t)}`,bar:(me.stampT-G.t)/10});
+  if(me.cloakT>0)E.push({k:'cloak',g:'위',c:C('ctl'),t:`위장 ${sec(me.cloakT)}`,bar:me.cloakT/4});
+  if(me.intelT>0)E.push({k:'intel',g:'정',c:C('ctl'),t:`위치 정보 ${sec(me.intelT)}`,bar:me.intelT/8});
+  if(me.docs>0)E.push({k:'docs',g:'결',c:C('heal'),t:`결재 서류 ${me.docs}장 · 부장님께 올리기`});
+  if(me.branch==='hr'&&!me.revived)E.push({k:'hr',g:'재',c:C('heal'),t:'재입사권 1회'});
+  if(me.sit&&me.sit.owner===me)E.push({k:'rest',g:'휴',c:C('heal'),t:`휴식 중 +${Math.floor(me.sitHeal)}/15`,bar:me.sitHeal/15});
+  if(me.carry)E.push({k:'carry',g:'출',t:'출력물 배달 중 · 결재함으로'});
+  if(me.slowT>0)E.push({k:'slow',g:'↓',t:'둔화',bad:1});
+  if(me.lockT>0)E.push({k:'lock',g:'⏸',t:me.lockWhy,bad:1});
+  if(me.stunT>0)E.push({k:'stun',g:'술',t:'회식 중 · 못 움직임',bad:1});
+  if(me.inRest)E.push({k:'rest2',g:'WC',t:`화장실 ${Math.ceil(me.restT)}초`,bad:me.restT>10?1:0});
+  if(onWet(me))E.push({k:'wet',g:'~',t:'미끄러움',bad:1});
+  const sig=E.map(e=>e.k+e.t+(e.bar!=null?Math.round(e.bar*40):'')).join('|');if(sig===fxSig)return;fxSig=sig;
+  const now=new Set(E.map(e=>e.k));
+  $('fx').innerHTML=E.map(e=>`<div class="fx${e.bad?' bad':''}${fxSeen.has(e.k)?'':' new'}" style="--c:${e.c||(e.bad?'#e5483a':'#9aa3ab')}"><i>${e.g}</i><span>${e.t}</span>${e.bar!=null?`<b style="width:${Math.max(0,Math.min(1,e.bar))*100}%"></b>`:''}</div>`).join('');
+  fxSeen=now;
+}
 function hud(dt){
   if(branchT>0&&G&&G.me){branchT=G.me.branchAsk?Math.max(0,G.me.branchAsk-G.t):branchT-dt;$('branchTm').style.width=Math.max(0,branchT/10*100)+'%';if(branchT<=0||G.me.branch){$('branchBox').hidden=true;branchT=0;}}
   if(cineT>0){cineT-=dt;if(cineT<=0)$('cine').hidden=true;}
@@ -69,15 +97,10 @@ function hud(dt){
   $('gval').textContent=Math.ceil(Math.max(0,me.g));$('gbar').style.width=Math.max(0,me.g)+'%';
   $('gbarWrap').classList.toggle('low',me.g<30);$('grade').textContent=gradeOf(me.g);$('pname').textContent='나 · '+rankName(me);
   {const nx=RANKS.find(([t])=>t>me.peak);if(nx){const pv=[...RANKS].reverse().find(([t])=>t<=me.peak)[0],base=Math.max(pv,50);$('promoT').textContent=`${nx[1]}까지 ${Math.ceil(nx[0]-me.peak)}`;$('promoB').style.width=Math.max(0,Math.min(100,(me.peak-base)/(nx[0]-base)*100))+'%';}else{$('promoT').textContent='최고 직급';$('promoB').style.width='100%';}}
-  const bf=[];
-  if(me.contact)bf.push(['눈 마주침! 인사',1]);
-  if(me.ammo>0)bf.push([`스테이플 ${me.ammo}/15`]);if(me.cloakT>0)bf.push([`위장 ${Math.ceil(me.cloakT)}`]);if(me.branch==='hr'&&!me.revived)bf.push(['재입사권 1']);if(me.docs>0)bf.push([`결재 서류 ${me.docs}`]);if(me.intelT>0)bf.push([`정보 ${Math.ceil(me.intelT)}`]);if(me.shieldN>0)bf.push([`도장 ${me.shieldN}`]);if(me.speedT>0)bf.push([`식권 ${Math.ceil(me.speedT)}`]);
-  if(me.vipT>0)bf.push([`인맥 ${Math.ceil(me.vipT)}`]);if(me.stampT>G.t)bf.push([`눈도장 ${Math.ceil(me.stampT-G.t)}`]);if(me.slowT>0)bf.push(['둔화',1]);
-  if(me.lockT>0)bf.push([me.lockWhy,1]);if(me.stunT>0)bf.push(['회식 중',1]);if(me.carry)bf.push(['출력물 배달 중']);if(me.inRest)bf.push([`화장실 ${Math.ceil(me.restT)}초`,me.restT>10]);
-  if(me.sit&&me.sit.owner===me)bf.push([`휴식 +${Math.floor(me.sitHeal)}/15`]);if(onWet(me))bf.push(['미끄러움',1]);
-  $('buffs').innerHTML=bf.map(([t,w])=>`<span${w?' class="warn"':''}>${t}</span>`).join('');
+  fxBar(me);
   let zone;
-  if(G.lunch)zone=`점심시간 ${Math.ceil(G.lunch.t)}초<br>구조조정 일시정지`;
+  if(G.tutorial)zone='연습 모드<br>폐쇄 없음';
+  else if(G.lunch)zone=`점심시간 ${Math.ceil(G.lunch.t)}초<br>구조조정 일시정지`;
   else if(G.closed<NF-1){const nf=G.closed+WIN;zone=G.warn?`${FLOORS[G.closed].short} ${Math.max(0,Math.ceil(G.nextClose))}초 후 폐쇄<br>막판 실적 x2`:`구조조정까지 ${Math.max(0,Math.ceil(G.nextClose))}초${nf<NF?`<br>${FLOORS[nf].short} 개방 예정`:''}`;}
   else zone=G.finalT>30?'야근 모드 · 전원 감소':`인사 시즌 · 야근까지 ${Math.ceil(30-G.finalT)}초`;
   const cap=`<div class="cap"><span>생존 <b>${aliveCount()}</b>/${TOTAL}</span><span>${viewF>=0?FLOORS[viewF].name:''}</span></div>`;
