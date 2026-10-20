@@ -163,7 +163,15 @@ function dressSet(k,v){
 }
 function dressOpen(){if(!PZ.on)return;PZ.dress=true;$('home').classList.add('dressing');
   /* step into the open middle of the lobby so nothing stands between the camera and you */
-  G.me.x=FW/2;G.me.y=K(300);G.me.vx=G.me.vy=0;cam={x:G.me.x,y:G.me.y};$('homeMenu').hidden=true;$('dress').hidden=false;dressRender();}
+  /* …and never on top of anyone else changing at the same time. Picking "the emptiest spot" races when two people press
+     together (both see the other where they stood before), so each person starts from their own slot (plaza id) and only
+     moves on to the next slot if someone is already standing there */
+  {const spots=[];for(const y of[K(280),K(340)])for(const dx of[0,-120,120,-240,240])if(!blocked(0,FW/2+dx,y))spots.push({x:FW/2+dx,y});
+   const others=G.actors.filter(a=>a!==G.me),n=spots.length||1,start=((PZ.pid??Math.floor(Math.random()*n))%n+n)%n;
+   let best=spots[start]||{x:FW/2,y:K(300)};
+   for(let i=0;i<n;i++){const p=spots[(start+i)%n];if(!others.some(a=>Math.hypot(a.x-p.x,a.y-p.y)<60)){best=p;break;}}
+   G.me.x=best.x;G.me.y=best.y;}
+  G.me.vx=G.me.vy=0;cam={x:G.me.x,y:G.me.y};$('homeMenu').hidden=true;$('dress').hidden=false;dressRender();}
 function dressClose(){PZ.dress=false;$('home').classList.remove('dressing');$('homeMenu').hidden=false;$('dress').hidden=true;
   if(PZ.dressFromDock){PZ.dressFromDock=false;homeClose(true,false);}} // opened from the tabs: go back to the tabs
 $('dressRows').addEventListener('click',e=>{const b=e.target.closest('button');if(b)dressSet(b.dataset.k,b.dataset.v||null);});

@@ -35,12 +35,21 @@ body.pc .rbtn{display:none!important}
 #skillBtn{width:58px;height:58px;right:calc(max(16px,env(safe-area-inset-right,0px)) + 18px);bottom:calc(env(safe-area-inset-bottom,0px) + 128px);background:conic-gradient(rgba(29,35,40,.4) calc(var(--cd,0)*360deg),#f3d77a 0);font-size:12.5px}
 #branchBox{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 300px);width:min(92vw,400px);background:var(--paper);border:3px solid var(--ink);border-radius:10px;padding:10px;z-index:4;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 #branchBox .who{font-weight:900;font-size:15px;margin-bottom:6px}
+/* team choice as an HR memo: paper, a colour tab per team, 상시 / Q lines */
+#branchBox{border:0;border-radius:3px;padding:12px 14px 14px;background:var(--paper) repeating-linear-gradient(transparent 0 27px,rgba(29,35,40,.05) 27px 28px);width:min(94vw,520px)}
+#branchBox .who{font:900 17px var(--display);padding-bottom:6px;border-bottom:2px solid var(--ink)}
+#branchBox .who small{font:700 11px var(--body);color:var(--stamp);margin-left:6px}
 #branchBox .tm{height:5px;background:#e7e3d8;border-radius:3px;overflow:hidden;margin-bottom:8px}
 #branchBox .tm i{display:block;height:100%;background:var(--ok)}
 .bopts{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.bopts button{text-align:left;padding:8px;border-radius:8px;border:2px solid var(--ink);background:var(--lit);cursor:pointer;font:inherit;color:var(--ink);touch-action:none}
-.bopts b{display:block;font-size:14px;font-weight:900}
-.bopts span{font-size:11px;line-height:1.35;display:block;margin-top:2px}
+.bopts{gap:8px}
+.bopts button{text-align:left;padding:9px 10px 10px;border-radius:3px;border:1.5px solid var(--ink);border-left:6px solid var(--tc,var(--ink));background:#fff;cursor:pointer;font:inherit;color:var(--ink);touch-action:none;transition:transform .12s ease-out}
+.bopts button:hover{transform:translateY(-2px)}
+.bopts b{display:flex;align-items:center;gap:6px;font:900 15px var(--display);margin-bottom:5px}
+.bopts kbd{font:800 10px/1 var(--body);background:var(--ink);color:var(--paper);border-radius:3px;padding:3px 5px}
+.bopts dl{display:grid;grid-template-columns:auto 1fr;gap:3px 7px;margin:0;font-size:11.5px;line-height:1.4}
+.bopts dt{font-weight:800;color:var(--tc,var(--muted))}.bopts dd{margin:0}.bopts em{font-style:normal;font-weight:900}
+@media (prefers-reduced-motion:reduce){.bopts button{transition:none}}
 html,body{height:100%}
 body{background:var(--void);color:var(--ink);font-family:var(--body);overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0}
@@ -131,6 +140,8 @@ button:focus-visible{outline:3px solid var(--stamp);outline-offset:3px}
 .kb.in{position:static;display:inline-block;margin-right:6px;vertical-align:1px}
 #stick{position:fixed;width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;border:2px solid rgba(251,250,246,.6);background:rgba(251,250,246,.18);pointer-events:none}
 #knob.run{background:#e0c23d;box-shadow:0 0 14px #e0c23d}
+#stick::after{content:'';position:absolute;left:50%;top:50%;width:184px;height:184px;margin:-92px 0 0 -92px;border-radius:50%;border:2px dashed rgba(224,194,61,.45)}
+#stick.run::after{border-style:solid;border-color:rgba(224,194,61,.9)}
 #knob{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:var(--paper);border:2px solid var(--ink)}
 .hint{position:fixed;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 30px);font-size:12px;font-weight:600;background:rgba(251,250,246,.88);border-radius:4px;padding:4px 8px;pointer-events:none;max-width:40vw}
 

@@ -6,14 +6,14 @@ const TUT={on:false,i:0,target:null,wait:0};
 function tutSteps(){const PC=!isTouch;return[
   {t:'이동',d:PC?'WASD로 움직여 보세요.':'화면 왼쪽을 드래그해서 움직여 보세요.',
     setup(){TUT.base={x:G.me.x,y:G.me.y};},done:()=>Math.hypot(G.me.x-TUT.base.x,G.me.y-TUT.base.y)>160},
-  {t:'달리기',d:PC?'Shift를 누른 채 움직이면 달려요. 부장님 앞에서 뛰면 혼나요!':'조이스틱을 끝까지 밀면 달려요. 부장님 앞에서 뛰면 혼나요!',
+  {t:'달리기',d:PC?'Shift를 누른 채 움직이면 달려요. 부장님 앞에서 뛰면 혼나요!':'손가락을 노란 점선 밖까지 멀리 밀면 달려요. 부장님 앞에서 뛰면 혼나요!',
     setup(){TUT.run=0;},tick(dt){if(G.me.sprint)TUT.run+=dt;},done:()=>TUT.run>1},
   {t:'업무',d:`노란 원 안에 서 있으면 업무가 진행돼요. 다 되면 잠시 뒤 자동 제출되고, ${PC?'E':'상호작용 버튼'}를 누르면 바로 내요. 남보다 먼저 내야 고과를 가져가요!`,
     setup(){const me=G.me;TUT.n0=me.tasksDone;TUT.task=G.tasks.filter(t=>t.f===me.f).sort((a,b)=>dist(a,me)-dist(b,me))[0]||null;TUT.target=TUT.task;},
     tick(){if(TUT.task&&!G.tasks.includes(TUT.task)){TUT.task=G.tasks.filter(t=>t.f===G.me.f).sort((a,b)=>dist(a,G.me)-dist(b,G.me))[0]||null;TUT.target=TUT.task;}},
     done:()=>G.me.tasksDone>TUT.n0},
   {t:'승진',d:`고과 최고점이 오르면 승진해요(사원 → 대리 → 팀장 → 임원). 올라갈수록 서류가 세지고 사원증 태그가 빨라져요. 팀장이 되면 부서 스킬(${PC?'Q':'스킬 버튼'}), 임원은 부장님도 먼저 인사해요.`,
-    setup(){const me=G.me;if(me.peak<55)gain(me,56-me.g);TUT.read=0;TUT.target=null;},tick(dt){TUT.read+=dt;},done:()=>TUT.read>7},
+    read:true,setup(){const me=G.me;if(me.peak<55)gain(me,56-me.g);TUT.target=null;}},
   {t:'부장님께 인사',d:`부장님 노란 시야에 들어가면 먼저 인사해야 해요(${PC?'E':'상호작용'}). 늦으면 호출당하고 고과가 깎여요.`,
     setup(){const me=G.me,b=G.npcs.find(n=>n.kind==='boss'&&n.f===me.f);TUT.boss=b;if(!b)return;b.tut=true;
       const p=[[150,0],[-150,0],[0,150],[0,-150]].map(([dx,dy])=>({x:me.x+dx,y:me.y+dy})).find(p=>!blocked(me.f,p.x,p.y))||{x:me.x+150,y:me.y};
@@ -35,7 +35,7 @@ function tutSteps(){const PC=!isTouch;return[
   {t:'위층으로',d:`40초마다 아래층부터 폐쇄돼요. 계단이나 엘리베이터 위에서 ${PC?'E':'상호작용'}로 위층으로 올라가세요!`,
     setup(){TUT.f0=G.me.f;TUT.target={f:G.me.f,x:PADS.stair.x,y:PADS.stair.y};},done:()=>G.me.f>TUT.f0},
   {t:'돌발 이벤트',d:'실전에선 점심시간(옥상 난투전), 소방 훈련, 감사팀, 우수사원 발표 같은 이벤트가 갑자기 터져요. 화면 공지를 잘 보세요!',
-    setup(){TUT.read=0;TUT.target=null;},tick(dt){TUT.read+=dt;},done:()=>TUT.read>5},
+    read:true,setup(){TUT.target=null;}},
   {t:'끝!',d:'고과를 쌓아 승진하고(사원 → 대리 → 팀장 → 임원), 최후의 1인이 되면 CEO실 입성! 이제 실전에서 살아남아 보세요.',final:true,setup(){TUT.target=null;}},
 ];}
 let TUT_STEPS=tutSteps();
@@ -44,7 +44,7 @@ function tutShow(){
   const s=TUT_STEPS[TUT.i];$('tutStep').textContent=s.final?'튜토리얼 완료':`튜토리얼 ${TUT.i+1}/${TUT_STEPS.length-1}`;
   $('tutTitle').textContent=s.t;$('tutText').textContent=s.d;
   $('tutDots').innerHTML=TUT_STEPS.slice(0,-1).map((_,k)=>`<i class="${k<TUT.i?'on':k===TUT.i?'now':''}"></i>`).join('');
-  $('tutSkip').hidden=!!s.final;$('tutPlay').hidden=$('tutHome').hidden=!s.final;$('tutQuit').hidden=!!s.final;$('tut').classList.remove('ok');
+  $('tutNext').hidden=!s.read;$('tutSkip').hidden=!!s.final||!!s.read;$('tutPlay').hidden=$('tutHome').hidden=!s.final;$('tutQuit').hidden=!!s.final;$('tut').classList.remove('ok');
 }
 function tutGo(i){const prev=TUT_STEPS[TUT.i];if(prev&&prev.leave&&i!==TUT.i)prev.leave();TUT.i=i;TUT.target=null;TUT.wait=0;const s=TUT_STEPS[i];if(s.setup)s.setup();tutShow();}
 function tutStart(){
@@ -56,11 +56,16 @@ function tutStop(){TUT.on=false;TUT.target=null;$('tut').hidden=true;}
 function tutFrame(dt){
   if(!TUT.on||!running||!G||!G.tutorial)return;
   const s=TUT_STEPS[TUT.i];if(s.final)return;
+  if(s.read)return; // read-only steps wait for 다음 / Enter
   if(s.tick)s.tick(dt);
   if(TUT.wait>0){TUT.wait-=dt;if(TUT.wait<=0)tutGo(TUT.i+1);return;}
   if(s.done()){TUT.wait=1.1;$('tut').classList.add('ok');$('tutText').textContent='잘했어요! ✓';TUT.target=null;}
 }
 $('hTut').addEventListener('click',tutStart);
+/* steps that only explain something move on with 다음 or Enter */
+const tutNext=()=>{const s=TUT_STEPS[TUT.i];if(TUT.on&&s&&s.read)tutGo(TUT.i+1);};
+$('tutNext').addEventListener('click',tutNext);
+addEventListener('keydown',e=>{if(e.key==='Enter'&&TUT.on&&TUT_STEPS[TUT.i]&&TUT_STEPS[TUT.i].read){e.preventDefault();tutNext();}});
 $('tutSkip').addEventListener('click',()=>{if(TUT.i<TUT_STEPS.length-1)tutGo(TUT.i+1);});
 $('tutQuit').addEventListener('click',()=>{tutStop();plazaStart();});
 $('tutHome').addEventListener('click',()=>{tutStop();plazaStart();});

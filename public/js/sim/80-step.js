@@ -143,10 +143,11 @@ function step(dt){
     a.g=0;a.alive=false;a.chan=null;a.contact=null;a.call=null;stand(a);const left=aliveCount();a.place=left+1;
     const killer=(a.cause==='paper')&&a.lastHitBy&&G.t-a.lastHitT<4?a.lastHitBy:null;a.killer=killer;
     if(killer&&killer.alive){const RI=['인턴','사원','대리','팀장','임원'],v=10+(RI.indexOf(a.rank)>RI.indexOf(killer.rank)?6:0);gain(killer,v);killer.kills=(killer.kills||0)+1;
-      pop(killer.f,killer.x,killer.y-52,`처리 +${v}`,'#2f7d4f');tell(killer,`${a.name}님 처리: 고과 +${v}${v>10?' (윗사람 처리 보너스)':''}`);}
+      pop(killer.f,killer.x,killer.y-52,`처리 +${v}`,'#2f7d4f');} // the killer's screen shows its own banner
     if(a.f>=0){a.items.forEach((k,j)=>spawnItem(a.f,k,{x:a.x+12+j*8,y:a.y+j*8}));a.items=[];spawnItem(a.f,null,{x:a.x-12,y:a.y+6});if(a.carry)G.drops.push({f:a.f,x:a.x,y:a.y-10});}
     a.carry=false;
-    feed(v=>a===v?'내가 권고사직 처리되었습니다':`${a.name} ${rankName(a)}님 권고사직${killer?` · ${killer===v?'내':killer.name+'님'} 서류`:''}`,a.isPlayer);
+    /* only news that matters to the viewer: my own end, or another real person's (bots dropping out show in the head count) */
+    feed(v=>a===v?'내가 권고사직 처리되었습니다':killer===v||!a.isPlayer?null:`${a.name}님 권고사직${killer?` · ${killer.name}님 서류`:''}`,a.isPlayer);
     if(a.isPlayer)UI.result(false,800,a);
   }
   if(!G.over&&aliveCount()<=1){

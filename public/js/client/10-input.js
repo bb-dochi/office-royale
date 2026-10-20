@@ -1,4 +1,5 @@
 /* ================= input ================= */
+const RUN_PX=92; // how far from where the thumb went down before the stick counts as running
 const keys=new Set();let joy={id:null,ox:0,oy:0,dx:0,dy:0},throwHeld=false;
 /* player actions go through ACT (client/05-net.js): straight into the rules in solo, to the room server online */
 function doInteract(){if(running&&G.me.alive)ACT.interact();}
@@ -30,11 +31,13 @@ cv.addEventListener('pointerdown',e=>{
 });
 cv.addEventListener('pointermove',e=>{
   if(e.pointerId!==joy.id)return;
+  /* the knob tops out at 48 px (full walking speed); running needs the finger well past the ring (the dashed circle),
+     with a little slack so it doesn't flicker on and off at the edge */
   let dx=e.clientX-joy.ox,dy=e.clientY-joy.oy;const m=Math.hypot(dx,dy),mx=48;if(m>mx){dx=dx/m*mx;dy=dy/m*mx;}
-  joy.full=m>=mx*.97;$('knob').classList.toggle('run',joy.full);
+  joy.full=joy.full?m>=RUN_PX-12:m>=RUN_PX;$('knob').classList.toggle('run',joy.full);$('stick').classList.toggle('run',joy.full);
   joy.dx=dx/mx;joy.dy=dy/mx;$('knob').style.transform=`translate(${dx}px,${dy}px)`;
 });
-const endJoy=e=>{if(e.pointerId!==joy.id)return;joy={id:null,ox:0,oy:0,dx:0,dy:0,full:false};$('knob').classList.remove('run');$('stick').hidden=true;};
+const endJoy=e=>{if(e.pointerId!==joy.id)return;joy={id:null,ox:0,oy:0,dx:0,dy:0,full:false};$('knob').classList.remove('run');$('stick').classList.remove('run');$('stick').hidden=true;};
 cv.addEventListener('pointerup',endJoy);cv.addEventListener('pointercancel',endJoy);
 const tb=$('throwBtn'),gb=$('greetBtn');
 const press=(el,fn)=>{el.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(running)fn();});el.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&running){e.preventDefault();fn();}});};

@@ -771,7 +771,8 @@ function render(dt){
   /* actors */
   for(const a of G.actors){
     let m=actorM.get(a);if(!m){m=makeChar(a.color,null,a.id,a.fit?fitToOutfit(a.fit):null);actorM.set(a,m);}
-    const vis=a.alive&&a.f===f&&!a.transit&&(a===me||seenBy(me,a))&&!(a.cloakT>0&&a!==me&&!ally(me,a));
+    const vis=a.alive&&a.f===f&&!a.transit&&(a===me||seenBy(me,a))&&!(a.cloakT>0&&a!==me&&!ally(me,a))
+      &&!(G.plaza&&PZ.dress&&a!==me&&Math.hypot(a.x-me.x,a.y-me.y)<150); // dressing room close-up: just me
     m.visible=vis;if(!vis)continue;
     poseChar(m,a,dt,false);const u=m.userData;
     setCloak(u,a.cloakT>0?.4:1);

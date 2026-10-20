@@ -108,7 +108,7 @@ function burst(p){for(const a of G.actors){if(a===p.o||!a.alive||a.f!==p.f||a.in
 function dmg(a,n,cause){if(!a.alive)return;a.g-=n;a.cause=cause;}
 function gain(a,n){
   if(!a.alive)return;a.g=Math.min(100,a.g+n);
-  if(a.g>a.peak){a.peak=a.g;const r=rankOf(a.peak);if(r!==a.rank){a.rank=r;if(a.isPlayer){pop(a.f,a.x,a.y-40,'승진! '+r,'#2f7d4f');tell(a,`승진했습니다: ${r}`);}
+  if(a.g>a.peak){a.peak=a.g;const r=rankOf(a.peak);if(r!==a.rank){a.rank=r;if(a.isPlayer)pop(a.f,a.x,a.y-40,'승진! '+r,'#2f7d4f'); // the promotion slip (client) says the rest
     if((r==='팀장'||r==='임원')&&!a.branch){if(a.isPlayer){a.branchAsk=G.t+10;UI.branch(a);}else a.branch=pick(Object.keys(BRANCH));}}}
 }
 const locked=a=>!!a.call||a.lockT>0||a.stunT>0;

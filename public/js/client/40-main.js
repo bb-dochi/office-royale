@@ -163,15 +163,24 @@ function frame(now){
   {const pb=$('pauseBtn'),h=!canPause();if(pb.hidden!==h)pb.hidden=h;}
   requestAnimationFrame(frame);
 }
+/* one line under the character at a time: a new line replaces the old one, except that an urgent (red) line
+   is not pushed out by an ordinary one for its first 1.5 s, and repeats only refresh the timer */
+const FD={el:null,hot:false,t0:0,out:0,gone:0};
 function feedDOM(msg,hot){
-  const el=document.createElement('div');el.className='fi'+(hot?' hot':'');el.textContent=msg;
-  const f=$('feed');f.prepend(el);while(f.children.length>3)f.lastChild.remove();
-  setTimeout(()=>el.classList.add('out'),3400);setTimeout(()=>el.remove(),4000);
+  const f=$('feed'),now=performance.now();
+  if(FD.el&&FD.el.isConnected){
+    if(FD.el.textContent===msg){FD.el.classList.remove('out');}
+    else if(FD.hot&&!hot&&now-FD.t0<1500)return;
+    else{FD.el.remove();FD.el=null;}
+  }
+  if(!FD.el||!FD.el.isConnected){const el=document.createElement('div');el.className='fi'+(hot?' hot':'');el.textContent=msg;f.textContent='';f.append(el);FD.el=el;FD.hot=!!hot;FD.t0=now;}
+  clearTimeout(FD.out);clearTimeout(FD.gone);const el=FD.el,life=hot?3000:2200;
+  FD.out=setTimeout(()=>el.classList.add('out'),life);FD.gone=setTimeout(()=>{el.remove();if(FD.el===el)FD.el=null;},life+500);
 }
 /* hooks the rules call; target a = the actor it is about (ignored unless it is me) */
 const forMe=a=>!a||!G||!G.me||a===G.me;
 Object.assign(UI,{
-  feed:(msg,hot,to)=>{if(!forMe(to))return;feedDOM(typeof msg==='function'?msg(G.me):msg,hot);},
+  feed:(msg,hot,to)=>{if(!forMe(to))return;const t=typeof msg==='function'?msg(G.me):msg;if(t)feedDOM(t,hot);},
   notice:t=>{$('noticeText').textContent=t;$('notice').hidden=false;},
   noticeEnd:()=>{$('notice').hidden=true;},
   branch:a=>{if(forMe(a)&&$('branchBox').hidden)openBranch();},

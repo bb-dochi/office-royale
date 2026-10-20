@@ -44,7 +44,8 @@ let hudT=0,lastItem='x',lastPills='',lastCall=null,lastTl='',mapMode='building',
 const KB=k=>isTouch?'':`<kbd class="kb in">${k}</kbd>`;
 if(!isTouch){[['greetBtn','E'],['throwBtn','Space'],['skillBtn','Q']].forEach(([id,k])=>$(id).insertAdjacentHTML('beforeend',`<kbd class="kb">${k}</kbd>`));}
 let branchT=0;
-function openBranch(){branchT=10;$('branchOpts').innerHTML=Object.entries(BRANCH).map(([k,v],i)=>`<button data-b="${k}"><b>${isTouch?'':(i+1)+'. '}${v.n}</b><span>${v.d}</span></button>`).join('');$('branchBox').hidden=false;}
+function openBranch(){branchT=10;$('branchOpts').innerHTML=Object.entries(BRANCH).map(([k,v],i)=>`<button data-b="${k}" style="--tc:${v.c}">
+  <b>${isTouch?'':`<kbd>${i+1}</kbd>`}${v.n}</b><dl><dt>상시</dt><dd>${v.pas}</dd><dt>${isTouch?'스킬':'Q'}</dt><dd><em>${v.sk}</em> ${v.skd} · 쿨 ${v.cd}초</dd></dl></button>`).join('');$('branchBox').hidden=false;}
 /* the rules pick a team by themselves when the 10 s run out (me.branchAsk) */
 function pickBranch(k){if(!G||!k)return;$('branchBox').hidden=true;branchT=0;if(!G.me.branch)ACT.branch(k);}
 $('branchOpts').addEventListener('pointerdown',e=>{const b=e.target.closest('button');if(!b)return;e.preventDefault();e.stopPropagation();pickBranch(b.dataset.b);});

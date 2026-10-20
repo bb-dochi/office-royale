@@ -66,7 +66,7 @@ function push(a,ev){if(!a||!a.key)return;const q=NET.out.get(a.key);if(q)q.push(
 NET.start=function(players){
   NET.out=new Map(players.map(p=>[p.key,[]]));NET.pub=null;NET.pubT=-1;NET.seatStr='';
   Object.assign(UI,{
-    feed:(msg,hot,to)=>{for(const h of humans())if(!to||to===h)push(h,{k:'feed',m:typeof msg==='function'?msg(h):msg,hot:!!hot});},
+    feed:(msg,hot,to)=>{for(const h of humans())if(!to||to===h){const m=typeof msg==='function'?msg(h):msg;if(m)push(h,{k:'feed',m,hot:!!hot});}},
     notice:t=>{for(const h of humans())push(h,{k:'notice',t});},
     noticeEnd:()=>{for(const h of humans())push(h,{k:'noticeEnd'});},
     cine:(t,sub,dur)=>{for(const h of humans())push(h,{k:'cine',t,sub,dur});},

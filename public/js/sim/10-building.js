@@ -153,10 +153,11 @@ for(const k in ITEMS)ITEMS[k].c=CAT[ITEMS[k].cat].c;
 const ITEM_KEYS=Object.keys(ITEMS).filter(k=>ITEMS[k].w>0);
 function randItem(){let t=0;for(const k of ITEM_KEYS)t+=ITEMS[k].w;let r=Math.random()*t;for(const k of ITEM_KEYS){r-=ITEMS[k].w;if(r<=0)return k;}return 'coffee';}
 /* every 팀장 gets a Q skill; 임원 makes it stronger and quicker (see useSkill) */
-const BRANCH={hr:{n:'인사팀장',d:'재입사 1회 · 스킬: 면담 호출, 근처 1명을 1.5초 묶기 (쿨 14초)',cd:14,sk:'면담'},
-  dev:{n:'개발팀장',d:'업무 2배 · 태그 0.3초 · 스킬: 야근 모드, 5초간 업무 2배 더·빨라짐 (쿨 18초)',cd:18,sk:'야근'},
-  mkt:{n:'마케팅팀장',d:'서류 사거리 +25% · 스킬: 전단지 살포, 사방 광역 공격 (쿨 12초)',cd:12,sk:'전단지'},
-  design:{n:'디자인팀장',d:'부장님 시야 30% 좁게 · 스킬: 위장, 4초 투명 (쿨 20초)',cd:20,sk:'위장'}};
+/* pas: always on · sk/skd: the Q skill and what it does (shown on the team choice memo) */
+const BRANCH={hr:{n:'인사팀장',pas:'고과 0이 돼도 인턴으로 1회 재입사',sk:'면담',skd:'근처 1명을 1.5초 묶어 둠',cd:14,c:'#2f9e57'},
+  dev:{n:'개발팀장',pas:'업무 속도 2배 · 사원증 태그 0.3초',sk:'야근',skd:'5초간 업무 2배 더 · 이동 빨라짐',cd:18,c:'#2f74c4'},
+  mkt:{n:'마케팅팀장',pas:'서류 사거리 +25%',sk:'전단지',skd:'사방으로 전단지 10장 광역 공격',cd:12,c:'#c08a1e'},
+  design:{n:'디자인팀장',pas:'부장님 시야 30% 좁게',sk:'위장',skd:'4초간 투명 (던지면 풀림)',cd:20,c:'#8d4bbf'}};
 const EXEC_CD=.6; // 임원: skill cooldown ×0.6 and a bigger effect
 const RANKS=[[0,'인턴'],[55,'사원'],[60,'대리'],[75,'팀장'],[90,'임원']];
 const TAG={인턴:2,사원:1.75,대리:1.5,팀장:1,'임원':.5};
