@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="회사에서 살아남는 배틀로얄. 고과가 체력, 서류가 무기, 최후의 1인만 대표실로.">
 <meta name="theme-color" content="#2a3036">
+<meta property="og:title" content="오피스 로얄 · 퇴사자는 말이 없다">
+<meta property="og:description" content="같이 출근해요! 고과가 체력, 서류가 무기. 최후의 1인만 CEO실로.">
+<meta property="og:type" content="website">
 <title>오피스 로얄</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
@@ -15,7 +18,7 @@
 
 <div class="hud">
   <div class="idcard">
-    <div class="row"><span>사원증 · 오피스로얄</span><span class="grade" id="grade">B</span></div>
+    <div class="row"><span>사원증</span><button class="mutebtn" aria-label="소리 끄기">🔊</button><button class="pausebtn" id="pauseBtn" aria-label="일시정지" hidden>❚❚</button><span class="grade" id="grade">B</span></div>
     <div class="who" id="pname">나 · 인턴</div>
     <div class="bar" id="gbarWrap"><i id="gbar"></i></div>
     <div class="gnum"><span>고과</span><b id="gval">50</b></div>
@@ -41,39 +44,49 @@
   <div class="tm"><i id="callTm"></i></div>
   <div class="opts" id="callOpts"></div>
 </div>
-<div id="branchBox" hidden><div class="who">팀장 승진! 어느 팀을 맡을까요?</div><div class="tm"><i id="branchTm"></i></div><div class="bopts" id="branchOpts"></div></div>
+<div id="branchBox" hidden><div class="who">팀장 승진! 어느 팀을 맡을까요? <small>임원이 되면 스킬 강화</small></div><div class="tm"><i id="branchTm"></i></div><div class="bopts" id="branchOpts"></div></div>
+<div id="banner" hidden aria-live="polite"><b class="bs" id="bannerStamp"></b><div><strong id="bannerTitle"></strong><small id="bannerSub"></small></div></div>
 <div id="countdown" hidden><span id="cdName"></span><b id="cdNum"></b></div>
 <div id="tut" hidden><div class="top"><span id="tutStep"></span><span class="dots" id="tutDots"></span></div><b id="tutTitle"></b><p id="tutText"></p>
   <div class="btns"><button class="btn small" id="tutPlay" hidden>혼자 하기</button><button class="btn ghost small" id="tutHome" hidden>로비로</button><button class="btn ghost small" id="tutSkip">건너뛰기</button><button class="btn ghost small" id="tutQuit">그만하기</button></div></div>
 <div id="spec" hidden><button id="specPrev" aria-label="이전 사람">◀</button><div class="who"><small>관전 중 <span id="specFloor"></span></small><b id="specName"></b></div><button id="specNext" aria-label="다음 사람">▶</button><button id="specExit" class="exit">나가기</button></div>
 <div id="cine" hidden><div class="box"><div class="tower" id="cineTower"></div><h2 id="cineT">1층 폐쇄</h2><p id="cineS"></p></div></div>
 
+<div id="pzRooms" hidden aria-live="polite"></div>
 <button id="emoteBtn" class="iconbtn" aria-label="인사하기">💬</button><div id="emotePop" hidden></div>
 <section id="home" hidden>
   <div class="memo homecard">
-    <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span id="pzCount">로비 연결 중…</span></div>
+    <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span><span id="pzCount">로비 연결 중…</span><button class="mutebtn" aria-label="소리 끄기">🔊</button><button class="homeX" id="homeX" aria-label="닫기">✕</button></span></div>
     <div class="stampmark">결재</div>
+    <div id="nameStep" hidden>
+      <h1>입사를 환영합니다</h1>
+      <p class="subj">로비와 게임에서 쓸 사원명을 정해 주세요.</p>
+      <div class="namerow"><input id="homeName" maxlength="10" placeholder="예: 김신입" autocomplete="nickname" aria-label="사원명"><button class="btn" id="nameOk">입사하기</button></div>
+    </div>
     <div id="homeMenu">
       <h1>오피스 로얄</h1>
       <p class="subj">제목: 퇴사자는 말이 없다</p>
-      <ul class="rules">
+      <button class="namechip" id="nameEdit" aria-label="사원명 바꾸기">사원명 <b id="myName"></b><svg class="pencil" viewBox="0 0 16 16" aria-hidden="true"><path d="M11.2 2.3l2.5 2.5-8.4 8.4-3.1.6.6-3.1z"/><path d="M9.6 3.9l2.5 2.5"/></svg></button>
+      <div id="homeGuide">
+      <div class="sec"><ul class="rules">
         <li><b>업무</b>로 고과를 쌓고, <b>서류</b>를 던져 남의 고과를 깎으세요.</li>
         <li>고과 0이면 권고사직. 최후의 1인만 <b>CEO층</b>으로.</li>
         <li>40초마다 <b>아래층부터 폐쇄</b>돼요. 계속 위로 올라가세요.</li>
         <li>부장님과 눈이 마주치면 <b>먼저 인사</b>.</li>
         <li>승진할수록 공격이 세지고, 팀장이 되면 <b>팀 스킬</b>이 생겨요.</li>
-      </ul>
-      <p class="items"><b style="color:#2f9e57">●회복</b><b style="color:#d23b2e">●공격</b><b style="color:#2f74c4">●방어</b><b style="color:#b39516">●이동</b><b style="color:#8d4bbf">●방해</b><span>공격 아이템은 주우면 바로 들고, 공격할 때 나가요. 다 쓰기 전엔 다른 공격 아이템을 못 주워요.</span></p>
-      <ul class="keys pc-only">
+      </ul></div>
+      <div class="sec"><p class="items"><span class="lbl">아이템</span><b style="color:#2f9e57">●회복</b><b style="color:#d23b2e">●공격</b><b style="color:#2f74c4">●방어</b><b style="color:#b39516">●이동</b><b style="color:#8d4bbf">●방해</b></p></div>
+      <div class="sec"><div><ul class="keys pc-only">
         <li><kbd>WASD</kbd>이동</li><li><kbd>Shift</kbd>달리기</li><li><kbd>Space</kbd><svg class="mouse" viewBox="0 0 12 16" role="img" aria-label="좌클릭"><rect x=".75" y=".75" width="10.5" height="14.5" rx="5.25"/><path d="M6 .75A5.25 5.25 0 0 0 .75 6v1H6z"/></svg>공격</li><li><kbd>E</kbd>모든 상호작용</li>
         <li><kbd>Q</kbd>팀 스킬</li><li><kbd>Tab</kbd>지도</li>
       </ul>
       <ul class="keys touch-only">
         <li><kbd>왼쪽 드래그</kbd>이동</li><li><kbd>끝까지 밀기</kbd>달리기</li><li><kbd>서류 투척</kbd>공격</li>
         <li><kbd>상호작용</kbd>모든 상호작용</li><li><kbd>스킬</kbd>팀 스킬</li>
-      </ul>
+      </ul></div></div>
+      </div>
       <div class="btns"><button class="btn" id="hSolo">혼자 하기</button><button class="btn" id="hMulti">같이 하기</button></div>
-      <div class="btns sub"><button class="btn ghost small" id="hTut">튜토리얼</button><button class="btn ghost small" id="hDress">옷 갈아입기</button></div>
+      <p class="foot"><button class="tlink" id="hTut">튜토리얼</button><button class="tlink" id="hDress">옷 갈아입기</button></p>
     </div>
     <div id="dress" hidden>
       <h1>옷 갈아입기</h1>
@@ -82,26 +95,51 @@
     </div>
   </div>
 </section>
+<!-- shown instead of the card once it is closed: index tabs sticking out of the right edge, like a binder -->
+<nav id="dock" aria-label="메뉴">
+  <span id="dockCount"></span>
+  <button data-go="guide">게임 안내</button>
+  <button data-go="solo" class="pri">혼자 하기</button>
+  <button data-go="multi" class="pri">같이 하기</button>
+  <button data-go="tut">튜토리얼</button>
+  <button data-go="dress">옷 갈아입기</button>
+</nav>
 
 
 <section class="sheet" id="lobby" hidden>
   <div class="memo">
-    <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span>합동 출근</span></div>
+    <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span>합동 출근 신청서<button class="homeX" id="backBtn" aria-label="닫기">✕</button></span></div>
+    <div class="stampmark">합동</div>
     <h1>같이 하기</h1>
-    <p class="subj">방 코드로 친구와 같이 출근해요. 최대 8명, 빈자리는 봇이 채워요.</p>
+    <p class="subj">친구와 같은 회사로 출근해요. 최대 8명, 빈자리는 봇이 채워요.</p>
+    <!-- the applicant line of the form: the name from the home card, editable in place -->
+    <div class="signrow"><span>신청인</span><b id="lobbyName"></b><input id="nameIn" maxlength="10" autocomplete="nickname" placeholder="사원명" aria-label="사원명" hidden>
+      <button class="penbtn" id="lobbyNameEdit" aria-label="사원명 바꾸기"><svg class="pencil" viewBox="0 0 16 16" aria-hidden="true"><path d="M11.2 2.3l2.5 2.5-8.4 8.4-3.1.6.6-3.1z"/><path d="M9.6 3.9l2.5 2.5"/></svg></button></div>
     <div id="lobbyJoin">
-      <label class="field"><span>내 이름</span><input id="nameIn" maxlength="10" autocomplete="nickname" placeholder="신입"></label>
-      <button class="btn wide" id="createBtn">새 방 만들기</button>
-      <div class="or"><span>또는 코드로 참가</span></div>
-      <div class="joinrow"><input id="codeIn" maxlength="6" placeholder="ABC12" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="방 코드"><button class="btn" id="joinBtn">참가</button></div>
+      <div id="invRow"><button class="btn wide" id="invBtn">초대받은 방 <b id="invCode"></b> 참가하기</button><button class="link" id="invOther">다른 방 만들기 · 코드 입력</button></div>
+      <div class="opts2">
+        <div class="opt"><h3>가. 새 방 개설</h3><p>방을 만들고 초대 링크를 친구에게 보내요.</p><button class="btn" id="createBtn">새 방 만들기</button></div>
+        <div class="opt"><h3>나. 코드로 참가</h3><p>친구에게 받은 방 코드를 적어 주세요.</p>
+          <div class="joinrow"><input id="codeIn" maxlength="6" placeholder="ABC12" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="방 코드"><button class="btn" id="joinBtn">참가</button></div></div>
+      </div>
     </div>
     <div id="lobbyRoom" hidden>
       <div class="roomcode"><div><span>방 코드</span><b id="roomCode"></b></div><button class="btn ghost small" id="copyBtn">초대 링크 복사</button></div>
-      <ul class="players" id="players"></ul>
-      <div class="btns"><button class="btn" id="goBtn">시작하기</button><button class="btn ghost" id="leaveBtn">방 나가기</button></div>
+      <ol class="players" id="players"></ol>
+      <div class="btns"><button class="btn" id="goBtn">출근 시작</button><button class="btn ghost" id="leaveBtn">방 나가기</button></div>
     </div>
     <p class="note" id="lobbyNote" aria-live="polite"></p>
-    <button class="link" id="backBtn">← 처음으로</button>
+  </div>
+</section>
+
+<section class="sheet" id="pause" hidden>
+  <div class="memo pausememo">
+    <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span>자리 비움 신청</span></div>
+    <div class="stampmark">보류</div>
+    <h1>잠깐 멈춤</h1>
+    <p class="subj">혼자 하기라서 회사 시계도 같이 멈춰 있어요.</p>
+    <button class="btn mainbtn" id="pResume">업무 복귀<small class="pc-only">Esc</small></button>
+    <p class="foot"><button class="tlink" id="pRestart">처음부터 다시 출근</button><button class="tlink" id="pHome">로비로 나가기</button></p>
   </div>
 </section>
 
@@ -118,7 +156,8 @@
       <dt>제출한 업무</dt><dd id="rTasks">-</dd>
     </dl>
     <p class="note" id="rNote"></p>
-    <div class="btns"><button class="btn" id="againBtn">다시 출근</button><button class="btn ghost" id="watchBtn">관전하기</button><button class="btn ghost" id="homeBtn">로비로</button></div>
+    <button class="btn mainbtn" id="againBtn">다시 출근</button>
+    <p class="foot"><button class="tlink" id="homeBtn">로비로</button><button class="tlink red" id="shareBtn">결과 공유</button><button class="tlink" id="watchBtn">관전하기</button></p>
   </div>
 </section>
 
@@ -137,9 +176,11 @@
 <script defer src="js/client/05-net.js"></script>
 <script defer src="js/client/10-input.js"></script>
 <script defer src="js/client/20-render.js"></script>
+<script defer src="js/client/25-juice.js"></script>
 <script defer src="js/client/30-hud.js"></script>
 <script defer src="js/client/40-main.js"></script>
 <script defer src="js/client/45-plaza.js"></script>
 <script defer src="js/client/46-tutorial.js"></script>
+<script defer src="js/client/47-share.js"></script>
 </body>
 </html>

@@ -12,18 +12,40 @@ function npcActive(n){
 function sees(n,a){
   const v=VIS[n.kind];if(!v||a.f!==n.f||!a.alive)return false;
   if(G.blackout&&G.blackout.f===n.f)return false;
-  const d=dist(n,a);
-  if(d<v.pres)return sightLos(n.f,n.x,n.y,a.x,a.y);
-  if(d>v.len)return false;
+  const d=dist(n,a),k=a.branch==='design'?.7:1; // 디자인팀장: 눈에 덜 띔
+  if(d<v.pres*k)return sightLos(n.f,n.x,n.y,a.x,a.y);
+  if(d>v.len*k)return false;
   if(Math.abs(angDiff(Math.atan2(a.y-n.y,a.x-n.x),n.face))>v.half)return false;
   return sightLos(n.f,n.x,n.y,a.x,a.y);
 }
-const immune=(a,n)=>(n.kind==='boss'&&a.rank==='임원')||a.cloakT>0||a.vipT>0||(a.stampT>G.t&&a.stampNpc===n)||a.inRest;
+/* 5F and up: the always-on boss is a 전무 (senior). Even 임원 must greet them, and getting caught costs more */
+const bossTitle=n=>n.kind==='ceo'?'대표님':n.senior?'전무님':'부장님';
+const immune=(a,n)=>(n.kind==='boss'&&!n.senior&&a.rank==='임원')||a.cloakT>0||a.vipT>0||(a.stampT>G.t&&a.stampNpc===n)||a.inRest;
 function watchers(a){return G.npcs.filter(n=>(n.kind==='boss'||n.kind==='ceo')&&n.f===a.f&&npcActive(n));}
 function caught(a,n,why){
   if(n.kind==='ceo'){const l=Math.ceil(a.g/2);dmg(a,l,'boss');pop(a.f,a.x,a.y-34,`대표님께 적발 -${l}`,'#cf3626');tell(a,`대표님 앞에서 사내정치 적발: 고과 반토막`,true);UI.shake(.25,a);}
-  else{dmg(a,10,'boss');pop(a.f,a.x,a.y-34,'현장 적발 -10','#cf3626');tell(a,why==='turn'?'부장님이 고개를 돌렸다: 현장 적발 -10':'부장님 앞에서 던졌다가 현장 적발 -10',true);UI.shake(.2,a);}
-  a.flash=.3;
+  else{const l=n.senior?15:10,t=bossTitle(n);dmg(a,l,'boss');pop(a.f,a.x,a.y-34,`현장 적발 -${l}`,'#cf3626');tell(a,why==='turn'?`${t}이 고개를 돌렸다: 현장 적발 -${l}`:`${t} 앞에서 던졌다가 현장 적발 -${l}`,true);UI.shake(.2,a);}
+  a.flash=.3;a.hitBy=0;
+}
+/* ---------- seat workers' favours: fetch something on the same floor and bring it back ---------- */
+const ERRANDS=[{spot:'coffee',ask:'커피 한 잔만 사다 줄래요?',go:'탕비실 커피',r:8},{spot:'printer',ask:'출력물 좀 가져다줄래요?',go:'프린터 출력물',r:8},
+  {spot:'box',ask:'이 서류 결재함에 좀 넣어 줄래요?',go:'결재함에 서류 넣기',r:6},{spot:'cooler',ask:'정수기 물 한 잔만요…',go:'정수기 물',r:6}];
+function deskStep(n){
+  if(!n.ask){if(G.t>=n.askT){const ok=ERRANDS.filter(e=>FLOORS[n.f].spots[e.spot]);n.job=pick(ok);n.ask=true;n.askEnd=G.t+25;n.called=false;}return;}
+  if(G.t>n.askEnd){n.ask=false;n.askT=G.t+rnd(15,35);return;}
+  if(!n.called&&humans().some(h=>h.alive&&h.f===n.f&&!h.errand&&dist(h,n)<170)){n.called=true;say(n,n.job.ask,'#3f6f99');}
+}
+function acceptErrand(a,n){
+  const e=n.job,sp=FLOORS[n.f].spots[e.spot];if(!n.ask||!sp||a.errand)return;
+  a.errand={go:e.go,f:n.f,step:0,tx:sp.x,ty:sp.y,bx:n.x,by:n.y,t:40,max:40,r:e.r};
+  n.ask=false;n.askT=G.t+rnd(25,45);say(a,'네, 다녀올게요!');tell(a,`부탁: ${e.go} · 40초 안에 다녀오기`);
+}
+function errandStep(a,dt){
+  const e=a.errand;e.t-=dt;
+  if(a.f!==e.f||e.t<=0){a.errand=null;tell(a,'부탁을 못 들어줬다 (층을 떠났거나 시간 초과)');return;}
+  if(e.step===0&&Math.hypot(a.x-e.tx,a.y-e.ty)<50){e.step=1;pop(a.f,a.x,a.y-36,'챙겼다!','#3f6f99');tell(a,'이제 부탁한 사람 자리로 돌아가요');}
+  else if(e.step===1&&Math.hypot(a.x-e.bx,a.y-e.by)<55){a.errand=null;gain(a,e.r);pop(a.f,a.x,a.y-36,`부탁 완료 +${e.r}`,'#2f7d4f');tell(a,`동료 부탁 완료: 고과 +${e.r}`);
+    const n=G.npcs.find(n=>n.kind==='desk'&&n.f===a.f&&Math.hypot(n.x-e.bx,n.y-e.by)<2);if(n)say(n,pick(['고마워요!','역시 최고예요','다음에 밥 살게요!']),'#2f7d4f');}
 }
 function soundAlert(f,victim,ox,oy,thrower){
   for(const n of watchers(victim)){
@@ -59,8 +81,8 @@ function greet(a){
   if(a.contact){
     const n=a.contact.n;a.contact=null;
     const first=G.t-n.lastGreet>1.5;n.lastGreet=G.t;
-    const v=n.kind==='ceo'?10:(first?3:1);gain(a,v);a.stampT=G.t+10;a.stampNpc=n;
-    say(a,n.kind==='ceo'?'대표님, 안녕하십니까!':pick(['안녕하십니까!','좋은 아침입니다!','부장님 안녕하세요!']));
+    const v=n.kind==='ceo'?10:n.senior?(first?5:2):(first?3:1);gain(a,v);a.stampT=G.t+10;a.stampNpc=n;
+    say(a,n.kind==='ceo'?'대표님, 안녕하십니까!':pick(['안녕하십니까!','좋은 아침입니다!',`${bossTitle(n)} 안녕하세요!`]));
     if(first)say(n,n.kind==='ceo'?pick(['허허, 열심히 하게','자네 이름이 뭐였지?']):pick(['어, 그래','수고가 많아','오늘도 힘내고']),n.kind==='ceo'?'#c08a1e':'#5d666e');
     pop(a.f,a.x,a.y-36,`인사 +${v}`,'#2f7d4f');
     tell(a,`먼저 인사했다 +${v} · 눈도장 10초`);
@@ -83,6 +105,7 @@ function updNpcs(dt){
       if(n.left<=0||!isOpen(n.f)||G.lunch){n.on=false;n.cd=rnd(35,55);}}}
   for(const n of G.npcs){
     if(!npcActive(n))continue;
+    if(n.kind==='desk'){deskStep(n);continue;}
     const fl=FLOORS[n.f];
     if(n.alert){n.alert.t-=dt;if(n.alert.t<=0){n.face=n.alert.ang;n.hold=2;const w=n.alert.who;n.alert=null;
       if(w&&w.alive&&w.f===n.f&&!immune(w,n)&&sees(n,w))caught(w,n,'turn');}}
@@ -123,6 +146,7 @@ function updNpcs(dt){
   for(const a of alive()){
     if(a.f<0||a.transit)continue;
     if(a.quest){a.quest.t-=dt;a.slowT=Math.max(a.slowT,.1);if(!a.isPlayer&&a.quest.max-a.quest.t>=a.quest.botT)answerQuest(a);else if(a.quest&&a.quest.t<=0){a.quest.n.att=null;a.quest.n.cool=G.t+10;a.quest=null;a.questCd=G.t+12;}}
+    if(a.errand)errandStep(a,dt);
     if(a.contact){
       a.contact.t-=dt;
       if(!a.isPlayer&&a.contact.botOk&&a.contact.max-a.contact.t>=a.contact.botT){greet(a);continue;}
@@ -134,7 +158,7 @@ function updNpcs(dt){
     if(a.call){a.call.t-=dt;if(!a.isPlayer&&a.call.max-a.call.t>=a.call.botT){answer(a,a.call.botAns);continue;}if(a.call.t<=0)answer(a,null);continue;}
     if(a.inRest||a.chan)continue;
     for(const n of watchers(a)){
-      if(n.kind==='boss'&&a.rank==='임원'){if(G.t-(a.met[n.id]??-99)>=20&&sees(n,a)){a.met[n.id]=G.t;say(n,'상무님 오셨습니까!','#c08a1e');gain(a,1);tell(a,'임원 대우: 부장님이 먼저 인사한다 +1');}continue;}
+      if(n.kind==='boss'&&!n.senior&&a.rank==='임원'){if(G.t-(a.met[n.id]??-99)>=20&&sees(n,a)){a.met[n.id]=G.t;say(n,'상무님 오셨습니까!','#c08a1e');gain(a,1);tell(a,'임원 대우: 부장님이 먼저 인사한다 +1');}continue;}
       if(immune(a,n)||G.t-(a.met[n.id]??-99)<20)continue;
       if(sees(n,a)){
         a.met[n.id]=G.t;a.contact={n,t:1.5,max:1.5};

@@ -158,14 +158,73 @@ body.plaza:not(.pc) #emoteBtn{display:block}
 body.pc #home{left:50%;right:auto;transform:translateX(-50%);bottom:18px;width:min(500px,calc(100vw - 32px))}
 .homecard{pointer-events:auto;max-width:500px;padding:14px 18px 14px;max-height:calc(100vh - 32px);overflow:auto}
 .homecard .rules{font-size:13.5px;line-height:1.55;margin-bottom:10px}
+#home .homecard .items{margin:18px 0 18px}#home .homecard .keys{padding-top:16px}
 .homecard h1{font-size:30px;margin:8px 0 0}
+#homeMenu h1,#nameStep h1{font-size:42px;margin:10px 0 2px;letter-spacing:-.01em}
+@media (max-width:700px){#homeMenu h1,#nameStep h1{font-size:32px;margin-top:6px}}
 .homecard .subj{margin:0 0 10px}
-.homecard .stampmark{width:58px;height:58px;top:34px;right:16px;font-size:13px}
+.homecard .stampmark{width:78px;height:78px;top:36px;right:18px;font-size:17px}
 .homecard .btns{margin-bottom:8px}.homecard .btns .btn{flex:1;font-size:15px;padding:8px 12px;box-shadow:0 2px 0 #000}
-.homecard .btns.sub .btn{font-size:12.5px;padding:5px 10px;box-shadow:none}
-@media (max-width:700px){.homecard .rules{font-size:12.5px;line-height:1.45;margin-bottom:6px}.homecard .items{margin-bottom:6px}.homecard .items span{display:none}.homecard .keys{gap:5px 10px;margin-bottom:10px;font-size:12px}.homecard .subj{margin-bottom:6px}}
-@media (max-width:700px){#home.dressing .memo-head,#home.dressing .stampmark{display:none}#home.dressing .homecard h1{font-size:20px;margin:0}.homecard h1{font-size:24px;margin-top:4px}.homecard .stampmark{width:48px;height:48px;top:30px;font-size:11px}#dress .rows{max-height:30vh}#dress .row{grid-template-columns:58px 1fr}}
+/* closed card: only the binder tabs on the right stay, so the shared lobby is fully visible */
+#home.closed .homecard{display:none}
+/* open card (welcome + guide) sits dead centre over a dimmed lobby; the dressing room stays at the bottom so you can see yourself */
+#home:not(.closed):not(.dressing){inset:0;align-items:center;padding:16px;background:rgba(20,23,26,.55);pointer-events:auto}
+body.pc #home:not(.closed):not(.dressing){left:0;right:0;top:0;bottom:0;transform:none;width:auto}
+#home:not(.closed):not(.dressing) .homecard{width:100%;max-width:500px}
+.homeX{pointer-events:auto;border:0;background:none;margin-left:10px;padding:0 2px;font:900 15px/1 var(--body);color:var(--ink);cursor:pointer;vertical-align:middle}
+.homeX:hover{color:var(--stamp)}
+#home.naming .homeX,#home.dressing .homeX{display:none}
+#dock{display:none;position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:4;flex-direction:column;align-items:flex-end;gap:7px;padding-right:env(safe-area-inset-right,0px)}
+body.plaza #home.closed:not([hidden]) + #dock{display:flex}
+#dock button{min-width:98px;text-align:left;padding:9px 14px 9px 13px;border:0;border-left:5px solid #c9cdd0;border-radius:5px 0 0 5px;cursor:pointer;
+  background:var(--paper) repeating-linear-gradient(transparent 0 15px,rgba(29,35,40,.05) 15px 16px);color:var(--ink);font:800 13px var(--body);box-shadow:-3px 3px 0 rgba(0,0,0,.28);transition:transform .15s ease-out}
+#dock button:hover,#dock button:focus-visible{transform:translateX(-5px)}
+#dock button:active{transform:translateX(-2px)}
+#dock button.pri{min-width:114px;background:var(--ink);color:var(--paper);border-left-color:var(--lit);font:900 14px var(--display)}
+#dock button[data-go=guide]{border-left-color:var(--stamp)}
+#dockCount{margin:0 10px 2px 0;font:800 11px var(--body);color:var(--ok);background:var(--paper);border-radius:3px;padding:2px 7px;box-shadow:0 2px 0 rgba(0,0,0,.25)}
+@media (prefers-reduced-motion:reduce){#dock button{transition:none}}
+/* first visit: pick a name before anything else; afterwards a small chip to change it */
+.homecard .namerow{display:flex;gap:8px;margin:4px 0 6px}
+.homecard .namerow input{flex:1;min-width:0;box-sizing:border-box;font:900 18px var(--display);color:var(--ink);background:#fff;border:2px solid var(--ink);border-radius:6px;padding:9px 12px;outline:none}
+.homecard .namerow input:focus{border-color:var(--msg);box-shadow:0 0 0 3px rgba(43,108,176,.18)}
+.homecard .namerow .btn{font-size:16px;padding:8px 16px;box-shadow:0 2px 0 #000}
+/* looks like a filled-in blank on a form: label, handwritten-ish name on an underline */
+.homecard .namechip{display:inline-flex;align-items:baseline;gap:8px;margin:-4px 0 10px;padding:0 2px 2px;border:0;border-bottom:1.5px solid var(--ink);border-radius:0;background:none;font:700 12px var(--body);color:var(--muted);cursor:pointer}
+.homecard .namechip b{color:var(--msg);font:900 15px var(--display);min-width:64px;text-align:left}
+.homecard .namechip .pencil{width:13px;height:13px;fill:none;stroke:var(--muted);stroke-width:1.6;stroke-linejoin:round;align-self:center}
+.homecard .namechip:hover .pencil{stroke:var(--ink)}
+@media (max-width:700px){.homecard .rules{font-size:12.5px;line-height:1.45;margin-bottom:6px}#home .homecard .items{margin:14px 0 14px}.homecard .items span{display:none}#home .homecard .keys{gap:5px 10px;margin-bottom:12px;padding-top:12px;font-size:12px}.homecard .subj{margin-bottom:6px}}
+@media (max-width:700px){#home.dressing .memo-head,#home.dressing .stampmark{display:none}#home.dressing .homecard h1{font-size:20px;margin:0}.homecard h1{font-size:24px;margin-top:4px}.homecard .stampmark{width:64px;height:64px;top:42px;font-size:14px}#dress .rows{max-height:30vh}#dress .row{grid-template-columns:58px 1fr}}
 #pzCount{color:var(--ok);font-weight:800}
+.mutebtn{pointer-events:auto;border:0;background:none;padding:0 2px;margin:0 0 0 auto;font-size:13px;line-height:1;cursor:pointer;opacity:.75}.mutebtn:hover{opacity:1}
+.memo-head .mutebtn{margin-left:8px}.idcard .mutebtn{margin-right:6px}
+.pausebtn{pointer-events:auto;border:1.5px solid var(--ink);background:none;border-radius:3px;margin-right:6px;padding:1px 5px;font:900 9px/1.3 var(--body);color:var(--ink);cursor:pointer;letter-spacing:-.1em}
+.pausebtn[hidden]{display:none}
+.pausememo{max-width:380px}
+/* promotion / knockout: a slip of paper with a stamp slammed on it, above the middle of the screen */
+#banner{position:fixed;left:50%;top:26%;transform:translateX(-50%);z-index:4;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 32px);padding:10px 18px 10px 12px;background:var(--paper);border-radius:4px;box-shadow:0 10px 26px rgba(0,0,0,.35);pointer-events:none}
+#banner[hidden]{display:none}
+#banner .bs{flex:none;width:54px;height:54px;border:3px solid var(--stamp);border-radius:50%;display:grid;place-items:center;color:var(--stamp);font:900 14px var(--display);transform:rotate(-12deg)}
+#banner.gold .bs{border-color:#c08a1e;color:#c08a1e}
+#banner strong{display:block;font:900 20px var(--display);color:var(--ink)}
+#banner small{display:block;margin-top:2px;font:700 12px var(--body);color:var(--muted)}
+/* popups share one shape: a single main button, the rest as quiet text links in the memo's footer */
+.mainbtn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:16px;font-size:17px;padding:11px 14px;box-shadow:0 2px 0 #000}
+.mainbtn small{font:700 11px var(--body);opacity:.55;border:1px solid currentColor;border-radius:3px;padding:1px 5px}
+.foot{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;margin:12px 0 0;padding-top:10px;border-top:1px solid rgba(29,35,40,.14)}
+.tlink{border:0;background:none;padding:4px 2px;font:700 13px var(--body);color:var(--muted);cursor:pointer;text-decoration:underline;text-decoration-color:rgba(29,35,40,.25);text-underline-offset:3px}
+.tlink:hover{color:var(--ink);text-decoration-color:currentColor}.tlink.red{color:var(--stamp)}.tlink:disabled{opacity:.5}
+.tlink[hidden]{display:none}
+.foot .tlink+.tlink::before{content:'·';display:inline-block;margin:0 12px 0 10px;color:#b6bcc1;text-decoration:none}
+/* home card reads top to bottom like a report; thin rules split rules / items / controls */
+#home .sec{padding:12px 0;border-top:1px solid rgba(29,35,40,.14)}
+#home .sec .rules{margin:0}
+#home .sec .items{margin:0;gap:4px 12px}#home .sec .items .lbl{flex-basis:auto;display:inline;font-size:12.5px;font-weight:800;color:var(--ink)}
+#home .sec .keys{margin:0;padding:0;border:0;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:7px 12px}
+#home #homeGuide{margin:4px 0 14px;border-bottom:1px solid rgba(29,35,40,.14)}
+#home .homecard .btns{margin-bottom:0}
+@media (max-width:520px){#home .sec .keys{grid-template-columns:1fr 1fr;gap:6px 8px}#home .sec .keys kbd{font-size:10.5px;padding:3px 5px}#home .sec .keys li{white-space:nowrap;font-size:12px}}
 /* dressing room rows */
 #dress .rows{display:grid;gap:7px;margin:8px 0 12px;max-height:min(46vh,380px);overflow:auto}
 #dress .row{display:grid;grid-template-columns:72px 1fr;align-items:center;gap:8px}
@@ -250,6 +309,30 @@ body.pc .touch-only,body:not(.pc) .pc-only{display:none}
 #lobby input{box-sizing:border-box;font:900 18px var(--display);color:var(--ink);background:#fff;border:2px solid var(--ink);border-radius:6px;padding:10px 12px;min-width:0;width:100%;outline:none}
 #lobby input:focus{border-color:var(--msg);box-shadow:0 0 0 3px rgba(43,108,176,.18)}
 #lobby .btn.wide{width:100%}
+/* the 같이 하기 form: applicant line, then 가./나. options side by side (stacked on phones) */
+#lobby .memo{max-width:520px}
+#lobby .memo-head .homeX{margin-left:10px}
+#lobby .signrow{display:flex;align-items:baseline;gap:10px;margin:2px 0 14px;padding-bottom:4px;border-bottom:1.5px solid var(--ink);width:max-content;min-width:200px;font:700 12px var(--body);color:var(--muted)}
+#lobby .signrow b{font:900 17px var(--display);color:var(--msg);flex:1}
+#lobby .signrow input{flex:1;width:140px;font:900 16px var(--display);padding:3px 8px;border-width:1.5px;border-radius:3px}
+#lobby .penbtn{border:0;background:none;padding:0 2px;cursor:pointer;align-self:center}
+#lobby .pencil{width:13px;height:13px;fill:none;stroke:var(--muted);stroke-width:1.6;stroke-linejoin:round;display:block}
+#lobby .penbtn:hover .pencil{stroke:var(--ink)}
+#lobby .opts2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#lobby .opt{display:flex;flex-direction:column;gap:8px;padding:12px 12px 12px;background:#fff;border:1.5px solid var(--ink);border-radius:3px}
+#lobby .opt h3{margin:0;font:900 15px var(--display)}
+#lobby .opt p{margin:0;flex:1;font-size:12px;line-height:1.45;color:var(--muted)}
+#lobby .opt .btn{font-size:15px;padding:9px 12px;box-shadow:0 2px 0 #000}
+#lobby .opt .joinrow input{font-size:15px;padding:7px 8px;border-width:1.5px;border-radius:3px;width:0}
+@media (max-width:520px){#lobby .opts2{grid-template-columns:1fr}#lobby .opt p{flex:none}}
+#lobby.invited .opts2{display:none}
+#lobby .players{counter-reset:seat}
+#lobby .players li{counter-increment:seat}
+#lobby .players li::before{content:counter(seat);flex:none;width:18px;font:800 11px/1.9 var(--body);color:var(--muted)}
+#lobby .players li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#lobby .players li.empty{color:#a7adb2;font-weight:700}
+#lobby.dock .signrow,#lobby.dock .stampmark{display:none}
+#lobbyRoom .btns .btn{flex:1}
 #lobby .or{display:flex;align-items:center;gap:10px;margin:16px 0 10px;font-size:12px;font-weight:800;color:var(--muted)}
 #lobby .or::before,#lobby .or::after{content:'';flex:1;border-top:1px dashed #c9cdd0}
 #lobby .joinrow{display:flex;gap:8px}
@@ -260,12 +343,33 @@ body.pc .touch-only,body:not(.pc) .pc-only{display:none}
 #lobby .roomcode b{font:900 34px/1.1 var(--display);letter-spacing:.14em;color:var(--stamp)}
 #lobby .players{list-style:none;margin:0 0 16px;padding:0;display:grid}
 #lobby .players li{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed #c9cdd0;padding:8px 2px;font-weight:800}
+/* opened from an invite link: just the name and one join button */
+#invRow{display:none}#lobby.invited #invRow{display:block}
+#lobby.invited #createBtn,#lobby.invited .or,#lobby.invited .joinrow{display:none}
+#invRow .link{display:block;margin:12px auto 0}
+/* waiting in a room: the sheet docks at the bottom like the home card and the shared lobby stays live behind it */
+#lobby.dock{background:none;pointer-events:none;place-items:end center}
+#lobby.dock .memo{pointer-events:auto;padding:12px 16px 14px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+#lobby.dock h1{font-size:22px;margin:6px 0 0}#lobby.dock .subj{display:none}
+#lobby.dock .roomcode{margin:8px 0;padding:8px 12px}#lobby.dock .roomcode b{font-size:26px}
+#lobby.dock .players{grid-template-columns:1fr 1fr;column-gap:14px;margin-bottom:10px}#lobby.dock .players li{padding:5px 2px;font-size:13px}
+#lobby.dock .btns .btn{font-size:16px;padding:8px 14px}#lobby.dock .note{margin:8px 0 0}
+/* rooms people in the shared lobby are waiting in: tap to join */
+#pzRooms{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);left:50%;transform:translateX(-50%);z-index:4;display:flex;flex-direction:column;align-items:center;gap:6px;max-width:calc(100vw - 140px)}
+#pzRooms[hidden]{display:none}
+#pzRooms button{display:flex;align-items:center;gap:10px;max-width:100%;background:var(--paper);color:var(--ink);border:0;border-left:5px solid var(--lit);border-radius:3px;padding:6px 8px 6px 12px;font:800 13px var(--body);cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,.35)}
+#pzRooms button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#pzRooms button b{color:var(--stamp);border:2px solid var(--stamp);border-radius:3px;padding:1px 8px;font:900 12px var(--display);flex:none;transform:rotate(-4deg)}
 #lobby .players li.me{color:var(--msg)}
 #lobby .players li.bots{color:var(--muted);font-weight:700}
 #lobby .players small{font-weight:700;color:var(--muted)}
 #lobby .note{min-height:1.5em;margin:12px 0 4px;max-width:none}
 #lobby .note:empty{margin:0;min-height:0}
 #lobby .note.err{color:var(--stamp);font-weight:800}
+#result .note{max-width:none}
+#result .result-meta{grid-template-columns:auto 1fr auto 1fr;column-gap:14px}#result .result-meta dd{font-weight:800}
+#result #rNote{margin:4px 0 0;padding-left:10px;border-left:3px solid var(--stamp);color:var(--ink);font-weight:600}
+@media (max-width:520px){#result .stampmark.big{width:62px;height:62px;top:40px;right:12px;font-size:13px}#result h1{font-size:30px;padding-right:70px}}
 #lobby .link{margin-top:12px;background:none;border:0;padding:4px 0;font:700 13px var(--body);color:var(--muted);cursor:pointer}
 #lobby .link:hover{color:var(--ink)}
 .stampmark{position:absolute;right:18px;top:40px;width:78px;height:78px;border:3px solid var(--stamp);border-radius:50%;color:var(--stamp);display:grid;place-items:center;

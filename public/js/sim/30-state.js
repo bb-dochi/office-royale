@@ -8,8 +8,8 @@ let NID=0;
 function mk(name,isPlayer,type,color,pos){
   return{id:++NID,name,isPlayer,type,color,f:0,x:pos.x,y:pos.y,vx:0,vy:0,face:Math.random()*6.28,g:50,peak:50,rank:'인턴',alive:true,cd:0,
     path:[],pathAge:0,goal:null,mode:'idle',think:Math.random()*.3,target:null,strafe:Math.random()<.5?1:-1,react:.4,
-    speed:isPlayer?175:135+Math.random()*25,flash:0,lastHitBy:null,lastHitT:-99,cause:null,sx:pos.x,sy:pos.y,stuckT:0,nudge:null,place:0,
-    items:[],docs:0,intelT:0,sprint:false,runCd:0,fallCd:0,side:null,lunchGo:false,rapidT:0,slipT:0,ammo:0,lastCd:.6,cloakT:0,skillCd:0,branch:null,revived:false,shieldN:0,speedT:0,stunT:0,vipT:0,slowT:0,lockT:0,lockWhy:'',chan:null,transit:null,inv:0,
+    speed:isPlayer?175:135+Math.random()*25,flash:0,lastHitBy:null,hitBy:0,lastHitT:-99,cause:null,sx:pos.x,sy:pos.y,stuckT:0,nudge:null,place:0,
+    items:[],docs:0,intelT:0,sprint:false,runCd:0,fallCd:0,side:null,lunchGo:false,rapidT:0,slipT:0,ammo:0,lastCd:.6,cloakT:0,skillCd:0,rushT:0,branch:null,revived:false,shieldN:0,speedT:0,stunT:0,vipT:0,slowT:0,lockT:0,lockWhy:'',chan:null,transit:null,inv:0,
     seats:{},sit:null,sitT:0,sitHeal:0,sitStart:0,sitGoal:0,carry:false,lastTaskT:-99,tasksDone:0,coffeeCd:0,coolerCd:0,
     contact:null,call:null,met:{},stampT:0,stampNpc:null,greetLock:0,cleanCd:0,cleanFriend:false,chatCd:0,restT:0,inRest:false,
     pref:0,padPref:Math.random()<.5?'stair':'elev',greed:rnd(2,10),maxF:0,killer:null};
@@ -21,7 +21,7 @@ const topOpen=()=>Math.min(NF-1,G.closed+WIN-1);
 const warnFloor=f=>G.warn&&f===G.closed&&G.closed<NF-1;
 
 function assignSeats(f){
-  const seats=[...FLOORS[f].seats].sort(()=>Math.random()-.5);
+  const seats=FLOORS[f].seats.filter(s=>!s.npc).sort(()=>Math.random()-.5); // seat workers keep theirs
   for(const s of seats){s.owner=null;s.occ=null;}
   const al=G.actors.filter(a=>a.alive).sort(()=>Math.random()-.5);
   al.forEach((a,i)=>{const s=seats.at(i);if(s){s.owner=a;a.seats[f]=s;}else a.seats[f]=null;});
@@ -41,13 +41,17 @@ function newGame(opts={}){
      npcs:[],doors:[],events:[],notice:null,ceo:null,blackout:null,cake:null,fire:0,star:null,audit:null,taskId:0,fillT:0,lunch:null,airdrops:[]};
   for(let f=0;f<NF;f++){
     const w=FLOORS[f].wp;
-    G.npcs.push(Object.assign(mkNpc('boss',f,w[0][0],w[0][1]),{wp:1,slot:0}));
+    G.npcs.push(Object.assign(mkNpc('boss',f,w[0][0],w[0][1]),{wp:1,slot:0,senior:f>=4})); // 5F+ : a 전무 instead of a 부장
     G.npcs.push(Object.assign(mkNpc('boss',f,w[2][0],w[2][1]),{wp:3,slot:1}));
     const c=randFree(f);G.npcs.push(mkNpc('cleaner',f,c.x,c.y));
     if(f>=1&&f<=4){const p=randFree(f);G.npcs.push(mkNpc('busy',f,p.x,p.y));}
     if(f>=1){const p=randFree(f);G.npcs.push(mkNpc('newbie',f,p.x,p.y));G.npcs.push(Object.assign(mkNpc('courier',f,PADS.elev.x,PADS.elev.y-20),{on:false,cd:rnd(12,40)}));}
     {const p=randFree(f);G.npcs.push(mkNpc('cart',f,p.x,p.y));}
     G.doors.push({f,v:null,cd:rnd(10,30)});
+    /* seat workers: a few people glued to their desks from 2F up; their chairs are taken and now and then they ask a favour */
+    for(const s of FLOORS[f].seats)s.npc=null;
+    if(f>=1)for(const s of [...FLOORS[f].seats].sort(()=>Math.random()-.5).slice(0,3)){
+      const n=Object.assign(mkNpc('desk',f,s.x,s.y),{face:s.face,ask:false,askT:rnd(6,30)});s.npc=n;s.occ=null;G.npcs.push(n);}
   }
   for(let f=0;f<WIN;f++)assignSeats(f);
   for(let f=0;f<WIN;f++){fillTasks(f);for(let i=0;i<itemQuota(f);i++)spawnItem(f);}
@@ -109,14 +113,14 @@ function gain(a,n){
 }
 const locked=a=>!!a.call||a.lockT>0||a.stunT>0;
 function stand(a){if(a.sit){a.sit.occ=null;a.sit=null;}}
-function sit(a,s){if(s.occ&&s.occ!==a)return false;stand(a);a.sit=s;s.occ=a;a.x=s.x;a.y=s.y;a.face=s.face;a.sitT=0;a.sitHeal=0;a.sitStart=G.t;a.path=[];a.vx=a.vy=0;return true;}
-const DMG={인턴:1,대리:1.3,팀장:1.6,'임원':2};
+function sit(a,s){if(s.npc||s.occ&&s.occ!==a)return false;stand(a);a.sit=s;s.occ=a;a.x=s.x;a.y=s.y;a.face=s.face;a.sitT=0;a.sitHeal=0;a.sitStart=G.t;a.path=[];a.vx=a.vy=0;return true;}
+const DMG={인턴:1,사원:1.15,대리:1.3,팀장:1.6,'임원':2};
 const dmgMul=o=>o&&o.rank?(DMG[o.rank]||1):1;
 function hit(t,o,n,label,p){
   n=Math.round(n*dmgMul(o));if(label)label=label.replace(/-\d+/,'-'+n);
   if(t.inv>0){pop(t.f,t.x,t.y-26,'도착 보호','#5d666e');return;}
   if(t.shieldN>0){t.shieldN--;pop(t.f,t.x,t.y-26,'결재 도장으로 막음','#cf3626');return;}
-  dmg(t,n,'paper');t.lastHitBy=o;t.lastHitT=G.t;t.flash=.22;pop(t.f,t.x,t.y-26,label||('-'+n),'#cf3626');
+  dmg(t,n,'paper');t.lastHitBy=o;t.hitBy=o?o.id:0;t.lastHitT=G.t;t.flash=.22;pop(t.f,t.x,t.y-26,label||('-'+n),'#cf3626');
   UI.shake(.15,t);
   stand(t);
   if(t.chan&&t.chan.pad==='stair'){t.chan=null;pop(t.f,t.x,t.y-44,'계단 오르다 맞음','#cf3626');}

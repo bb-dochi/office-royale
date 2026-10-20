@@ -1,5 +1,5 @@
 // The shared lobby on the start screen: everyone online walks around the same 1F lobby.
-// Presence only (position, facing, preset greetings) — no game rules run here.
+// Presence only (position, facing, preset greetings, the match room someone is waiting in) — no game rules run here.
 // Shared by tools/dev-server.mjs and the Durable Object (index.js), like room.js.
 import { cleanName } from './room.js';
 import { cleanFit } from './outfit.js';
@@ -38,6 +38,15 @@ export class PlazaCore {
     } else if (m.t === 'pz-fit') {
       const now = Date.now(); if (now - (peer.fitT || 0) < 500) return; peer.fitT = now;
       peer.fit = cleanFit(m.fit); if (peer.fit) for (const p of this.peers) if (p !== peer) this.send(p, { t: 'pz-fit', id: peer.pid, fit: peer.fit });
+    } else if (m.t === 'pz-room') {
+      /* the match room this person is waiting in, shown to the plaza so others can walk up and join */
+      const c = typeof m.code === 'string' && /^[A-Z0-9]{4,8}$/.test(m.code) ? m.code : null;
+      const n = Math.max(1, Math.min(8, m.n | 0));
+      peer.room = c ? [c, n] : null;
+      if (c && typeof m.name === 'string') peer.name = cleanName(m.name, this.peers.filter(p => p !== peer)); // the name picked for the room
+    } else if (m.t === 'pz-name') {
+      const now = Date.now(); if (now - (peer.nameT || 0) < 1000) return; peer.nameT = now;
+      peer.name = cleanName(m.name, this.peers.filter(p => p !== peer));
     } else if (m.t === 'pz-say') {
       const i = m.i | 0; if (i < 0 || i >= EMOTES) return;
       const now = Date.now(); if (now - (peer.sayT || 0) < 1200) return; peer.sayT = now;   // no spamming bubbles
@@ -45,7 +54,7 @@ export class PlazaCore {
     }
   }
   broadcast() {
-    const list = this.peers.map(p => [p.pid, p.name, p.seed, Math.round(p.x), Math.round(p.y), Math.round(p.face * 100) / 100, p.mv]);
+    const list = this.peers.map(p => [p.pid, p.name, p.seed, Math.round(p.x), Math.round(p.y), Math.round(p.face * 100) / 100, p.mv, p.room || 0]);
     const msg = { t: 'pz', n: this.peers.length, p: list };
     for (const p of this.peers) this.send(p, msg);
   }

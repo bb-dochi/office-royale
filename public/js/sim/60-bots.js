@@ -32,6 +32,8 @@ function think(b){
     if(dist(b,PADS[pk])<34){goRoof(b,pk==='stair'?'L':'R');return;}setGoal(b,PADS[pk],'roof');return;}
   if(b.branch==='mkt'&&b.skillCd<=0&&G.actors.filter(o=>visibleTo(b,o)&&dist(o,b)<200).length>=2&&!watchers(b).some(n=>!immune(b,n)&&sees(n,b)))useSkill(b);
   if(b.branch==='design'&&b.skillCd<=0&&b.g<35&&G.t-b.lastHitT<2)useSkill(b);
+  if(b.branch==='hr'&&b.skillCd<=0&&G.t-b.lastHitT<3&&G.actors.some(o=>o!==b&&visibleTo(b,o)&&dist(o,b)<150))useSkill(b);
+  if(b.branch==='dev'&&b.skillCd<=0&&G.tasks.some(t=>t.f===b.f&&!t.ready&&dist(t,b)<50))useSkill(b);
   let want=Math.max(b.pref,G.closed);
   if(f<G.closed||(warnFloor(f)&&G.nextClose<b.greed+tagOf(b)+3))want=Math.max(want,f+1);
   want=Math.min(want,topOpen());

@@ -34,7 +34,7 @@ function updEvents(dt){
     if(ev.stage===0&&G.t>=ev.at-lead){ev.stage=1;prepEvent(ev);}
     else if(ev.stage===1&&G.t>=ev.at){ev.stage=2;fireEvent(ev);}
   }
-  if(G.ceo){G.ceo.t-=dt;if(G.ceo.t<=0||!isOpen(G.ceo.f)){G.npcs.splice(G.npcs.indexOf(G.ceo),1);for(const a of G.actors)if(a.contact&&a.contact.n===G.ceo)a.contact=null;G.ceo=null;feed('대표님이 돌아가셨습니다');}}
+  if(G.ceo){G.ceo.t-=dt;if(G.ceo.t<=0||!isOpen(G.ceo.f)){G.npcs.splice(G.npcs.indexOf(G.ceo),1);for(const a of G.actors)if(a.contact&&a.contact.n===G.ceo)a.contact=null;G.ceo=null;feed('대표님께서 나가셨습니다');}}
   if(G.lunch){const L=G.lunch;L.t-=dt;L.dropT-=dt;
     if(L.dropT<=0){L.dropT=rnd(1.6,2.6);const p=randFree(ROOF,80);G.airdrops.push({x:p.x,y:p.y,t:0,k:Math.random()<.55?'food':randItem()});}
     for(const d of G.airdrops)d.t+=dt;

@@ -26,7 +26,7 @@ function plazaConnect(){
   PZ.ws=ws;
   ws.onopen=()=>ws.send(JSON.stringify({t:'hello',name:store.get('or-name')||'신입',fit:myFit()}));
   ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch{return;}
-    if(m.t==='pz-hi'){PZ.pid=m.you;PZ.online=true;const me=G&&G.plaza&&G.me;if(me){me.id=PZ_BASE+m.you;me.name=m.name;dropMesh(me);}}
+    if(m.t==='pz-hi'){PZ.pid=m.you;PZ.online=true;PZ.roomSent='';pzRoomSend();const me=G&&G.plaza&&G.me;if(me){me.id=PZ_BASE+m.you;me.name=m.name;dropMesh(me);}}
     else if(m.t==='pz'){PZ.count=m.n;plazaPeople(m.p);}
     else if(m.t==='pz-fit'){const a=PZ.others.get(m.id);PZ.fits.set(m.id,m.fit);if(a){a.fit=cleanFit(m.fit);dropMesh(a);}}
     else if(m.t==='pz-say'){const a=m.id===PZ.pid?G.me:PZ.others.get(m.id);if(a&&EMOTES[m.i])say(a,EMOTES[m.i]);}};
@@ -35,23 +35,45 @@ function plazaConnect(){
 const dropMesh=a=>{const m=actorM.get(a);if(m){scene.remove(m);actorM.delete(a);}};
 function plazaPeople(list){
   if(!G||!G.plaza)return;const seen=new Set();
-  for(const[pid,name,seed,x,y,face,mv]of list){if(pid===PZ.pid)continue;seen.add(pid);
+  for(const[pid,name,seed,x,y,face,mv,room]of list){if(pid===PZ.pid)continue;seen.add(pid);
     let a=PZ.others.get(pid);
     if(!a){a=mk(name,true,'플레이어',SHIRTS[seed%SHIRTS.length],{x,y});a.id=PZ_BASE+pid;a.f=0;a.alive=true;a.nx=x;a.ny=y;a.fit=cleanFit(PZ.fits.get(pid));PZ.others.set(pid,a);G.actors.push(a);}
-    a.nx=x;a.ny=y;a.tf=face;a.name=name;}
+    a.nx=x;a.ny=y;a.tf=face;a.name=name;a.room=room||null;}
   for(const[pid,a]of PZ.others)if(!seen.has(pid)){PZ.others.delete(pid);PZ.fits.delete(pid);G.actors.splice(G.actors.indexOf(a),1);}
 }
-function plazaStart(){
+/* keepLobby: coming back to a match room's waiting sheet, which docks over the plaza instead of the home card */
+function plazaStart(keepLobby){
   if(PZ.on)return;PZ.on=true;running=false;
   plazaWorld();document.body.classList.add('plaza');
-  for(const id of['lobby','result','cine','notice','callBox','branchBox','countdown','spec'])$(id).hidden=true;
-  $('home').hidden=false;$('feed').textContent='';
+  for(const id of['lobby','result','cine','notice','callBox','branchBox','countdown','spec'])if(!(keepLobby&&id==='lobby'))$(id).hidden=true;
+  $('home').hidden=!!keepLobby;$('feed').textContent='';PZ.roomSent='';
   plazaConnect();
 }
 function plazaStop(){
-  if(!PZ.on)return;PZ.on=false;dressClose();document.body.classList.remove('plaza');$('home').hidden=true;
+  if(!PZ.on)return;PZ.on=false;dressClose();document.body.classList.remove('plaza');$('home').hidden=true;$('pzRooms').hidden=true;PZ.roomsKey='';
   const ws=PZ.ws;PZ.ws=null;PZ.online=false;if(ws)try{ws.close();}catch{}
 }
+/* ---------- match rooms seen in the plaza ---------- */
+/* tell the plaza which room I am waiting in (or none), so it shows over my head to everyone else */
+function pzRoomSend(){
+  const r=NETC.room,mine=r&&r.players.find(p=>p.key===r.you),v=r&&r.state==='lobby'&&PZ.on?{code:r.code,n:r.players.length,name:mine?mine.name:undefined}:{};
+  if(G&&G.plaza&&G.me){G.me.room=v.code?[v.code,v.n]:null;if(v.name)G.me.name=v.name;}
+  const k=JSON.stringify(v);if(!PZ.ws||PZ.ws.readyState!==1||k===PZ.roomSent)return;PZ.roomSent=k;PZ.ws.send(JSON.stringify({t:'pz-room',...v}));
+}
+function pzJoin(code){if(NETC.room)return;$('nameIn').value=$('nameIn').value||store.get('or-name')||'';dressClose();joinRoom(code);}
+/* the nearest person with an open room, close enough to walk up and press E */
+const pzNear=()=>{const me=G.me;let best=null,bd=110;for(const a of PZ.others.values())if(a.room&&a.room[1]<8){const d=Math.hypot(a.x-me.x,a.y-me.y);if(d<bd){bd=d;best=a;}}return best;};
+/* chips at the top for every open room in the plaza (one per room, named after whoever is in it), refreshed a few times a second */
+PZ.roomsT=0;PZ.roomsKey='';
+function pzRooms(dt){
+  PZ.roomsT-=dt;if(PZ.roomsT>0)return;PZ.roomsT=.4;
+  const mine=NETC.room&&NETC.room.code,rooms=new Map();
+  if(!mine&&!PZ.dress)for(const a of PZ.others.values())if(a.room&&!rooms.has(a.room[0]))rooms.set(a.room[0],{code:a.room[0],n:a.room[1],who:a.name});
+  const list=[...rooms.values()].slice(0,3),key=JSON.stringify(list);if(key===PZ.roomsKey)return;PZ.roomsKey=key;
+  const el=$('pzRooms');el.hidden=!list.length;
+  el.innerHTML=list.map(r=>`<button data-code="${r.code}"${r.n>=8?' disabled':''}><span>${esc(r.who)}님 방 · ${r.n}/8</span><b>${r.n>=8?'꽉 참':'참가'}</b></button>`).join('');
+}
+$('pzRooms').addEventListener('click',e=>{const b=e.target.closest('button');if(b&&!b.disabled)pzJoin(b.dataset.code);});
 function plazaSay(i){if(!PZ.on||!G||!G.me)return;if(PZ.ws&&PZ.ws.readyState===1)PZ.ws.send(JSON.stringify({t:'pz-say',i}));else say(G.me,EMOTES[i]);}
 /* every frame while the plaza is up: my walking, bots wandering, other people gliding to their reported spot */
 function plazaFrame(dt){
@@ -70,8 +92,10 @@ function plazaFrame(dt){
   const now=performance.now();
   if(PZ.ws&&PZ.ws.readyState===1&&now-PZ.sendT>160){const s=`${Math.round(me.x)},${Math.round(me.y)},${me.face.toFixed(2)}`;
     if(s!==PZ.sent||now-PZ.sendT>2000){PZ.sent=s;PZ.sendT=now;PZ.ws.send(JSON.stringify({t:'pz-pos',x:me.x,y:me.y,face:me.face,mv:m>.15}));}}
+  pzRooms(dt);
   const n=PZ.online?Math.max(1,PZ.count):0;
   const t=PZ.online?`지금 로비에 ${n}명 접속 중`:'혼자 둘러보는 중 (로비 서버 연결 안 됨)';if($('pzCount').textContent!==t)$('pzCount').textContent=t;
+  const dc=PZ.online?`로비 ${n}명`:'혼자 둘러보는 중';if($('dockCount').textContent!==dc)$('dockCount').textContent=dc;
 }
 
 /* ---------- menu ---------- */
@@ -79,8 +103,38 @@ function plazaFrame(dt){
 $('emotePop').innerHTML=EMOTES.map((t,i)=>`<button data-i="${i}">${t}</button>`).join('');
 $('emotePop').addEventListener('click',e=>{const b=e.target.closest('button');if(b){plazaSay(+b.dataset.i);$('emotePop').hidden=true;}});
 $('emoteBtn').addEventListener('click',()=>{$('emotePop').hidden=!$('emotePop').hidden;});
-addEventListener('keydown',e=>{if(!PZ.on||$('home').hidden||(e.target.closest&&e.target.closest('input')))return;
-  const n=/^(?:Digit|Numpad)([1-4])$/.exec(e.code);if(n)plazaSay(+n[1]-1);else if(e.code==='KeyE')plazaSay(0);});
+addEventListener('keydown',e=>{if(!PZ.on||($('home').hidden&&!$('lobby').classList.contains('dock'))||(e.target.closest&&e.target.closest('input')))return;
+  const n=/^(?:Digit|Numpad)([1-4])$/.exec(e.code);if(n)plazaSay(+n[1]-1);else if(e.code==='KeyE'){const a=!NETC.room&&pzNear();if(a)pzJoin(a.room[0]);else plazaSay(0);}});
+/* how much of the screen bottom the card covers; the lobby camera lifts me into the space above it */
+PZ.cardH=0;
+const pzCover=()=>{const c=!$('home').hidden&&$('home').classList.contains('dressing')?$('home').querySelector('.homecard'):!$('lobby').hidden&&$('lobby').classList.contains('dock')?$('lobby').querySelector('.memo'):null;
+  PZ.cardH=c?Math.max(0,innerHeight-c.getBoundingClientRect().top):0;};
+const pzRO=new ResizeObserver(pzCover);pzRO.observe($('home').querySelector('.homecard'));pzRO.observe($('lobby').querySelector('.memo'));
+/* ---------- name: asked once on the first visit, changeable from the chip under the title ---------- */
+function nameStep(on){$('nameStep').hidden=!on;$('homeMenu').hidden=on;$('home').classList.toggle('naming',on);if(on)$('home').classList.remove('closed');if(on){$('homeName').value=store.get('or-name')||'';setTimeout(()=>$('homeName').focus(),50);}}
+function nameSave(){
+  const n=$('homeName').value.replace(/[\u0000-\u001f<>]/g,'').trim().slice(0,10);if(!n){$('homeName').focus();return;}
+  store.set('or-name',n);$('nameIn').value=n;$('myName').textContent=n;nameStep(false);
+  if(G&&G.plaza&&G.me)G.me.name=n;if(PZ.ws&&PZ.ws.readyState===1)PZ.ws.send(JSON.stringify({t:'pz-name',name:n}));
+}
+$('myName').textContent=store.get('or-name')||'신입';
+$('nameOk').addEventListener('click',nameSave);
+$('homeName').addEventListener('keydown',e=>{if(e.key==='Enter')nameSave();});
+$('nameEdit').addEventListener('click',()=>nameStep(true));
+/* ---------- open card ↔ binder tabs on the right ---------- */
+/* first visit: the card is open (it asks for a name); after that the lobby opens with just the tabs, unless the card was left open */
+function homeClose(c,remember=true){$('home').classList.toggle('closed',c);if(remember)store.set('or-home',c?'closed':'open');pzCover();}
+homeClose(!!store.get('or-name')&&store.get('or-home')!=='open',false);
+if(!store.get('or-name'))nameStep(true);
+$('homeX').addEventListener('click',()=>homeClose(true));
+$('home').addEventListener('click',e=>{if(e.target===$('home')&&$('nameStep').hidden&&!PZ.dress)homeClose(true);}); // tap the dimmed lobby to close
+addEventListener('keydown',e=>{if(e.key==='Escape'&&PZ.on&&!$('home').hidden&&!$('home').classList.contains('closed')&&!PZ.dress&&$('nameStep').hidden)homeClose(true);});
+$('dock').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const go=b.dataset.go;
+  if(go==='guide')homeClose(false);
+  else if(go==='solo')start();
+  else if(go==='multi'){$('home').hidden=true;showLobby();}
+  else if(go==='tut')tutStart();
+  else if(go==='dress'){PZ.dressFromDock=true;$('home').classList.remove('closed');dressOpen();}});
 $('hSolo').addEventListener('click',start);
 $('hMulti').addEventListener('click',()=>{$('home').hidden=true;showLobby();});
 /* ---------- dressing room ---------- */
@@ -110,7 +164,8 @@ function dressSet(k,v){
 function dressOpen(){if(!PZ.on)return;PZ.dress=true;$('home').classList.add('dressing');
   /* step into the open middle of the lobby so nothing stands between the camera and you */
   G.me.x=FW/2;G.me.y=K(300);G.me.vx=G.me.vy=0;cam={x:G.me.x,y:G.me.y};$('homeMenu').hidden=true;$('dress').hidden=false;dressRender();}
-function dressClose(){PZ.dress=false;$('home').classList.remove('dressing');$('homeMenu').hidden=false;$('dress').hidden=true;}
+function dressClose(){PZ.dress=false;$('home').classList.remove('dressing');$('homeMenu').hidden=false;$('dress').hidden=true;
+  if(PZ.dressFromDock){PZ.dressFromDock=false;homeClose(true,false);}} // opened from the tabs: go back to the tabs
 $('dressRows').addEventListener('click',e=>{const b=e.target.closest('button');if(b)dressSet(b.dataset.k,b.dataset.v||null);});
 $('hDress').addEventListener('click',dressOpen);
 $('dressDone').addEventListener('click',dressClose);

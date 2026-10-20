@@ -7,7 +7,7 @@ function throwPaper(a,ang){
   if(a.isPlayer&&a.items.length&&!staple){a.face=ang;a.cd=a.lastCd=base;useItem(a,0,ang);return true;}
   if(staple)a.ammo--;
   a.cd=base*(staple?.35:1);a.lastCd=a.cd;a.face=ang;a.cloakT=0;
-  G.proj.push({f:a.f,x:a.x+Math.cos(ang)*(R+4),y:a.y+Math.sin(ang)*(R+4),ox:a.x,oy:a.y,dx:Math.cos(ang),dy:Math.sin(ang),d:0,o:a,spin:Math.random()*6,staple,sp:staple?720:560,rng:staple?300:340});
+  G.proj.push({f:a.f,x:a.x+Math.cos(ang)*(R+4),y:a.y+Math.sin(ang)*(R+4),ox:a.x,oy:a.y,dx:Math.cos(ang),dy:Math.sin(ang),d:0,o:a,spin:Math.random()*6,staple,sp:staple?720:560,rng:(staple?300:340)*(a.branch==='mkt'?1.25:1)}); // 마케팅팀장: 멀리 던짐
   if(staple&&a.ammo===0)tell(a,'스테이플러를 다 썼다');
   for(const n of watchers(a))if(!immune(a,n)&&sees(n,a)){caught(a,n,'act');break;}
   return true;
@@ -51,11 +51,19 @@ function applyItem(a,k,aim){
 }
 function useSkill(a){
   if(!a.alive||a.f<0||locked(a)||a.sit||a.chan||!a.branch||a.skillCd>0)return false;
-  const B=BRANCH[a.branch];if(!B.cd)return false;
-  if(a.branch==='mkt'){for(let i=0;i<10;i++){const ang=i/10*Math.PI*2;G.proj.push({f:a.f,x:a.x+Math.cos(ang)*(R+4),y:a.y+Math.sin(ang)*(R+4),ox:a.x,oy:a.y,dx:Math.cos(ang),dy:Math.sin(ang),d:0,o:a,spin:Math.random()*6,flyer:true,sp:480,rng:230});}
-    pop(a.f,a.x,a.y-44,'전단지 살포!','#c08a1e');a.cloakT=0;for(const n of watchers(a))if(!immune(a,n)&&sees(n,a)){caught(a,n,'act');break;}}
-  else if(a.branch==='design'){a.cloakT=4;pop(a.f,a.x,a.y-44,'위장','#8e5c8a');tell(a,'위장: 4초간 아무도 못 봄 (던지면 풀림)');}
-  a.skillCd=B.cd;return true;
+  const B=BRANCH[a.branch];if(!B.cd)return false;const ex=a.rank==='임원';
+  if(a.branch==='mkt'){const n=ex?14:10;for(let i=0;i<n;i++){const ang=i/n*Math.PI*2;G.proj.push({f:a.f,x:a.x+Math.cos(ang)*(R+4),y:a.y+Math.sin(ang)*(R+4),ox:a.x,oy:a.y,dx:Math.cos(ang),dy:Math.sin(ang),d:0,o:a,spin:Math.random()*6,flyer:true,sp:480,rng:ex?300:230});}
+    pop(a.f,a.x,a.y-44,ex?'전사 전단지 살포!':'전단지 살포!','#c08a1e');a.cloakT=0;for(const n of watchers(a))if(!immune(a,n)&&sees(n,a)){caught(a,n,'act');break;}}
+  else if(a.branch==='design'){const t=ex?6:4;a.cloakT=t;pop(a.f,a.x,a.y-44,'위장','#8e5c8a');tell(a,`위장: ${t}초간 아무도 못 봄 (던지면 풀림)`);}
+  else if(a.branch==='hr'){
+    /* the nearest rival in reach is called in for a talk and can't move or throw for a moment */
+    const r=ex?220:160,t=G.actors.filter(o=>o!==a&&visibleTo(a,o)&&!o.inRest&&!ally(a,o)&&dist(o,a)<r).sort((p,q)=>dist(p,a)-dist(q,a))[0];
+    if(!t){tell(a,'면담할 사람이 근처에 없어요');return false;}
+    const l=ex?2.5:1.5;t.lockT=Math.max(t.lockT,l);t.lockWhy='면담 중';t.vx=t.vy=0;stand(t);
+    say(a,pick(['잠깐 면담 좀 하지','자네, 이리 와 봐','인사 평가 얘기 좀 하자']),'#2f7d4f');pop(t.f,t.x,t.y-44,'면담 호출!','#2f7d4f');
+    tell(t,`${a.name}에게 면담 호출: ${l}초 묶임`,true);tell(a,`면담 호출: ${t.name} ${l}초 묶음`);}
+  else if(a.branch==='dev'){const t=ex?8:5;a.rushT=t;a.speedT=Math.max(a.speedT,t);pop(a.f,a.x,a.y-44,'야근 모드!','#2b6cb0');tell(a,`야근 모드: ${t}초간 업무 2배 더 · 빨라짐`);}
+  a.skillCd=B.cd*(ex?EXEC_CD:1);return true;
 }
 function dropItem(a,i=0){
   const k=a.items[i];if(!k||!a.alive||a.f<0)return;spawnItem(a.f,k,{x:a.x,y:a.y+24});const it=G.items.at(-1);it.nb=a;it.nbT=G.t+2;
@@ -132,8 +140,9 @@ function callOptions(a){return[{key:'greet',t:'인사',s:'죄송합니다!'},a.d
 /* What E / the action button does right now for actor me: {label, cls, fn} or null. */
 function contextAction(me){
   if(!me.alive||me.f<0||me.transit||locked(me)||me.chan)return null;
-  if(me.contact)return{label:me.contact.n.kind==='ceo'?'대표님께 인사!':'부장님께 인사!',cls:'hot',fn:()=>greet(me)};
+  if(me.contact)return{label:`${bossTitle(me.contact.n)}께 인사!`,cls:'hot',fn:()=>greet(me)};
   if(me.quest)return{label:'신입 질문 답해주기 +2',cls:'hot',fn:()=>answerQuest(me)};
+  if(!me.errand){const n=G.npcs.find(n=>n.kind==='desk'&&n.ask&&n.f===me.f&&dist(n,me)<70);if(n)return{label:`부탁 들어주기 +${n.job.r}`,cls:'go',fn:()=>acceptErrand(me,n)};}
   if(me.docs>0){const n=watchers(me).find(n=>dist(n,me)<150);if(n)return{label:'결재 올리기 +8',cls:'ready',fn:()=>submitDoc(me,n)};}
   const rt=G.tasks.find(t=>t.ready&&inTaskRange(me,t));
   if(rt)return{label:`제출 +${rt.reward*(warnFloor(rt.f)?2:1)}`,cls:'ready',fn:()=>submitTask(me,rt)};
@@ -150,7 +159,7 @@ function contextAction(me){
   if(me.sit)return{label:'일어나기',cls:'',fn:()=>stand(me)};
   const own=me.seats[me.f];
   if(own&&dist(me,own)<40&&!own.occ)return{label:'내 자리에 앉기',cls:'go',fn:()=>{if(sit(me,own))tell(me,'내 자리에 앉았다: 고과 회복 중');}};
-  const other=FLOORS[me.f].seats.find(s=>s!==own&&!s.occ&&dist(me,s)<22);
+  const other=FLOORS[me.f].seats.find(s=>s!==own&&!s.occ&&!s.npc&&dist(me,s)<22);
   if(other)return{label:'남의 자리에 앉기',cls:'',fn:()=>{if(sit(me,other))tell(me,`${other.owner?other.owner.name+'님':'빈'} 자리: 회복 없음`);}};
   const cl=G.npcs.find(n=>n.kind==='cleaner'&&n.f===me.f&&npcActive(n)&&dist(n,me)<80);
   if(cl&&me.cleanCd<=0)return{label:'아주머니께 인사 (정보)',cls:'',fn:()=>greet(me)};

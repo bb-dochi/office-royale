@@ -60,16 +60,18 @@ let fxSeen=new Set(),fxSig='';
 function fxBar(me){
   const E=[],I=ITEMS,C=k=>CAT[k].c,sec=v=>`${Math.ceil(v)}초`;
   if(!running||!me.alive||G.plaza){if(fxSig){fxSig='';$('fx').innerHTML='';}return;}
-  if(me.contact)E.push({k:'contact',g:'!',t:me.contact.n.kind==='ceo'?'대표님과 눈 마주침! 인사':'부장님과 눈 마주침! 인사',bad:1});
+  if(me.contact)E.push({k:'contact',g:'!',t:`${bossTitle(me.contact.n)}과 눈 마주침! 인사`,bad:1});
   if(me.items[0]){const it=I[me.items[0]];E.push({k:'held',g:it.g,c:it.c,t:`${it.n} 들고 있음 · 공격하면 사용`});}
   if(me.ammo>0)E.push({k:'ammo',g:I.stapler.g,c:I.stapler.c,t:`스테이플러 ${me.ammo}발`,bar:me.ammo/15});
   if(me.shieldN>0)E.push({k:'shield',g:I.stamp.g,c:I.stamp.c,t:`결재 도장 · ${me.shieldN}번 막기`});
-  if(me.speedT>0)E.push({k:'speed',g:I.ticket.g,c:I.ticket.c,t:`야근 식권 · 빨라짐 ${sec(me.speedT)}`,bar:me.speedT/8});
+  if(me.speedT>0&&!(me.rushT>0))E.push({k:'speed',g:I.ticket.g,c:I.ticket.c,t:`야근 식권 · 빨라짐 ${sec(me.speedT)}`,bar:me.speedT/8});
   if(me.vipT>0)E.push({k:'vip',g:I.vip.g,c:I.vip.c,t:`임원 인맥 · 감지 면제 ${sec(me.vipT)}`,bar:me.vipT/10});
   if(me.stampT>G.t)E.push({k:'stampT',g:'눈',c:C('def'),t:`눈도장 · 호출 면제 ${sec(me.stampT-G.t)}`,bar:(me.stampT-G.t)/10});
-  if(me.cloakT>0)E.push({k:'cloak',g:'위',c:C('ctl'),t:`위장 ${sec(me.cloakT)}`,bar:me.cloakT/4});
+  if(me.cloakT>0)E.push({k:'cloak',g:'위',c:C('ctl'),t:`위장 ${sec(me.cloakT)}`,bar:Math.min(1,me.cloakT/4)});
   if(me.intelT>0)E.push({k:'intel',g:'정',c:C('ctl'),t:`위치 정보 ${sec(me.intelT)}`,bar:me.intelT/8});
   if(me.docs>0)E.push({k:'docs',g:'결',c:C('heal'),t:`결재 서류 ${me.docs}장 · 부장님께 올리기`});
+  if(me.rushT>0)E.push({k:'rush',g:'야',c:C('move'),t:`야근 모드 · 업무 4배 ${sec(me.rushT)}`,bar:me.rushT/(me.rank==='임원'?8:5)});
+  if(me.errand)E.push({k:'errand',g:'부',c:'#3f6f99',t:`부탁 · ${me.errand.step?'자리로 전달':me.errand.go} ${sec(me.errand.t)}`,bar:me.errand.t/me.errand.max});
   if(me.branch==='hr'&&!me.revived)E.push({k:'hr',g:'재',c:C('heal'),t:'재입사권 1회'});
   if(me.sit&&me.sit.owner===me)E.push({k:'rest',g:'휴',c:C('heal'),t:`휴식 중 +${Math.floor(me.sitHeal)}/15`,bar:me.sitHeal/15});
   if(me.carry)E.push({k:'carry',g:'출',t:'출력물 배달 중 · 결재함으로'});
@@ -89,7 +91,7 @@ function hud(dt){
   if(!G||!G.me)return;const me=G.me;
   // call box (every frame)
   if(me.call&&me.alive){
-    if(lastCall!==me.call){lastCall=me.call;$('callWho').textContent=me.call.n.kind==='ceo'?'대표님':'부장님이 부릅니다';$('callQ').textContent=me.call.line.q;
+    if(lastCall!==me.call){lastCall=me.call;$('callWho').textContent=me.call.n.kind==='ceo'?'대표님':`${bossTitle(me.call.n)}이 부릅니다`;$('callQ').textContent=me.call.line.q;
       $('callOpts').innerHTML=callOptions(me).map((o,i)=>`<button data-k="${o.key}">${i+1}. ${o.t}<small>${o.s}</small></button>`).join('');$('callBox').hidden=false;}
     $('callTm').style.width=Math.max(0,me.call.t/me.call.max*100)+'%';
   }else if(lastCall){lastCall=null;$('callBox').hidden=true;}
@@ -111,7 +113,7 @@ function hud(dt){
   $('tower').classList.toggle('warn',G.warn||(G.final&&G.finalT>30));
   tb.style.setProperty('--cd',Math.max(0,me.cd)/me.lastCd);
   const sb=$('skillBtn'),B=me.branch&&BRANCH[me.branch];sb.hidden=!(me.alive&&B&&B.cd);
-  if(!sb.hidden){sb.style.setProperty('--cd',Math.max(0,me.skillCd)/B.cd);$('skillLabel').textContent=me.skillCd>0?Math.ceil(me.skillCd)+'초':B.sk;}
+  if(!sb.hidden){sb.style.setProperty('--cd',Math.max(0,me.skillCd)/(B.cd*(me.rank==='임원'?EXEC_CD:1)));$('skillLabel').textContent=me.skillCd>0?Math.ceil(me.skillCd)+'초':B.sk;}
   const held=me.items[0]&&ITEMS[me.items[0]],tl=me.ammo>0?`스테이플<br>${me.ammo}발`:held?held.n.replace(' ','<br>'):'서류<br>투척';
   if(tl!==lastTl){lastTl=tl;$('throwLabel').innerHTML=tl;tb.classList.toggle('staple',me.ammo>0||!!held);tb.style.setProperty('--ic',held?held.c:'');}
   tb.disabled=!!(me.sit||locked(me));

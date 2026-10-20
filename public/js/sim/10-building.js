@@ -152,10 +152,14 @@ const ITEMS={
 for(const k in ITEMS)ITEMS[k].c=CAT[ITEMS[k].cat].c;
 const ITEM_KEYS=Object.keys(ITEMS).filter(k=>ITEMS[k].w>0);
 function randItem(){let t=0;for(const k of ITEM_KEYS)t+=ITEMS[k].w;let r=Math.random()*t;for(const k of ITEM_KEYS){r-=ITEMS[k].w;if(r<=0)return k;}return 'coffee';}
-const BRANCH={hr:{n:'인사팀장',d:'고과 0이 돼도 한 번은 인턴으로 재입사 (고과 20)'},dev:{n:'개발팀장',d:'업무 속도 2배 · 사원증 태그 0.3초'},
-  mkt:{n:'마케팅팀장',d:'스킬: 전단지 살포, 사방 광역 공격 (쿨 12초)',cd:12,sk:'전단지'},design:{n:'디자인팀장',d:'스킬: 위장, 4초 투명 · 부장님도 못 봄 (쿨 20초)',cd:20,sk:'위장'}};
-const RANKS=[[0,'인턴'],[60,'대리'],[75,'팀장'],[90,'임원']];
-const TAG={인턴:2,대리:1.5,팀장:1,'임원':.5};
+/* every 팀장 gets a Q skill; 임원 makes it stronger and quicker (see useSkill) */
+const BRANCH={hr:{n:'인사팀장',d:'재입사 1회 · 스킬: 면담 호출, 근처 1명을 1.5초 묶기 (쿨 14초)',cd:14,sk:'면담'},
+  dev:{n:'개발팀장',d:'업무 2배 · 태그 0.3초 · 스킬: 야근 모드, 5초간 업무 2배 더·빨라짐 (쿨 18초)',cd:18,sk:'야근'},
+  mkt:{n:'마케팅팀장',d:'서류 사거리 +25% · 스킬: 전단지 살포, 사방 광역 공격 (쿨 12초)',cd:12,sk:'전단지'},
+  design:{n:'디자인팀장',d:'부장님 시야 30% 좁게 · 스킬: 위장, 4초 투명 (쿨 20초)',cd:20,sk:'위장'}};
+const EXEC_CD=.6; // 임원: skill cooldown ×0.6 and a bigger effect
+const RANKS=[[0,'인턴'],[55,'사원'],[60,'대리'],[75,'팀장'],[90,'임원']];
+const TAG={인턴:2,사원:1.75,대리:1.5,팀장:1,'임원':.5};
 const rankName=a=>!a.branch?a.rank:a.rank==='팀장'?BRANCH[a.branch].n:a.rank==='임원'?`임원(${BRANCH[a.branch].n.replace('팀장','')})`:a.rank;
 const tagOf=a=>a.branch==='dev'?.3:(TAG[a.rank]||2);
 const rankOf=p=>{let n='인턴';for(const[t,r]of RANKS)if(p>=t)n=r;return n;};

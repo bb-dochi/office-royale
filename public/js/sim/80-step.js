@@ -46,14 +46,14 @@ function step(dt){
     if(!me.chan&&!me.sit)drive(me,vx,vy,dt);
     if(me.sprint&&me.f>=0){
       if(me.runCd<=0){const n=watchers(me).find(n=>!immune(me,n)&&sees(n,me));
-        if(n){me.runCd=4;dmg(me,4,'boss');say(n,`${n.kind==='ceo'?'자네':'복도에서'} 뛰지 마!`,'#cf3626');pop(me.f,me.x,me.y-40,'-4','#cf3626');tell(me,`${n.kind==='ceo'?'대표님':'부장님'}: "복도에서 뛰지 마!" 고과 -4`,true);}}
+        if(n){me.runCd=4;dmg(me,4,'boss');say(n,`${n.kind==='ceo'?'자네':'복도에서'} 뛰지 마!`,'#cf3626');pop(me.f,me.x,me.y-40,'-4','#cf3626');tell(me,`${bossTitle(n)}: "복도에서 뛰지 마!" 고과 -4`,true);}}
       if(me.fallCd<=0&&onWet(me)){me.fallCd=3;me.stunT=1;me.sprint=false;dmg(me,4,'slip');pop(me.f,me.x,me.y-40,'꽈당! -4','#cf3626');tell(me,'뛰다가 미끄러졌다: 고과 -4',true);UI.shake(.2,me);}
     }
     if(inp.fire)throwPaper(me,autoAim(me));
   }
   for(const a of G.actors){
     if(!a.alive)continue;
-    a.cd-=dt;a.runCd-=dt;a.fallCd-=dt;a.slipT-=dt;a.intelT-=dt;a.cloakT-=dt;a.skillCd-=dt;a.flash-=dt;a.rapidT-=dt;a.speedT-=dt;a.stunT-=dt;a.vipT-=dt;a.slowT-=dt;a.lockT-=dt;a.inv-=dt;a.greetLock-=dt;a.coffeeCd-=dt;a.coolerCd-=dt;a.cleanCd-=dt;
+    a.cd-=dt;a.runCd-=dt;a.fallCd-=dt;a.slipT-=dt;a.intelT-=dt;a.cloakT-=dt;a.skillCd-=dt;a.rushT-=dt;a.flash-=dt;a.rapidT-=dt;a.speedT-=dt;a.stunT-=dt;a.vipT-=dt;a.slowT-=dt;a.lockT-=dt;a.inv-=dt;a.greetLock-=dt;a.coffeeCd-=dt;a.coolerCd-=dt;a.cleanCd-=dt;
     if(a.f<0)continue;
     if(a.chan&&!locked(a)){
       if(dist(a,PADS[a.chan.pad])>36){a.chan=null;}
@@ -96,6 +96,8 @@ function step(dt){
   // items + drops + delivery
   for(let i=G.items.length-1;i>=0;i--){const it=G.items[i];it.t+=dt;
     const a=al.find(a=>a.f===it.f&&!a.sit&&Math.hypot(a.x-it.x,a.y-it.y)<24&&canTake(a,it.k)&&!(it.nb===a&&G.t<it.nbT));
+    /* standing on an attack item while still holding one: say why nothing happens (every 6 s at most) */
+    if(!a&&STORE.has(it.k))for(const h of humans())if(h.alive&&h.f===it.f&&!canTake(h,it.k)&&G.t>(h.fullT||0)&&Math.hypot(h.x-it.x,h.y-it.y)<24){h.fullT=G.t+6;tell(h,'들고 있는 공격 아이템부터 써야 새로 주울 수 있어요');}
     if(a){G.items.splice(i,1);
       if(it.k==='coffee'){gain(a,12);pop(a.f,a.x,a.y-30,'+12 아이스 아메리카노','#7a4b2a');}
       else if(it.k==='food'){gain(a,15);pop(a.f,a.x,a.y-30,'+15 '+pick(['치킨','짜장면','피자','김밥','떡볶이']),'#2f7d4f');}
@@ -118,6 +120,7 @@ function step(dt){
         let rate=(1/t.need)*(1+.5*(work.length-1));
         if(t.seat&&work.some(a=>t.seat.owner===a&&a.sit===t.seat))rate*=1.5;
         if(work.some(a=>a.branch==='dev'))rate*=2;
+        if(work.some(a=>a.rushT>0))rate*=2; // 개발팀장 야근 모드
         t.prog+=rate*dt;
         if(t.prog>=1){
           if(t.kind==='print'){const w=work.filter(a=>!a.carry).sort((a,b)=>dist(a,t)-dist(b,t))[0];
@@ -126,7 +129,8 @@ function step(dt){
         }
       }else t.prog=Math.max(0,t.prog-dt*.1);
     }else{
-      for(const a of on){if(a.isPlayer)continue;if(t.react[a.id]===undefined)t.react[a.id]=G.t+rnd(.25,.85);else if(G.t>=t.react[a.id]){submitTask(a,t);break;}}
+      /* bots hand it in after a short reaction; people after 1 s on their own, or right away with E */
+      for(const a of on){if(t.react[a.id]===undefined)t.react[a.id]=G.t+(a.isPlayer?1:rnd(.25,.85));else if(G.t>=t.react[a.id]){submitTask(a,t);break;}}
     }
   }
   // closed floors + overtime
@@ -138,7 +142,7 @@ function step(dt){
       feed(v=>a===v?'인사팀장 특권 발동: 인턴으로 재입사 (고과 20)':`${a.name}님이 인턴으로 재입사했습니다`,a.isPlayer);continue;}
     a.g=0;a.alive=false;a.chan=null;a.contact=null;a.call=null;stand(a);const left=aliveCount();a.place=left+1;
     const killer=(a.cause==='paper')&&a.lastHitBy&&G.t-a.lastHitT<4?a.lastHitBy:null;a.killer=killer;
-    if(killer&&killer.alive){const RI=['인턴','대리','팀장','임원'],v=10+(RI.indexOf(a.rank)>RI.indexOf(killer.rank)?6:0);gain(killer,v);killer.kills=(killer.kills||0)+1;
+    if(killer&&killer.alive){const RI=['인턴','사원','대리','팀장','임원'],v=10+(RI.indexOf(a.rank)>RI.indexOf(killer.rank)?6:0);gain(killer,v);killer.kills=(killer.kills||0)+1;
       pop(killer.f,killer.x,killer.y-52,`처리 +${v}`,'#2f7d4f');tell(killer,`${a.name}님 처리: 고과 +${v}${v>10?' (윗사람 처리 보너스)':''}`);}
     if(a.f>=0){a.items.forEach((k,j)=>spawnItem(a.f,k,{x:a.x+12+j*8,y:a.y+j*8}));a.items=[];spawnItem(a.f,null,{x:a.x-12,y:a.y+6});if(a.carry)G.drops.push({f:a.f,x:a.x,y:a.y-10});}
     a.carry=false;

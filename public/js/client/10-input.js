@@ -4,8 +4,9 @@ const keys=new Set();let joy={id:null,ox:0,oy:0,dx:0,dy:0},throwHeld=false;
 function doInteract(){if(running&&G.me.alive)ACT.interact();}
 const CALLKEY={Digit1:0,Digit2:1,Digit3:2,Numpad1:0,Numpad2:1,Numpad3:2};
 addEventListener('keydown',e=>{
+  if(e.target.closest&&e.target.closest('input'))return; // typing a name must not walk the character
   const c=e.code;if(c.startsWith('Arrow')||c==='Space'||c==='Tab')e.preventDefault();
-  keys.add(c);if(!running||!G||e.repeat&&c!=='Space')return;const me=G.me;
+  keys.add(c);if(!running||!G||paused||e.repeat&&c!=='Space')return;const me=G.me;
   if(watching()){if(c==='ArrowLeft'||c==='KeyA')specCycle(-1);else if(c==='ArrowRight'||c==='KeyD')specCycle(1);else if(c==='Escape')specExit();return;}
   if(me.call&&c in CALLKEY){const o=callOptions(me).at(CALLKEY[c]);if(o)ACT.answer(o.key);return;}
   if(!$('branchBox').hidden&&/^(Digit|Numpad)[1-4]$/.test(c)){pickBranch(Object.keys(BRANCH).at(Number(c.slice(-1))-1));return;}
@@ -20,7 +21,7 @@ addEventListener('keyup',e=>{keys.delete(e.code);if(slotHold&&(slotHold.key?e.co
 addEventListener('blur',()=>keys.clear());
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 cv.addEventListener('pointerdown',e=>{
-  if(!running&&!PZ.on)return;e.preventDefault();
+  if(!running&&!PZ.on||paused)return;e.preventDefault();
   if(e.pointerType==='mouse'){if(!running)return;if(e.button===2)return;const w=screenToWorld(e.clientX,e.clientY);ACT.throw(Math.atan2(w.y-G.me.y,w.x-G.me.x));return;}
   if(e.clientX<VW*.55&&joy.id===null){
     joy={id:e.pointerId,ox:e.clientX,oy:e.clientY,dx:0,dy:0};cv.setPointerCapture(e.pointerId);

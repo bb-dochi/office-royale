@@ -9,7 +9,7 @@ const seatRef=s=>s?[s.f,FLOORS[s.f].seats.indexOf(s)]:null;
 const idOf=o=>o?o.id:null;
 const clampN=(v,lo,hi)=>typeof v==='number'&&isFinite(v)?Math.max(lo,Math.min(hi,v)):0;
 /* fields every client needs about every actor (labels, poses, auras), with the value a client assumes when one is left out */
-const PUB_A={id:0,name:'',color:'',isPlayer:false,f:0,x:0,y:0,face:0,g:0,peak:0,rank:'',alive:false,branch:null,flash:0,items:[],ammo:0,cloakT:0,carry:false,inRest:false,stunT:0,lockT:0,lockWhy:'',sprint:false,side:null,speedT:0,shieldN:0,vipT:0,slowT:0,intelT:0,place:0,kills:0,revived:false,tasksDone:0,maxF:0,fit:null};
+const PUB_A={id:0,name:'',color:'',isPlayer:false,f:0,x:0,y:0,face:0,g:0,peak:0,rank:'',alive:false,branch:null,flash:0,items:[],ammo:0,cloakT:0,carry:false,inRest:false,stunT:0,lockT:0,lockWhy:'',sprint:false,side:null,speedT:0,rushT:0,shieldN:0,vipT:0,slowT:0,intelT:0,place:0,kills:0,revived:false,tasksDone:0,maxF:0,fit:null,hitBy:0};
 /* empty values (0, false, null, '', [], spent timers) are left out of public actor data to keep snapshots small */
 const empty=v=>v===null||v===false||v===''||v===undefined||(typeof v==='number'&&v<=0&&v>-1e-9)||(Array.isArray(v)&&!v.length);
 /* bot brain and bookkeeping that never leaves the server */
@@ -29,10 +29,11 @@ function serA(a,full){
     o.contact=a.contact?{n:a.contact.n.id,t:r2(a.contact.t),max:a.contact.max}:null;
     o.quest=a.quest?{t:r2(a.quest.t),max:a.quest.max}:null;
     o.killer=idOf(a.killer);o.stampNpc=idOf(a.stampNpc);
+    o.errand=a.errand?{...a.errand}:null;
   }
   return o;
 }
-const serN=n=>({id:n.id,kind:n.kind,f:n.f,x:r1(n.x),y:r1(n.y),face:r2(n.face),slot:n.slot,on:n.on});
+const serN=n=>({id:n.id,kind:n.kind,f:n.f,x:r1(n.x),y:r1(n.y),face:r2(n.face),slot:n.slot,on:n.on,sr:n.senior?1:0,ask:n.ask&&n.job?n.job.r:0});
 function pubSnap(){
   if(NET.pubT===G.t&&NET.pub)return NET.pub;
   const open=f=>f===ROOF||f>=G.closed;
