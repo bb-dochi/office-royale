@@ -36,9 +36,9 @@ body.pc .rbtn{display:none!important}
 #branchBox{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 300px);width:min(92vw,400px);background:var(--paper);border:3px solid var(--ink);border-radius:10px;padding:10px;z-index:4;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 #branchBox .who{font-weight:900;font-size:15px;margin-bottom:6px}
 /* team choice as an HR memo: paper, a colour tab per team, 상시 / Q lines */
-#branchBox{border:0;border-radius:3px;padding:12px 14px 14px;background:var(--paper) repeating-linear-gradient(transparent 0 27px,rgba(29,35,40,.05) 27px 28px);width:min(94vw,520px)}
+#branchBox{bottom:auto;top:calc(env(safe-area-inset-top,0px) + 64px);max-height:calc(100vh - 84px);overflow:auto;border:0;border-radius:3px;padding:12px 14px 14px;background:var(--paper) repeating-linear-gradient(transparent 0 27px,rgba(29,35,40,.05) 27px 28px);width:min(94vw,520px)}
 #branchBox .who{font:900 17px var(--display);padding-bottom:6px;border-bottom:2px solid var(--ink)}
-#branchBox .who small{font:700 11px var(--body);color:var(--stamp);margin-left:6px}
+#branchBox .who small{display:block;margin-top:2px;font:700 11px var(--body);color:var(--stamp)}
 #branchBox .tm{height:5px;background:#e7e3d8;border-radius:3px;overflow:hidden;margin-bottom:8px}
 #branchBox .tm i{display:block;height:100%;background:var(--ok)}
 .bopts{display:grid;grid-template-columns:1fr 1fr;gap:6px}
@@ -48,7 +48,9 @@ body.pc .rbtn{display:none!important}
 .bopts b{display:flex;align-items:center;gap:6px;font:900 15px var(--display);margin-bottom:5px}
 .bopts kbd{font:800 10px/1 var(--body);background:var(--ink);color:var(--paper);border-radius:3px;padding:3px 5px}
 .bopts dl{display:grid;grid-template-columns:auto 1fr;gap:3px 7px;margin:0;font-size:11.5px;line-height:1.4}
-.bopts dt{font-weight:800;color:var(--tc,var(--muted))}.bopts dd{margin:0}.bopts em{font-style:normal;font-weight:900}
+.bopts dt{font-weight:800;color:var(--tc,var(--muted));white-space:nowrap}.bopts dd{margin:0}.bopts em{font-style:normal;font-weight:900}
+.bopts dd small{display:block;margin-top:1px;font-size:10.5px;color:var(--muted)}
+@media (max-width:440px){.bopts dl{grid-template-columns:1fr;gap:0}.bopts dd{margin-bottom:4px}}
 @media (prefers-reduced-motion:reduce){.bopts button{transition:none}}
 html,body{height:100%}
 body{background:var(--void);color:var(--ink);font-family:var(--body);overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
