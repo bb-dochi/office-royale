@@ -1,6 +1,8 @@
 /*
   X-Content-Type-Options: nosniff
+# scripts and styles change with every deploy: make browsers check the ETag each load instead of keeping a
+# 5-minute-old copy (a stale file next to a fresh index.html shows the old UI)
 /js/*
-  Cache-Control: public, max-age=300
+  Cache-Control: no-cache
 /css/*
-  Cache-Control: public, max-age=300
+  Cache-Control: no-cache

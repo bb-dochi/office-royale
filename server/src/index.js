@@ -1,11 +1,11 @@
 // Online play on Cloudflare Workers + Durable Objects.
 // One Durable Object = one room (code in the URL). It runs the rules from public/js/sim (bundled into sim.gen.js)
 // and streams snapshots; clients only send input. The Worker also serves public/ as static assets.
-// The start-screen lobby (/plaza) is one more instance of the same class, named '__plaza', so it needs no new binding.
+// The start-screen lobby (/plaza) is one more instance of the same class, named '__plaza-<hash of its code>' (see tools/build-server.mjs), so it needs no new binding.
 import { DurableObject } from 'cloudflare:workers';
 import { RoomCore } from './room.js';
 import { PlazaCore } from './plaza.js';
-import { createSim } from './sim.gen.js';
+import { createSim, PLAZA_VER } from './sim.gen.js';
 
 export class Room extends DurableObject {
   constructor(ctx, env) {
@@ -43,7 +43,7 @@ export default {
     const m = url.pathname.match(/^\/room\/([A-Z0-9]{4,8})$/);
     if (m || url.pathname === '/plaza') {
       if (request.headers.get('Upgrade') !== 'websocket') return new Response('websocket only', { status: 426 });
-      return env.ROOM.get(env.ROOM.idFromName(m ? m[1] : '__plaza')).fetch(request);
+      return env.ROOM.get(env.ROOM.idFromName(m ? m[1] : '__plaza-' + PLAZA_VER)).fetch(request);
     }
     return env.ASSETS.fetch(request);
   },

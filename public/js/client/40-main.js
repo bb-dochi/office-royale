@@ -18,7 +18,7 @@ function showResult(win){
   $('rStamp').innerHTML=win?'승진':'권고<br>사직';
   $('rTitle').textContent=win?'CEO실 입성':'권고사직 통보';
   $('rPlace').textContent=`${win?1:me.place}위 / ${TOTAL}명`;
-  $('rTime').textContent=fmt(G.t);$('rRank').textContent=rankName(me);$('rFloor').textContent=win?'7층 CEO층':FLOORS[me.maxF].name;$('rTasks').textContent=`${me.tasksDone}건`;
+  $('rTime').textContent=fmt(G.t);$('rRank').textContent=win?'CEO':rankName(me);$('rPerf').textContent=`업무 ${me.tasksDone}건, ${me.kills||0}명 해고`;
   let note='';
   if(win)note=pick(CEO_LINES);
   else if(me.killer)note=`${me.killer.name}님에게 최종 결재되었습니다.`;
@@ -31,7 +31,7 @@ function showResult(win){
   if(!win&&G.over&&G.winner)note+=` 최종 승자는 ${G.winner.name}님입니다.`;
   $('rNote').textContent=note;
   Object.assign(RES,{win,title:$('rTitle').textContent,name:me.name==='나'?store.get('or-name')||'신입':me.name,place:$('rPlace').textContent,time:$('rTime').textContent,
-    rank:$('rRank').textContent,floor:$('rFloor').textContent,tasks:$('rTasks').textContent,kills:`${me.kills||0}명`,note});
+    rank:$('rRank').textContent,perf:$('rPerf').textContent,note});
   $('watchBtn').hidden=win||G.over;
   $('againBtn').textContent=NETC.room?'대기실로':'다시 출근';
   $('result').hidden=false;$('callBox').hidden=true;
@@ -45,13 +45,16 @@ addEventListener('keydown',e=>{if(/^(Key[WASDEQF]|Arrow|Space|Shift|Digit)/.test
 addEventListener('touchstart',()=>setInputMode(true),{passive:true,capture:true});
 let lastKb='';
 function keybar(){
-  if(isTouch||!G||!G.me)return;const me=G.me,kb=$('keybar');kb.hidden=!running||!me.alive;if(kb.hidden)return;
+  if(isTouch){if(!$('keybar').hidden)$('keybar').hidden=true;return;}
+  if(!G||!G.me)return;const me=G.me,kb=$('keybar');kb.hidden=!running||!me.alive;if(kb.hidden)return;
   const act=myAction(),B=me.branch&&BRANCH[me.branch];
   const held=me.items[0]&&ITEMS[me.items[0]];
-  const ch=[[ 'Space',me.ammo>0?`스테이플 ${me.ammo}`:held?held.n:`던지기 -${Math.round(5*dmgMul(me))}`,me.ammo>0||held?'atk':'',Math.max(0,me.cd)/me.lastCd,held&&held.c],
-    ['E',act?act.label:'상호작용',act?(act.cls||''):'off'],
+  /* the item itself is in the slot next to this, so the attack key just says attack / use */
+  const ch=[['E',act?act.label:'상호작용',(act?(act.cls||''):'off')+' wide'],
+    [ 'Space',me.ammo>0||held?'아이템 사용':`던지기 -${Math.round(5*dmgMul(me))}`,me.ammo>0||held?'atk':'',Math.max(0,me.cd)/me.lastCd,held&&held.c],
     ...(B&&B.cd?[['Q',me.skillCd>0?`${B.sk} ${Math.ceil(me.skillCd)}초`:B.sk,me.skillCd>0?'off':'go']]:[]),
     ['Shift',me.sprint?'달리는 중':'달리기','']];
+  {const dn=me.f-1;if(me.f>=0&&me.f!==ROOF&&padOf(me)&&!me.sit&&dn>=0&&isOpen(dn)&&!G.lunch)ch.splice(1,0,['Shift+E',`▼ ${FLOORS[dn].short}로`,'wide']);}
   const h=ch.map(([k,t,c,cd,col])=>`<div class="kc ${c||''}"${col?` style="border-color:${col};box-shadow:0 0 12px ${col}"`:''}><kbd>${k}</kbd><span>${t}</span>${cd>0?`<i class="cd" style="width:${cd*100}%"></i>`:''}</div>`).join('');
   if(h!==lastKb){lastKb=h;kb.innerHTML=h;}
 }
@@ -66,7 +69,21 @@ $('pauseBtn').addEventListener('click',e=>{e.stopPropagation();if(canPause())pau
 $('pResume').addEventListener('click',()=>pauseOpen(false));
 $('pRestart').addEventListener('click',()=>{pauseOpen(false);start();});
 $('pHome').addEventListener('click',()=>{pauseOpen(false);running=false;plazaStart();});
-function start(){netClose();newGame({humans:[{key:'me',name:'나',fit:myFit()}]});startScreens();}
+/* solo: d is the difficulty picked on the 난이도 sheet; restarts (다시 출근, pause) reuse the last one */
+function start(d){netClose();if(DIFF[d])store.set('or-diff',d);$('diffSheet').hidden=true;
+  newGame({humans:[{key:'me',name:'나',fit:myFit()}],diff:store.get('or-diff')||'normal'});startScreens();}
+const DIFF_TXT={easy:'봇이 굼뜨고 서류가 잘 빗나가요. 한동안 안 맞으면 고과가 조금씩 회복돼요.',normal:'기본 난이도. 자동 회복은 없어요.',hard:'봇이 빠르고 정확하게 던져요. 자동 회복 없음.'};
+function diffOpen(){
+  const last=store.get('or-diff')||'normal';
+  $('diffOpts').innerHTML=Object.entries(DIFF).map(([k,v],i)=>`<button data-d="${k}" class="${k===last?'last':''}">
+    <em aria-hidden="true">${'●'.repeat(i+1)}${'○'.repeat(2-i)}</em><b>${v.n}${k===last?'<i>지난번</i>':''}</b><span>${DIFF_TXT[k]}</span></button>`).join('');
+  $('diffSheet').hidden=false;
+}
+$('diffOpts').addEventListener('click',e=>{const b=e.target.closest('button');if(b)start(b.dataset.d);});
+$('diffX').addEventListener('click',()=>{$('diffSheet').hidden=true;});
+addEventListener('keydown',e=>{if($('diffSheet').hidden)return;
+  if(e.key==='Escape'){e.stopImmediatePropagation();$('diffSheet').hidden=true;return;}
+  const n=/^(?:Digit|Numpad)([1-3])$/.exec(e.code);if(n){e.stopImmediatePropagation();start(Object.keys(DIFF)[+n[1]-1]);}},true);
 $('againBtn').addEventListener('click',()=>{if(NETC.room)showLobby();else start();});
 
 /* ---------- online lobby ---------- */
@@ -186,7 +203,7 @@ Object.assign(UI,{
   branch:a=>{if(forMe(a)&&$('branchBox').hidden)openBranch();},
   shake:(v,a)=>{if(forMe(a)&&!reduceMotion)shake=v;},
   vibrate:a=>{if(forMe(a)&&navigator.vibrate)try{navigator.vibrate(40);}catch(e){}},
-  cine:(t,sub,dur=1.6)=>{$('cineTower').hidden=true;$('cineS').textContent=sub||'';$('cineT').textContent=t;$('cine').hidden=false;cineT=dur;},
+  cine:(t,sub,dur=1.6,a)=>{if(!forMe(a))return;$('cineTower').hidden=true;$('cineS').textContent=sub||'';$('cineT').textContent=t;$('cine').hidden=false;cineT=dur;},
   closure:(...a)=>closureCine(...a),
   result:(win,ms,a)=>{if(forMe(a))setTimeout(()=>showResult(win),ms);},
   reset:()=>{$('feed').textContent='';},

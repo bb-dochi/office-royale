@@ -9,11 +9,11 @@ const seatRef=s=>s?[s.f,FLOORS[s.f].seats.indexOf(s)]:null;
 const idOf=o=>o?o.id:null;
 const clampN=(v,lo,hi)=>typeof v==='number'&&isFinite(v)?Math.max(lo,Math.min(hi,v)):0;
 /* fields every client needs about every actor (labels, poses, auras), with the value a client assumes when one is left out */
-const PUB_A={id:0,name:'',color:'',isPlayer:false,f:0,x:0,y:0,face:0,g:0,peak:0,rank:'',alive:false,branch:null,flash:0,items:[],ammo:0,cloakT:0,carry:false,inRest:false,stunT:0,lockT:0,lockWhy:'',sprint:false,side:null,speedT:0,rushT:0,shieldN:0,vipT:0,slowT:0,intelT:0,place:0,kills:0,revived:false,tasksDone:0,maxF:0,fit:null,hitBy:0};
+const PUB_A={id:0,name:'',color:'',isPlayer:false,f:0,x:0,y:0,face:0,g:0,peak:0,rank:'',alive:false,branch:null,flash:0,items:[],ammo:0,cloakT:0,carry:false,inRest:false,stunT:0,lockT:0,lockWhy:'',sprint:false,side:null,speedT:0,rushT:0,shieldN:0,vipT:0,slowT:0,intelT:0,place:0,kills:0,revived:false,tasksDone:0,maxF:0,fit:null,hitBy:0,working:false,lighter:0};
 /* empty values (0, false, null, '', [], spent timers) are left out of public actor data to keep snapshots small */
 const empty=v=>v===null||v===false||v===''||v===undefined||(typeof v==='number'&&v<=0&&v>-1e-9)||(Array.isArray(v)&&!v.length);
 /* bot brain and bookkeeping that never leaves the server */
-const SKIP_A=new Set(['path','pathAge','goal','mode','think','target','strafe','react','sx','sy','stuckT','nudge','met','input','aim','pref','padPref','greed','lunchGo','lunchPad','lastHitBy','type','key','_n','sitGoal']);
+const SKIP_A=new Set(['path','pathAge','goal','mode','think','target','strafe','react','sx','sy','stuckT','nudge','met','input','aim','pref','padPref','greed','lunchGo','lunchPad','lastHitBy','type','key','_n','sitGoal','desk','wc']);
 function serA(a,full){
   const o={};
   if(!full){for(const k in PUB_A){let v=a[k];if(typeof v==='number'){v=r1(v);if((k.endsWith('T')||k==='flash')&&v<0)v=0;}if(k==='f'||k==='x'||k==='y'||k==='face'?v!==0:!empty(v))o[k]=v;}}
@@ -30,6 +30,8 @@ function serA(a,full){
     o.quest=a.quest?{t:r2(a.quest.t),max:a.quest.max}:null;
     o.killer=idOf(a.killer);o.stampNpc=idOf(a.stampNpc);
     o.errand=a.errand?{...a.errand}:null;
+    o.wc=a.wc?{t:r2(a.wc.t),res:a.wc.res,resT:a.wc.resT,gain:a.wc.gain}:null; // never the crash time
+    o.desk=a.desk?{round:a.desk.round,ok:a.desk.ok,seq:a.desk.seq,pos:a.desk.pos,t:r2(a.desk.t),max:a.desk.max,job:a.desk.job,wait:r2(a.desk.wait),res:a.desk.res,resT:a.desk.resT}:null;
   }
   return o;
 }
@@ -39,14 +41,15 @@ function pubSnap(){
   const open=f=>f===ROOF||f>=G.closed;
   const seats={},fdoors={};
   for(let f=G.closed;f<NF;f++){seats[f]=FLOORS[f].seats.map(s=>[idOf(s.owner),idOf(s.occ)]);fdoors[f]=FLOORS[f].doors.map(d=>d.open?1:0).join('');}
+  seats[ROOF]=FLOORS[ROOF].seats.map(s=>[null,idOf(s.occ)]);   // rooftop lunch benches
   /* seat owners change rarely: resend them only on change, plus once a second for anyone who missed it */
   const seatStr=JSON.stringify(seats),sendSeats=seatStr!==NET.seatStr||Math.floor(G.t)!==Math.floor(NET.pubT);NET.seatStr=seatStr;
   NET.pub={
     t:r2(G.t),closed:G.closed,nextClose:r2(G.nextClose),warn:G.warn,final:G.final,finalT:r2(G.finalT),over:G.over,winner:idOf(G.winner),
-    lunch:G.lunch?{t:r2(G.lunch.t)}:null,fire:r2(G.fire),blackout:G.blackout,audit:G.audit,star:G.star?{a:G.star.a.id,t:G.star.t}:null,cake:G.cake,notice:G.notice,ceo:idOf(G.ceo),
+    lunch:G.lunch?{t:r2(G.lunch.t),score:G.lunch.score}:null,SM:(G.smokes||[]).map(s=>({n:nk(s),f:s.f,x:r1(s.x),y:r1(s.y),t:r2(s.t),life:s.life,r:s.r,side:s.side})),fire:r2(G.fire),blackout:G.blackout,audit:G.audit,star:G.star?{a:G.star.a.id,t:G.star.t}:null,cake:G.cake,notice:G.notice,ceo:idOf(G.ceo),
     A:G.actors.map(a=>serA(a,false)),
     N:G.npcs.filter(n=>n.kind==='ceo'||isOpen(n.f)).map(serN),
-    T:G.tasks.map(t=>({id:t.id,f:t.f,kind:t.kind,x:t.x,y:t.y,r:t.r,need:t.need,reward:t.reward,name:t.name,prog:r2(t.prog),ready:t.ready,seat:seatRef(t.seat),zone:t.zone?{x:t.zone.x,y:t.zone.y,w:t.zone.w,h:t.zone.h}:null})),
+    T:G.tasks.map(t=>({id:t.id,f:t.f,kind:t.kind,x:t.x,y:t.y,r:t.r,need:t.need,reward:t.reward,name:t.name,prog:r2(t.prog),ready:t.ready,by:idOf(t.by),seat:seatRef(t.seat),zone:t.zone?{x:t.zone.x,y:t.zone.y,w:t.zone.w,h:t.zone.h}:null})),
     I:G.items.filter(i=>open(i.f)).map(i=>({n:nk(i),f:i.f,x:r1(i.x),y:r1(i.y),k:i.k,t:r1(i.t)})),
     P:G.proj.map(p=>({n:nk(p),f:p.f,x:r1(p.x),y:r1(p.y),dx:r2(p.dx),dy:r2(p.dy),d:r1(p.d),sp:p.sp,rng:p.rng,spin:r1(p.spin),staple:p.staple,bundle:!!p.bundle,flyer:!!p.flyer,o:idOf(p.o)})),
     TR:G.traps.map(t=>({n:nk(t),f:t.f,x:r1(t.x),y:r1(t.y),t:r1(t.t),o:idOf(t.o)})),
@@ -69,7 +72,7 @@ NET.start=function(players){
     feed:(msg,hot,to)=>{for(const h of humans())if(!to||to===h){const m=typeof msg==='function'?msg(h):msg;if(m)push(h,{k:'feed',m,hot:!!hot});}},
     notice:t=>{for(const h of humans())push(h,{k:'notice',t});},
     noticeEnd:()=>{for(const h of humans())push(h,{k:'noticeEnd'});},
-    cine:(t,sub,dur)=>{for(const h of humans())push(h,{k:'cine',t,sub,dur});},
+    cine:(t,sub,dur,a)=>{for(const h of humans())if(!a||a===h)push(h,{k:'cine',t,sub,dur});},
     closure:(f,nf,msg)=>{for(const h of humans())push(h,{k:'closure',f,nf,msg});},
     shake:(v,a)=>{for(const h of humans())if(!a||a===h)push(h,{k:'shake',v});},
     vibrate:a=>push(a,{k:'vibrate'}),
@@ -94,6 +97,7 @@ NET.cmd=function(key,m){const a=byKey(key);if(!a||!a.isPlayer||G.over)return;
     case 'answer':if(a.call&&['greet','report','busy','doc'].includes(m.k))answer(a,m.k);break;
     case 'branch':chooseBranch(a,m.k);break;
     case 'floor':if(m.dir===1||m.dir===-1)useFloor(a,m.dir);break;
+    case 'desk':if(typeof m.k==='string')deskKey(a,m.k);break;
   }};
 /* a player who drops mid-match is handed to the bot brain so the match keeps its numbers */
 NET.leave=function(key){const a=byKey(key);NET.out.delete(key);if(!a||!a.isPlayer)return;a.isPlayer=false;a.input=null;a.call&&(a.call.botAns=a.call.line.ans,a.call.botT=0);

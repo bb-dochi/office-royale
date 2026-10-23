@@ -10,7 +10,7 @@ function mk(name,isPlayer,type,color,pos){
     path:[],pathAge:0,goal:null,mode:'idle',think:Math.random()*.3,target:null,strafe:Math.random()<.5?1:-1,react:.4,
     speed:isPlayer?175:135+Math.random()*25,flash:0,lastHitBy:null,hitBy:0,lastHitT:-99,cause:null,sx:pos.x,sy:pos.y,stuckT:0,nudge:null,place:0,
     items:[],docs:0,intelT:0,sprint:false,runCd:0,fallCd:0,side:null,lunchGo:false,rapidT:0,slipT:0,ammo:0,lastCd:.6,cloakT:0,skillCd:0,rushT:0,branch:null,revived:false,shieldN:0,speedT:0,stunT:0,vipT:0,slowT:0,lockT:0,lockWhy:'',chan:null,transit:null,inv:0,
-    seats:{},sit:null,sitT:0,sitHeal:0,sitStart:0,sitGoal:0,carry:false,lastTaskT:-99,tasksDone:0,coffeeCd:0,coolerCd:0,
+    seats:{},sit:null,sitT:0,sitHeal:0,sitStart:0,sitGoal:0,desk:null,deskCd:0,working:false,wc:null,wcCd:0,lighter:0,smokeCd:0,workT:0,carry:false,lastTaskT:-99,tasksDone:0,coffeeCd:0,coolerCd:0,
     contact:null,call:null,met:{},stampT:0,stampNpc:null,greetLock:0,cleanCd:0,cleanFriend:false,chatCd:0,restT:0,inRest:false,
     pref:0,padPref:Math.random()<.5?'stair':'elev',greed:rnd(2,10),maxF:0,killer:null};
 }
@@ -27,6 +27,13 @@ function assignSeats(f){
   al.forEach((a,i)=>{const s=seats.at(i);if(s){s.owner=a;a.seats[f]=s;}else a.seats[f]=null;});
 }
 /* opts.humans: [{key,name}] for online rooms; default is one local player called '나'. Bots fill the rest up to TOTAL. */
+/* solo difficulty: how good the bots are (aim spread, reaction, throw cooldown, speed) and whether a player who
+   keeps out of trouble slowly gets 고과 back. Online rooms always play 'normal'. */
+/* hunt: how close a person has to be before a bot goes for them unprovoked (0 = bots only hit back);
+   huntP: the share of bots that do that at all; huntMax: how many may go after the same person at once */
+const DIFF={easy:{n:'쉬움',aim:1.8,react:.35,cd:1.35,speed:.9,regen:true,hunt:0,huntP:0,huntMax:0},normal:{n:'보통',aim:1,react:0,cd:1,speed:1,regen:false,hunt:130,huntP:.2,huntMax:1},
+  hard:{n:'어려움',aim:.55,react:-.08,cd:.8,speed:1.07,regen:false,hunt:180,huntP:.3,huntMax:2}};
+const diff=()=>DIFF[G&&G.diff]||DIFF.normal;
 function newGame(opts={}){
   NID=0;
   const actors=[],spots=[];
@@ -38,7 +45,7 @@ function newGame(opts={}){
   const nb=opts.bots??TOTAL-hs.length;
   for(let i=0;i<nb;i++){const b=mk(NAMES[i],false,TYPES[i],SHIRTS[i],pickPos());b.pref=Math.random()<.3?1:0;actors.push(b);}
   G={t:0,actors,me,proj:[],items:[],traps:[],tasks:[],drops:[],wet:[],pops:[],dings:[],bursts:[],closed:0,nextClose:INTERVAL,warn:false,final:false,finalT:0,over:false,itemT:0,winner:null,
-     npcs:[],doors:[],events:[],notice:null,ceo:null,blackout:null,cake:null,fire:0,star:null,audit:null,taskId:0,fillT:0,lunch:null,airdrops:[]};
+     npcs:[],doors:[],events:[],notice:null,ceo:null,blackout:null,cake:null,fire:0,star:null,audit:null,taskId:0,fillT:0,lunch:null,airdrops:[],respawn:[],smokes:[]};
   for(let f=0;f<NF;f++){
     const w=FLOORS[f].wp;
     G.npcs.push(Object.assign(mkNpc('boss',f,w[0][0],w[0][1]),{wp:1,slot:0,senior:f>=4})); // 5F+ : a 전무 instead of a 부장
@@ -53,6 +60,7 @@ function newGame(opts={}){
     if(f>=1)for(const s of [...FLOORS[f].seats].sort(()=>Math.random()-.5).slice(0,3)){
       const n=Object.assign(mkNpc('desk',f,s.x,s.y),{face:s.face,ask:false,askT:rnd(6,30)});s.npc=n;s.occ=null;G.npcs.push(n);}
   }
+  for(const s of FLOORS[ROOF].seats){s.owner=null;s.occ=null;}   // rooftop benches belong to nobody
   for(let f=0;f<WIN;f++)assignSeats(f);
   for(let f=0;f<WIN;f++){fillTasks(f);for(let i=0;i<itemQuota(f);i++)spawnItem(f);}
   // events
@@ -60,13 +68,17 @@ function newGame(opts={}){
   if(kinds.indexOf('ceo')>2){kinds.splice(kinds.indexOf('ceo'),1);kinds.splice(1,0,'ceo');}
   [rnd(28,38),rnd(62,72),rnd(150,165),rnd(195,210)].forEach((at,i)=>G.events.push({at,kind:kinds.at(i),stage:0}));
   G.events.push({at:rnd(96,104),kind:'lunch',stage:0});
+  G.diff=DIFF[opts.diff]?opts.diff:'normal';for(const b of actors)if(!b.isPlayer){b.speed*=diff().speed;b.hunter=Math.random()<diff().huntP;}
   if(opts.tutorial){G.tutorial=true;G.events=[];G.nextClose=1e9;for(const b of actors)if(!b.isPlayer)b.dummy=true;}
   UI.snapCam(me);
   UI.reset();
 }
 const taskQuota=f=>!isOpen(f)?0:(G.closed>=NF-1?5:f===topOpen()?3:4);
 const itemQuota=f=>!isOpen(f)?0:(G.closed>=NF-1?3:f===G.closed?4:f===topOpen()?2:3);
-function fillTasks(f){let n=0;while(G.tasks.filter(t=>t.f===f).length<taskQuota(f)&&n++<10)spawnTask(f);}
+/* a handed-in task leaves a gap for a while before another one turns up (the lobby's few desks stay empty longer) */
+const TASK_GAP=f=>f===0?15:0;
+const IDLE=45,IDLE_DRAIN=.35; // seconds without doing anything before 고과 leaks, and how fast
+function fillTasks(f){let n=0;const gaps=G.respawn.filter(r=>r.f===f&&r.at>G.t).length;while(G.tasks.filter(t=>t.f===f).length+gaps<taskQuota(f)&&n++<10)spawnTask(f);}
 function spawnTask(f){
   const fl=FLOORS[f],have=k=>G.tasks.some(t=>t.f===f&&t.kind===k);
   const pool=['report','report'];
@@ -76,7 +88,7 @@ function spawnTask(f){
   if(fl.spots.server&&!have('server'))pool.push('server');
   if(fl.recep.length&&G.tasks.filter(t=>t.f===f&&t.kind==='recep').length<fl.recep.length)pool.push('recep','recep');
   if(f===0){pool.length=0;pool.push('recep','recep');if(!have('badge'))pool.push('badge');}
-  const k=pick(pool),T={id:++G.taskId,f,kind:k,prog:0,ready:false,react:{}};
+  const k=pick(pool),T={id:++G.taskId,f,kind:k,prog:0,ready:false,react:{},by:null,awayT:0};
   if(k==='report'){
     const used=new Set(G.tasks.filter(t=>t.seat).map(t=>t.seat));
     const cands=fl.seats.filter(s=>!used.has(s));if(!cands.length)return;
@@ -109,18 +121,22 @@ function dmg(a,n,cause){if(!a.alive)return;a.g-=n;a.cause=cause;}
 function gain(a,n){
   if(!a.alive)return;a.g=Math.min(100,a.g+n);
   if(a.g>a.peak){a.peak=a.g;const r=rankOf(a.peak);if(r!==a.rank){a.rank=r;if(a.isPlayer)pop(a.f,a.x,a.y-40,'승진! '+r,'#2f7d4f'); // the promotion slip (client) says the rest
-    if((r==='팀장'||r==='임원')&&!a.branch){if(a.isPlayer){a.branchAsk=G.t+10;UI.branch(a);}else a.branch=pick(Object.keys(BRANCH));}}}
+    if((r==='팀장'||r==='임원')&&!a.branch){if(a.isPlayer){a.branchAsk=G.t+BRANCH_PICK;UI.branch(a);}else a.branch=pick(Object.keys(BRANCH));}}}
 }
 const locked=a=>!!a.call||a.lockT>0||a.stunT>0;
-function stand(a){if(a.sit){a.sit.occ=null;a.sit=null;}}
-function sit(a,s){if(s.npc||s.occ&&s.occ!==a)return false;stand(a);a.sit=s;s.occ=a;a.x=s.x;a.y=s.y;a.face=s.face;a.sitT=0;a.sitHeal=0;a.sitStart=G.t;a.path=[];a.vx=a.vy=0;return true;}
+function stand(a){if(a.desk)endDesk(a);if(a.sit){a.sit.occ=null;a.sit=null;}}
+/* credit for real work (task, delivery, favour, kill): resets the idle clock */
+function worked(a){if(a)a.workT=G.t;}
+function sit(a,s){if(s.npc||s.occ&&s.occ!==a)return false;stand(a);a.sit=s;s.occ=a;a.x=s.x;a.y=s.y;a.face=s.face;a.sitT=0;a.sitHeal=0;a.sitStart=G.t;a.path=[];a.vx=a.vy=0;if(s.owner===a&&a.deskCd<=0)startDesk(a);return true;}
 const DMG={인턴:1,사원:1.15,대리:1.3,팀장:1.6,'임원':2};
 const dmgMul=o=>o&&o.rank?(DMG[o.rank]||1):1;
 function hit(t,o,n,label,p){
   n=Math.round(n*dmgMul(o));if(label)label=label.replace(/-\d+/,'-'+n);
   if(t.inv>0){pop(t.f,t.x,t.y-26,'도착 보호','#5d666e');return;}
+  if(t.desk){pop(t.f,t.x,t.y-26,'근무 중 (못 건드림)','#5d666e');return;}
+  if(t.f===ROOF){n=Math.max(1,Math.round(n*LUNCH.dmg));if(label)label=label.replace(/-\d+/,'-'+n);dropLighters(t);}
   if(t.shieldN>0){t.shieldN--;pop(t.f,t.x,t.y-26,'결재 도장으로 막음','#cf3626');return;}
-  dmg(t,n,'paper');t.lastHitBy=o;t.hitBy=o?o.id:0;t.lastHitT=G.t;t.flash=.22;pop(t.f,t.x,t.y-26,label||('-'+n),'#cf3626');
+  dmg(t,n,'paper');if(o)o.workT=G.t;t.lastHitBy=o;t.hitBy=o?o.id:0;t.lastHitT=G.t;t.flash=.22;pop(t.f,t.x,t.y-26,label||('-'+n),'#cf3626');
   UI.shake(.15,t);
   stand(t);
   if(t.chan&&t.chan.pad==='stair'){t.chan=null;pop(t.f,t.x,t.y-44,'계단 오르다 맞음','#cf3626');}

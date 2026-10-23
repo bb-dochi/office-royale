@@ -11,10 +11,12 @@ addEventListener('keydown',e=>{
   if(watching()){if(c==='ArrowLeft'||c==='KeyA')specCycle(-1);else if(c==='ArrowRight'||c==='KeyD')specCycle(1);else if(c==='Escape')specExit();return;}
   if(me.call&&c in CALLKEY){const o=callOptions(me).at(CALLKEY[c]);if(o)ACT.answer(o.key);return;}
   if(!$('branchBox').hidden&&/^(Digit|Numpad)[1-4]$/.test(c)){pickBranch(Object.keys(BRANCH).at(Number(c.slice(-1))-1));return;}
+  /* at my desk the movement keys type into the monitor game */
+  if(me.desk&&me.alive){const k={KeyW:'U',ArrowUp:'U',KeyS:'D',ArrowDown:'D',KeyA:'L',ArrowLeft:'L',KeyD:'R',ArrowRight:'R'}[c];if(k){e.preventDefault();ACT.desk(k);return;}}
   if(c==='Space')ACT.throw(aimAngle(me));
-  else if(c==='KeyE')doInteract();
+  else if(c==='KeyE'){if(e.shiftKey&&padOf(me))ACT.floor(-1);else doInteract();} // Shift+E: the floor below
   else if(c==='KeyQ')ACT.skill();
-  else if(c==='KeyM'||c==='Tab'){mapMode=mapMode==='building'?'floor':'building';hudT=0;}
+  else if(c==='KeyM'||c==='Tab')toggleMap();
 });
 let wT=null,wLong=false;
 let slotHold=null;
@@ -49,7 +51,15 @@ $('slots').addEventListener('pointerdown',e=>{const b=e.target.closest('.slot');
 $('slots').addEventListener('pointerup',e=>{const b=e.target.closest('.slot');clearTimeout(ibT);if(!b)return;e.preventDefault();if(!ibLong&&running)ACT.item(+b.dataset.i);ibLong=true;});
 $('slots').addEventListener('pointerleave',()=>clearTimeout(ibT));
 press($('skillBtn'),()=>ACT.skill());
-$('tower').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();mapMode=mapMode==='building'?'floor':'building';hudT=0;});
+press($('downBtn'),()=>ACT.floor(-1));
+press($('pCash'),()=>doInteract());
+$('mapbox').addEventListener('pointerdown',e=>{if(e.target.closest('.msys button'))return;e.preventDefault();e.stopPropagation();toggleMap();});
+for(const b of document.querySelectorAll('.msys button'))b.addEventListener('pointerdown',e=>e.stopPropagation());
+/* phones: the map folds down to its title bar (remembered) */
+function mapFold(on){$('mapbox').classList.toggle('folded',on);$('mFold').textContent=on?'지도':'▴';$('mFold').setAttribute('aria-label',on?'지도 펴기':'지도 접기');try{localStorage.setItem('or-mapfold',on?'1':'');}catch{}}
+$('mFold').addEventListener('click',e=>{e.stopPropagation();mapFold(!$('mapbox').classList.contains('folded'));});
+try{if(localStorage.getItem('or-mapfold'))mapFold(true);}catch{}
+$('dPad').addEventListener('pointerdown',e=>{const b=e.target.closest('button');if(!b||!running)return;e.preventDefault();e.stopPropagation();if(b.dataset.k==='Q')doInteract();else ACT.desk(b.dataset.k);});
 $('pills').addEventListener('pointerdown',e=>{const b=e.target.closest('button');if(!b)return;e.preventDefault();e.stopPropagation();
   const a=b.dataset.a;if(a==='up')ACT.floor(1);else if(a==='down')ACT.floor(-1);else if(a==='act')doInteract();});
 $('callOpts').addEventListener('pointerdown',e=>{const b=e.target.closest('button');if(!b)return;e.preventDefault();e.stopPropagation();if(G&&G.me.call)ACT.answer(b.dataset.k);});
@@ -60,6 +70,7 @@ function readInput(){
   if(keys.has('ArrowLeft')||keys.has('KeyA'))vx-=1;if(keys.has('ArrowRight')||keys.has('KeyD'))vx+=1;
   if(keys.has('ArrowUp')||keys.has('KeyW'))vy-=1;if(keys.has('ArrowDown')||keys.has('KeyS'))vy+=1;
   if(joy.id!==null){vx+=joy.dx;vy+=joy.dy;}
+  if(me.desk)vx=vy=0;
   me.input={vx,vy,fire:throwHeld,run:keys.has('ShiftLeft')||keys.has('ShiftRight')||(joy.id!==null&&joy.full)};
   me.aim=performance.now()-mouse.t<1500?aimAngle(me):null;
 }

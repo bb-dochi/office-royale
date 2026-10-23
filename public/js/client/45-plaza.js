@@ -2,7 +2,8 @@
    Everyone on the start screen walks around the 1F lobby together (server/src/plaza.js relays positions),
    plus a few local bots. No game rules run here: movement uses the same collision code, greetings are preset lines. */
 const PZ={fits:new Map(),dress:false,on:false,ws:null,pid:null,others:new Map(),bots:[],count:0,sendT:0,sent:'',online:false};
-const EMOTES=['안녕하세요.','좋은 아침입니다.','집 가고 싶다..','배고프다..'];
+/* lobby lines: keys 1-5 say the first five, E says any of the ten at random; server/src/plaza.js checks the count */
+const EMOTES=['안녕하세요.','좋은 아침입니다.','집 가고 싶다..','배고프다..','점심 뭐 드세요?','커피 한잔 하실래요?','오늘도 야근인가요…','수고하셨습니다!','회의 몇 시였죠?','같이 출근하실 분~'];
 /* what the lobby bots mutter, one line every several seconds each */
 const BOT_LINES=['오늘 점심 뭐 먹지…','회의 몇 시였더라','커피 한 잔 해야겠다','퇴근까지 몇 시간 남았지','월요일 싫다…','보고서 아직 못 썼는데','팀장님 어디 가셨지?','주말만 기다린다','야근 각이다…','오늘도 무사히…'];
 const PZ_BASE=100000; // actor ids for real people, so every client builds the same outfit for the same person
@@ -100,11 +101,14 @@ function plazaFrame(dt){
 
 /* ---------- menu ---------- */
 /* PC greets with keys 1-4; touch screens get a small speech button that opens the four lines */
-$('emotePop').innerHTML=EMOTES.map((t,i)=>`<button data-i="${i}">${t}</button>`).join('');
-$('emotePop').addEventListener('click',e=>{const b=e.target.closest('button');if(b){plazaSay(+b.dataset.i);$('emotePop').hidden=true;}});
+const plazaSayRandom=()=>plazaSay(Math.floor(Math.random()*EMOTES.length));
+/* phones: the same five lines plus one that picks any of the ten */
+$('emotePop').innerHTML=EMOTES.slice(0,5).map((t,i)=>`<button data-i="${i}">${t}</button>`).join('')+'<button data-i="rnd" class="rnd">아무 말이나</button>';
+$('emotePop').addEventListener('click',e=>{const b=e.target.closest('button');if(b){if(b.dataset.i==='rnd')plazaSayRandom();else plazaSay(+b.dataset.i);$('emotePop').hidden=true;}});
 $('emoteBtn').addEventListener('click',()=>{$('emotePop').hidden=!$('emotePop').hidden;});
 addEventListener('keydown',e=>{if(!PZ.on||($('home').hidden&&!$('lobby').classList.contains('dock'))||(e.target.closest&&e.target.closest('input')))return;
-  const n=/^(?:Digit|Numpad)([1-4])$/.exec(e.code);if(n)plazaSay(+n[1]-1);else if(e.code==='KeyE'){const a=!NETC.room&&pzNear();if(a)pzJoin(a.room[0]);else plazaSay(0);}});
+  const n=/^(?:Digit|Numpad)([1-5])$/.exec(e.code);if(n)plazaSay(+n[1]-1);
+  else if(e.code==='KeyE'){const a=!NETC.room&&pzNear();if(a)pzJoin(a.room[0]);else plazaSayRandom();}});
 /* how much of the screen bottom the card covers; the lobby camera lifts me into the space above it */
 PZ.cardH=0;
 const pzCover=()=>{const c=!$('home').hidden&&$('home').classList.contains('dressing')?$('home').querySelector('.homecard'):!$('lobby').hidden&&$('lobby').classList.contains('dock')?$('lobby').querySelector('.memo'):null;
@@ -131,11 +135,11 @@ $('home').addEventListener('click',e=>{if(e.target===$('home')&&$('nameStep').hi
 addEventListener('keydown',e=>{if(e.key==='Escape'&&PZ.on&&!$('home').hidden&&!$('home').classList.contains('closed')&&!PZ.dress&&$('nameStep').hidden)homeClose(true);});
 $('dock').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const go=b.dataset.go;
   if(go==='guide')homeClose(false);
-  else if(go==='solo')start();
+  else if(go==='solo')diffOpen();
   else if(go==='multi'){$('home').hidden=true;showLobby();}
   else if(go==='tut')tutStart();
   else if(go==='dress'){PZ.dressFromDock=true;$('home').classList.remove('closed');dressOpen();}});
-$('hSolo').addEventListener('click',start);
+$('hSolo').addEventListener('click',diffOpen);
 $('hMulti').addEventListener('click',()=>{$('home').hidden=true;showLobby();});
 /* ---------- dressing room ---------- */
 const DRESS_ROWS=[

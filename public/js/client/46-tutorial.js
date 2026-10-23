@@ -12,15 +12,23 @@ function tutSteps(){const PC=!isTouch;return[
     setup(){const me=G.me;TUT.n0=me.tasksDone;TUT.task=G.tasks.filter(t=>t.f===me.f).sort((a,b)=>dist(a,me)-dist(b,me))[0]||null;TUT.target=TUT.task;},
     tick(){if(TUT.task&&!G.tasks.includes(TUT.task)){TUT.task=G.tasks.filter(t=>t.f===G.me.f).sort((a,b)=>dist(a,G.me)-dist(b,G.me))[0]||null;TUT.target=TUT.task;}},
     done:()=>G.me.tasksDone>TUT.n0},
-  {t:'승진',d:`고과 최고점이 오르면 승진해요(사원 → 대리 → 팀장 → 임원). 올라갈수록 서류가 세지고 사원증 태그가 빨라져요. 팀장이 되면 부서 스킬(${PC?'Q':'스킬 버튼'}), 임원은 부장님도 먼저 인사해요.`,
+  {t:'승진',d:'고과 최고점이 오르면 직급이 올라요.',
+    h:`<span class="ladder">${RANKS.map(([n,r])=>`<em data-r="${r}">${r}${n>0?`<small>${n}</small>`:''}</em>`).join('<s>›</s>')}</span>
+      <span class="perks"><i>직급 ⬆ = 서류 공격력 ⬆</i><i>팀장: 부서 스킬 ${PC?'(Q)':''}</i><i>임원: 부장님이 먼저 인사</i></span>`,
     read:true,setup(){const me=G.me;if(me.peak<55)gain(me,56-me.g);TUT.target=null;}},
-  {t:'부장님께 인사',d:`부장님 노란 시야에 들어가면 먼저 인사해야 해요(${PC?'E':'상호작용'}). 늦으면 호출당하고 고과가 깎여요.`,
+  {t:'부장님께 인사',d:`부장님 노란 시야에 들어가면 ${PC?'E':'상호작용'}로 먼저 인사하세요. (지금은 천천히 해도 돼요)`,
     setup(){const me=G.me,b=G.npcs.find(n=>n.kind==='boss'&&n.f===me.f);TUT.boss=b;if(!b)return;b.tut=true;
       const p=[[150,0],[-150,0],[0,150],[0,-150]].map(([dx,dy])=>({x:me.x+dx,y:me.y+dy})).find(p=>!blocked(me.f,p.x,p.y))||{x:me.x+150,y:me.y};
       b.x=p.x;b.y=p.y;b.pause=1e9;b.face=Math.atan2(me.y-b.y,me.x-b.x);me.met={};TUT.target=b;},
-    tick(){const b=TUT.boss;if(b){b.pause=1e9;b.face=Math.atan2(G.me.y-b.y,G.me.x-b.x);
-      if(!G.me.contact&&!G.me.call&&G.me.stampNpc!==b)G.me.met[b.id]=-99;}}, // missed it? let the boss look again right away
-    done:()=>!TUT.boss||G.me.stampNpc===TUT.boss,
+    tick(){const b=TUT.boss,me=G.me;if(b){b.pause=1e9;b.face=Math.atan2(me.y-b.y,me.x-b.x);
+      if(me.contact)me.contact.t=me.contact.max; // no rush in this step: the greeting window stays open
+      if(!me.contact&&!me.call&&me.stampNpc!==b)me.met[b.id]=-99;}}, // walked out of sight? let the boss look again
+    done:()=>!TUT.boss||G.me.stampNpc===TUT.boss},
+  {t:'인사가 늦으면',d:`호출당해요! 질문에 맞는 대답을 고르세요 (${PC?'1~3 키':'버튼'}).
+예: "인사도 안 하나?" → 인사. 실전에선 몇 초 안에 못 고르면 고과가 깎여요.`,
+    setup(){const me=G.me,b=TUT.boss;me.contact=null;if(!b){TUT.called=true;return;}TUT.called=false;startCall(me,b);TUT.called=true;TUT.target=b;},
+    tick(){const c=G.me.call;if(c)c.t=c.max;if(TUT.boss){TUT.boss.pause=1e9;TUT.boss.face=Math.atan2(G.me.y-TUT.boss.y,G.me.x-TUT.boss.x);}}, // timer frozen for the lesson
+    done:()=>TUT.called&&!G.me.call,
     leave(){if(TUT.boss)TUT.boss.tut=false;G.me.call=null;G.me.contact=null;}},
   {t:'서류 던지기',d:`${PC?'Space나 마우스 클릭':'서류 투척 버튼'}으로 동료를 맞혀 보세요. 고과가 0이 되면 권고사직이에요.`,
     setup(){const me=G.me,d=G.actors.filter(a=>!a.isPlayer&&a.alive).sort((a,b)=>dist(a,me)-dist(b,me))[0];TUT.dummy=d;if(!d)return;
@@ -34,7 +42,12 @@ function tutSteps(){const PC=!isTouch;return[
     done:()=>G.me.ammo>0&&G.me.ammo<15},
   {t:'위층으로',d:`40초마다 아래층부터 폐쇄돼요. 계단이나 엘리베이터 위에서 ${PC?'E':'상호작용'}로 위층으로 올라가세요!`,
     setup(){TUT.f0=G.me.f;TUT.target={f:G.me.f,x:PADS.stair.x,y:PADS.stair.y};},done:()=>G.me.f>TUT.f0},
+  {t:'아래층으로',d:PC?'계단·엘리베이터 위에서 Shift+E를 누르면 아래층으로 내려가요. 도망칠 때 써요!':'계단·엘리베이터 위에서 ▼ 버튼을 누르면 아래층으로 내려가요. 도망칠 때 써요!',
+    setup(){TUT.f1=G.me.f;const p=padOf(G.me)||'stair';TUT.target={f:G.me.f,x:PADS[p].x,y:PADS[p].y};},done:()=>G.me.f<TUT.f1&&G.me.f>=0},
   {t:'돌발 이벤트',d:'실전에선 점심시간(옥상 난투전), 소방 훈련, 감사팀, 우수사원 발표 같은 이벤트가 갑자기 터져요. 화면 공지를 잘 보세요!',
+    read:true,setup(){TUT.target=null;}},
+  {t:'고과 올리는 법',d:'일은 찾아서 하는 거예요. 솔선수범할수록 고과가 올라요.',
+    h:`<span class="perks"><i>📋 노란 원 업무 · 출력물 배달</i><i>🖥 내 자리 근무: 모니터 미니게임</i><i>🙋 동료 부탁 들어주기</i><i>🚽 화캉스: 변기에서 코인 한 판</i><i>☕ 커피 · 정수기 · 커피 카트</i></span>`,
     read:true,setup(){TUT.target=null;}},
   {t:'끝!',d:'고과를 쌓아 승진하고(사원 → 대리 → 팀장 → 임원), 최후의 1인이 되면 CEO실 입성! 이제 실전에서 살아남아 보세요.',final:true,setup(){TUT.target=null;}},
 ];}
@@ -42,14 +55,15 @@ let TUT_STEPS=tutSteps();
 const blocked=(f,x,y)=>x<40||y<40||x>FW-40||y>FH-40||obsOf(f).some(o=>x>o.x-24&&x<o.x+o.w+24&&y>o.y-24&&y<o.y+o.h+24);
 function tutShow(){
   const s=TUT_STEPS[TUT.i];$('tutStep').textContent=s.final?'튜토리얼 완료':`튜토리얼 ${TUT.i+1}/${TUT_STEPS.length-1}`;
-  $('tutTitle').textContent=s.t;$('tutText').textContent=s.d;
+  $('tutTitle').textContent=s.t;$('tutText').innerHTML='';$('tutText').append(s.d);
+  if(s.h){$('tutText').insertAdjacentHTML('beforeend',s.h);const cur=$('tutText').querySelector(`[data-r="${G.me.rank}"]`);if(cur)cur.classList.add('cur');}
   $('tutDots').innerHTML=TUT_STEPS.slice(0,-1).map((_,k)=>`<i class="${k<TUT.i?'on':k===TUT.i?'now':''}"></i>`).join('');
   $('tutNext').hidden=!s.read;$('tutSkip').hidden=!!s.final||!!s.read;$('tutPlay').hidden=$('tutHome').hidden=!s.final;$('tutQuit').hidden=!!s.final;$('tut').classList.remove('ok');
 }
 function tutGo(i){const prev=TUT_STEPS[TUT.i];if(prev&&prev.leave&&i!==TUT.i)prev.leave();TUT.i=i;TUT.target=null;TUT.wait=0;const s=TUT_STEPS[i];if(s.setup)s.setup();tutShow();}
 function tutStart(){
   netClose();TUT_STEPS=tutSteps();newGame({humans:[{key:'me',name:'나',fit:myFit()}],bots:3,tutorial:true});startScreens();
-  TUT.on=true;$('tut').hidden=false;tutGo(0);feed('튜토리얼: 연습용 층이라 폐쇄되지 않아요');
+  TUT.on=true;$('tut').hidden=false;tutGo(0);
 }
 function tutStop(){TUT.on=false;TUT.target=null;$('tut').hidden=true;}
 /* called every frame from the main loop while a tutorial is running */

@@ -1,14 +1,14 @@
 // Runs whole games with only the rule files (public/js/sim) — no browser, no DOM, no three.js.
 // Proves the rules can run on a server, and doubles as a balance check.
-// Usage: node tools/headless.mjs [games=3]
+// Usage: node tools/headless.mjs [games=3] [easy|normal|hard]
 import { readFileSync, readdirSync } from 'node:fs';
 import vm from 'node:vm';
 const dir = new URL('../public/js/sim/', import.meta.url);
 for (const f of readdirSync(dir).filter(f => f.endsWith('.js')).sort())
   vm.runInThisContext(readFileSync(new URL(f, dir), 'utf8'), { filename: f });
-const games = +(process.argv[2] || 3), dt = 0.05;
+const games = +(process.argv[2] || 3), level = process.argv[3] || 'normal', dt = 0.05;
 for (let r = 0; r < games; r++) {
-  newGame();
+  newGame({ diff: level });
   const t0 = performance.now();
   let sawLunch = false;
   while (!G.over && G.t < 900) { step(dt); if (G.lunch) sawLunch = true; }

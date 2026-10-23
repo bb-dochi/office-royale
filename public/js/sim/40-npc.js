@@ -20,7 +20,7 @@ function sees(n,a){
 }
 /* 5F and up: the always-on boss is a 전무 (senior). Even 임원 must greet them, and getting caught costs more */
 const bossTitle=n=>n.kind==='ceo'?'대표님':n.senior?'전무님':'부장님';
-const immune=(a,n)=>(n.kind==='boss'&&!n.senior&&a.rank==='임원')||a.cloakT>0||a.vipT>0||(a.stampT>G.t&&a.stampNpc===n)||a.inRest;
+const immune=(a,n)=>(n.kind==='boss'&&!n.senior&&!n.tut&&a.rank==='임원')||a.cloakT>0||a.vipT>0||(a.stampT>G.t&&a.stampNpc===n)||a.inRest;
 function watchers(a){return G.npcs.filter(n=>(n.kind==='boss'||n.kind==='ceo')&&n.f===a.f&&npcActive(n));}
 function caught(a,n,why){
   if(n.kind==='ceo'){const l=Math.ceil(a.g/2);dmg(a,l,'boss');pop(a.f,a.x,a.y-34,`대표님께 적발 -${l}`,'#cf3626');tell(a,`대표님 앞에서 사내정치 적발: 고과 반토막`,true);UI.shake(.25,a);}
@@ -44,7 +44,7 @@ function errandStep(a,dt){
   const e=a.errand;e.t-=dt;
   if(a.f!==e.f||e.t<=0){a.errand=null;tell(a,'부탁을 못 들어줬다 (층을 떠났거나 시간 초과)');return;}
   if(e.step===0&&Math.hypot(a.x-e.tx,a.y-e.ty)<50){e.step=1;pop(a.f,a.x,a.y-36,'챙겼다!','#3f6f99');tell(a,'이제 부탁한 사람 자리로 돌아가요');}
-  else if(e.step===1&&Math.hypot(a.x-e.bx,a.y-e.by)<55){a.errand=null;gain(a,e.r);pop(a.f,a.x,a.y-36,`부탁 완료 +${e.r}`,'#2f7d4f');tell(a,`동료 부탁 완료: 고과 +${e.r}`);
+  else if(e.step===1&&Math.hypot(a.x-e.bx,a.y-e.by)<55){a.errand=null;gain(a,e.r);worked(a);pop(a.f,a.x,a.y-36,`부탁 완료 +${e.r}`,'#2f7d4f');tell(a,`동료 부탁 완료: 고과 +${e.r}`);
     const n=G.npcs.find(n=>n.kind==='desk'&&n.f===a.f&&Math.hypot(n.x-e.bx,n.y-e.by)<2);if(n)say(n,pick(['고마워요!','역시 최고예요','다음에 밥 살게요!']),'#2f7d4f');}
 }
 function soundAlert(f,victim,ox,oy,thrower){
@@ -124,7 +124,7 @@ function updNpcs(dt){
         if(n.att){const a=n.att;if(!a.alive||a.f!==n.f||!a.quest){n.att=null;n.cool=G.t+10;n.path=[];}
           else{const dx=a.x-n.x,dy=a.y-n.y,d=Math.hypot(dx,dy);if(d>30){const sp=Math.min(d-28,120*dt);n.x+=dx/d*sp;n.y+=dy/d*sp;}n.face=Math.atan2(dy,dx);continue;}}
         else if(G.t>(n.cool||0)){let best=null,bd=230;
-          for(const a of G.actors){if(!a.alive||a.f!==n.f||a.inRest||a.transit||a.quest||(a.questCd||0)>G.t)continue;const d=dist(a,n);if(d<bd&&sightLos(n.f,n.x,n.y,a.x,a.y)){bd=d;best=a;}}
+          for(const a of G.actors){if(!a.alive||a.f!==n.f||a.inRest||a.transit||a.desk||a.quest||(a.questCd||0)>G.t)continue;const d=dist(a,n);if(d<bd&&sightLos(n.f,n.x,n.y,a.x,a.y)){bd=d;best=a;}}
           if(best){if(bd<36){n.att=best;best.quest={n,t:5,max:5,botT:rnd(.8,1.8)};say(n,pick(['저 이거 어떻게 해요?','선배님 질문 있어요!','엑셀 함수 뭐 써요?','회의실 예약 어떻게 해요?']),'#3f8f5f');
               tell(best,'신입 인턴의 질문 공세: 느려짐 · E로 답해주면 +2',true);continue;}
             if(!n.rp||G.t>n.rp){n.path=findPath(n.f,n.x,n.y,best.x,best.y);n.rp=G.t+.8;n.pause=0;}}}
@@ -156,9 +156,9 @@ function updNpcs(dt){
       continue;
     }
     if(a.call){a.call.t-=dt;if(!a.isPlayer&&a.call.max-a.call.t>=a.call.botT){answer(a,a.call.botAns);continue;}if(a.call.t<=0)answer(a,null);continue;}
-    if(a.inRest||a.chan)continue;
+    if(a.inRest||a.chan||a.desk)continue;
     for(const n of watchers(a)){
-      if(n.kind==='boss'&&!n.senior&&a.rank==='임원'){if(G.t-(a.met[n.id]??-99)>=20&&sees(n,a)){a.met[n.id]=G.t;say(n,'상무님 오셨습니까!','#c08a1e');gain(a,1);tell(a,'임원 대우: 부장님이 먼저 인사한다 +1');}continue;}
+      if(n.kind==='boss'&&!n.senior&&!n.tut&&a.rank==='임원'){if(G.t-(a.met[n.id]??-99)>=20&&sees(n,a)){a.met[n.id]=G.t;say(n,'상무님 오셨습니까!','#c08a1e');gain(a,1);tell(a,'임원 대우: 부장님이 먼저 인사한다 +1');}continue;}
       if(immune(a,n)||G.t-(a.met[n.id]??-99)<20)continue;
       if(sees(n,a)){
         a.met[n.id]=G.t;a.contact={n,t:1.5,max:1.5};

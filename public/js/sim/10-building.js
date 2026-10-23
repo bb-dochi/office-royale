@@ -19,6 +19,7 @@ function mkFloor(i,name,short,carpet,grid){
   fl.rest={x:0,y:0,w:166,h:146};
   fl.ob.push(O(880,0,220,54,'counter',0));fl.spots.coffee={x:950,y:80};
   fl.ob.push(O(1058,100,36,34,'cooler',0));fl.spots.cooler={x:1076,y:117};
+  fl.spots.toilet={x:128,y:44}; // the one stall in the restroom (화캉스)
   fl.ob.push(O(0,330,60,44,'printer',0));fl.spots.printer={x:30,y:352};
   fl.ob.push(O(0,430,60,54,'copier',0));fl.spots.copier={x:30,y:457};
   fl.labels.push(['화장실',40,80],['탕비실',890,140],['복사실',8,318]);
@@ -114,8 +115,13 @@ const ROOF=6;
   f.ob.push(O(300,140,90,60,'ac'),O(710,140,90,60,'ac'),O(300,560,90,60,'ac'),O(710,560,90,60,'ac'));
   f.ob.push(O(500,330,100,100,'tank'));
   f.ob.push(O(170,90,26,26,'ashtray',0),O(900,640,26,26,'ashtray',0),O(170,640,26,26,'ashtray',0),O(900,90,26,26,'ashtray',0));
+  f.ob.push(O(50,190,26,26,'ashtray',0),O(50,560,26,26,'ashtray',0),O(1024,190,26,26,'ashtray',0),O(1024,560,26,26,'ashtray',0));
   f.ob.push(O(460,90,180,24,'bench',0),O(460,646,180,24,'bench',0));
-  f.labels.push(['왼쪽 흡연구역',110,50],['오른쪽 흡연구역',850,50],['물탱크',520,318]);
+  /* lunch tables for groups: the table blocks, the bench seats on both long sides are real seats anyone can take */
+  const lunchTable=(x,y)=>{f.ob.push(O(x,y,120,50,'picnic',0));let n=f.seats.filter(s=>s.bench).length;
+    for(const sx of[x+22,x+60,x+98])for(const[sy,fa]of[[y-17,Math.PI/2],[y+67,-Math.PI/2]])f.seats.push({f:ROOF,x:sx,y:sy,face:fa,dept:'옥상 식탁',name:`옥상 식탁 ${++n}번`,owner:null,occ:null,bench:true});};
+  lunchTable(200,340);lunchTable(340,340);lunchTable(640,340);lunchTable(780,340);
+  f.labels.push(['전담파 흡연구역',90,50],['연초파 흡연구역',850,50],['물탱크',520,318]);
   FLOORS.push(f);
 }
 const refreshObs=fl=>{fl._obs=fl.ob.concat(fl.doors.filter(d=>!d.open));};
@@ -138,26 +144,30 @@ for(const fl of FLOORS){
 }
 
 const CAT={heal:{n:'회복',c:'#3fbf6a'},atk:{n:'공격',c:'#e5483a'},def:{n:'방어',c:'#3d8be0'},move:{n:'이동',c:'#e0c23d'},ctl:{n:'방해',c:'#a35dd6'}};
+/* d: full description · s: the short one shown when you pick it up */
 const ITEMS={
-  coffee:{n:'아이스 아메리카노',d:'즉시 고과 +12',cat:'heal',g:'커',w:2},
-  stapler:{n:'스테이플러',d:'15발 연사',cat:'atk',g:'철',w:2},
-  bundle:{n:'서류 뭉치',d:'던지면 터져서 주변 -8',cat:'atk',g:'뭉',w:1.5},
-  spill:{n:'식은 커피',d:'바닥에 쏟기: 밟으면 미끄러지고 -5',cat:'ctl',g:'쏟',w:1.5},
-  card:{n:'법카',d:'회식 소집: 주변 3초 기절',cat:'ctl',g:'₩',w:1},
-  stamp:{n:'결재 도장',d:'공격 3번 막기',cat:'def',g:'印',w:2},
-  vip:{n:'임원 인맥',d:'10초간 상사 감지 면제',cat:'def',g:'VIP',w:1},
-  ticket:{n:'야근 식권',d:'8초간 속도 +45%',cat:'move',g:'식',w:2},
-  food:{n:'배달 음식',d:'즉시 고과 +15',cat:'heal',g:'밥',w:0},
+  coffee:{n:'아이스 아메리카노',d:'즉시 고과 +7',s:'고과 +7',cat:'heal',g:'커',w:2},
+  stapler:{n:'스테이플러',d:'15발 연사',s:'15발 연사',cat:'atk',g:'철',w:2},
+  bundle:{n:'서류 뭉치',d:'던지면 터져서 주변 -8',s:'맞은 자리 폭발',cat:'atk',g:'뭉',w:1.5},
+  spill:{n:'식은 커피',d:'바닥에 쏟기: 밟으면 미끄러지고 -5',s:'바닥 함정',cat:'ctl',g:'쏟',w:1.5},
+  card:{n:'법카',d:'회식 소집: 주변 3초 기절',s:'주변 3초 기절',cat:'ctl',g:'₩',w:1},
+  stamp:{n:'결재 도장',d:'공격 3번 막기',s:'3번 막기',cat:'def',g:'印',w:2},
+  vip:{n:'노캔 이어폰',d:'10초간 상사 감지 면제',s:'10초 상사 무시',cat:'def',g:'🎧',w:1},
+  ticket:{n:'야근 식권',d:'8초간 속도 +45%',s:'8초 빨라짐',cat:'move',g:'식',w:2},
+  lighter:{n:'라이터',d:'점심: 우리 재떨이로 가져가면 1점',s:'우리 재떨이로!',cat:'move',g:'🔥',w:0},
+  food:{n:'배달 음식',d:'즉시 고과 +15',s:'고과 +15',cat:'heal',g:'밥',w:0},
 };
 for(const k in ITEMS)ITEMS[k].c=CAT[ITEMS[k].cat].c;
 const ITEM_KEYS=Object.keys(ITEMS).filter(k=>ITEMS[k].w>0);
 function randItem(){let t=0;for(const k of ITEM_KEYS)t+=ITEMS[k].w;let r=Math.random()*t;for(const k of ITEM_KEYS){r-=ITEMS[k].w;if(r<=0)return k;}return 'coffee';}
 /* every 팀장 gets a Q skill; 임원 makes it stronger and quicker (see useSkill) */
 /* pas: always on · sk/skd: the Q skill and what it does (shown on the team choice memo) */
-const BRANCH={hr:{n:'인사팀장',pas:'고과 0이 돼도 인턴으로 1회 재입사',sk:'면담',skd:'근처 1명을 1.5초 묶어 둠',cd:14,c:'#2f9e57'},
-  dev:{n:'개발팀장',pas:'업무 속도 2배 · 사원증 태그 0.3초',sk:'야근',skd:'5초간 업무 2배 더 · 이동 빨라짐',cd:18,c:'#2f74c4'},
-  mkt:{n:'마케팅팀장',pas:'서류 사거리 +25%',sk:'전단지',skd:'사방으로 전단지 10장 광역 공격',cd:12,c:'#c08a1e'},
-  design:{n:'디자인팀장',pas:'부장님 시야 30% 좁게',sk:'위장',skd:'4초간 투명 (던지면 풀림)',cd:20,c:'#8d4bbf'}};
+/* pt / kt: the passive and the skill in a few words, for the team choice popup */
+const BRANCH={hr:{n:'인사팀장',pt:'탈락 시 1회 부활',kt:'1명 묶기',pas:'고과 0이 돼도 인턴으로 1회 재입사',sk:'면담',skd:'근처 1명을 1.5초 묶어 둠',cd:14,c:'#2f9e57'},
+  dev:{n:'개발팀장',pt:'업무 2배',kt:'업무·이동 가속',pas:'업무 속도 2배 · 사원증 태그 0.3초',sk:'야근',skd:'5초간 업무 2배 더 · 이동 빨라짐',cd:18,c:'#2f74c4'},
+  mkt:{n:'마케팅팀장',pt:'사거리 +25%',kt:'사방 공격',pas:'서류 사거리 +25%',sk:'전단지',skd:'사방으로 전단지 10장 광역 공격',cd:12,c:'#c08a1e'},
+  design:{n:'디자인팀장',pt:'부장님 시야 ↓',kt:'4초 투명',pas:'부장님 시야 30% 좁게',sk:'위장',skd:'4초간 투명 (던지면 풀림)',cd:20,c:'#8d4bbf'}};
+const BRANCH_PICK=12; // seconds a new 팀장 has to pick a team before one is picked for them
 const EXEC_CD=.6; // 임원: skill cooldown ×0.6 and a bigger effect
 const RANKS=[[0,'인턴'],[55,'사원'],[60,'대리'],[75,'팀장'],[90,'임원']];
 const TAG={인턴:2,사원:1.75,대리:1.5,팀장:1,'임원':.5};

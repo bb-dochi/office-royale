@@ -23,7 +23,7 @@ function resultCard(){
   if(RES.win){x.font=f(900,58);x.fillText('승진',0,2);}else{x.font=f(900,46);x.fillText('권고',0,-26);x.fillText('사직',0,30);}
   x.restore();x.textAlign='left';x.textBaseline='alphabetic';
   /* the facts */
-  const rows=[['최종 순위',RES.place],['근속 시간',RES.time],['최종 직급',RES.rank],['최고 도달',RES.floor],['제출한 업무',RES.tasks],['처리한 동료',RES.kills]];
+  const rows=[['최종 순위',RES.place],['근속 시간',RES.time],['최종 직급',RES.rank],['성과 요약',RES.perf]];
   let y=T+430;
   for(const[k,v]of rows){x.font=f(700,34);x.fillStyle='#5d666e';x.fillText(k,P,y);x.font=f(900,44);x.fillStyle=k==='최종 순위'?'#cf3626':'#1d2328';x.fillText(v,P+250,y);
     x.strokeStyle='rgba(29,35,40,.18)';x.setLineDash([8,8]);x.lineWidth=2;x.beginPath();x.moveTo(P,y+28);x.lineTo(L+mw-70,y+28);x.stroke();x.setLineDash([]);y+=88;}
@@ -40,9 +40,15 @@ const shareURL=()=>location.origin+location.pathname;
 const shareText=()=>`오피스 로얄 ${RES.place} · ${RES.rank} · ${RES.time} 근속. 너도 살아남을 수 있어? ${shareURL()}`;
 async function shareResult(){
   const btn=$('shareBtn');btn.disabled=true;
+  /* the clipboard only takes an image while the click still counts, so hand it the promise right away */
+  const blobP=(async()=>{if(document.fonts&&document.fonts.ready)await document.fonts.ready;return new Promise(r=>resultCard().toBlob(r,'image/png'));})();
   try{
-    if(document.fonts&&document.fonts.ready)await document.fonts.ready;
-    const blob=await new Promise(r=>resultCard().toBlob(r,'image/png'));
+    if(!isTouch&&navigator.clipboard&&window.ClipboardItem){
+      try{await navigator.clipboard.write([new ClipboardItem({'image/png':blobP})]);
+        $('rNote').textContent='결과 이미지를 복사했어요. 채팅창에 붙여넣기(Ctrl+V) 하세요.';btn.disabled=false;return;}
+      catch{} // not allowed here: save the file instead (below)
+    }
+    const blob=await blobP;
     const file=new File([blob],'office-royale.png',{type:'image/png'});
     if(isTouch&&navigator.canShare&&navigator.canShare({files:[file]})){
       try{await navigator.share({files:[file],title:'오피스 로얄',text:shareText()});}catch(e){if(!e||e.name!=='AbortError')throw e;}

@@ -23,13 +23,16 @@ function think(b){
   const enemy=nearest(b,300,true),ed=enemy?dist(b,enemy):1e9;
   botItems(b,enemy,ed);
   if(f===ROOF){
-    const it=G.items.filter(x=>x.f===ROOF&&canTake(b,x.k)).sort((p,q)=>dist(b,p)-dist(b,q))[0];
-    if(enemy&&(ed<220||!it)){b.mode='fight';b.target=enemy;b.goal=null;return;}
+    /* lunch: light up when someone is on us, bring lighters home, grab lighters, otherwise fight */
+    if(G.lunch&&enemy&&ed<190&&b.smokeCd<=0&&(G.t-b.lastHitT<2||Math.random()<.15))smoke(b);
+    if(b.lighter>0&&!(enemy&&ed<110)){const ash=ashOf(b.side).sort((p,q)=>dist(b,p)-dist(b,q))[0];if(ash){setGoal(b,ash,'deliver');return;}}
+    const it=G.items.filter(x=>x.f===ROOF&&(x.k==='lighter'?(b.lighter||0)<LUNCH.carry:canTake(b,x.k))).sort((p,q)=>dist(b,p)*(p.k==='lighter'?.6:1)-dist(b,q)*(q.k==='lighter'?.6:1))[0];
+    if(enemy&&(ed<160||!it)){b.mode='fight';b.target=enemy;b.goal=null;return;}
     if(it){setGoal(b,it,'loot');return;}
     if(b.mode!=='wander'||!b.goal||dist(b,b.goal)<20)setGoal(b,randFree(ROOF),'wander');return;
   }
   if(G.lunch&&G.lunch.t>4&&b.lunchGo){stand(b);const pk=b.lunchPad||'elev';
-    if(dist(b,PADS[pk])<34){goRoof(b,pk==='stair'?'L':'R');return;}setGoal(b,PADS[pk],'roof');return;}
+    if(dist(b,PADS[pk])<34){goRoof(b);return;}setGoal(b,PADS[pk],'roof');return;}
   if(b.branch==='mkt'&&b.skillCd<=0&&G.actors.filter(o=>visibleTo(b,o)&&dist(o,b)<200).length>=2&&!watchers(b).some(n=>!immune(b,n)&&sees(n,b)))useSkill(b);
   if(b.branch==='design'&&b.skillCd<=0&&b.g<35&&G.t-b.lastHitT<2)useSkill(b);
   if(b.branch==='hr'&&b.skillCd<=0&&G.t-b.lastHitT<3&&G.actors.some(o=>o!==b&&visibleTo(b,o)&&dist(o,b)<150))useSkill(b);
@@ -45,6 +48,7 @@ function think(b){
     setGoal(b,pad,'travel');return;
   }
   if(b.docs>0){const n=watchers(b).find(n=>dist(n,b)<320);if(n){if(dist(n,b)<130){submitDoc(b,n);}else{setGoal(b,n,'doc');return;}}}
+  if(b.desk&&!G.tasks.some(t=>t.ready&&t.by===b))return; // working at the desk: untouchable until it's done
   if(b.sit){if(b.g>=b.sitGoal||G.t-b.sitStart>12||(enemy&&ed<110)||G.tasks.some(t=>t.ready&&inTaskRange(b,t)))stand(b);else return;}
   const provoked=b.lastHitBy&&b.lastHitBy.alive&&b.lastHitBy.f===f&&visibleTo(b,b.lastHitBy)&&G.t-b.lastHitT<5;
   let best=enemy,aggro=false;
@@ -53,6 +57,10 @@ function think(b){
   else if(b.type==='정치꾼')aggro=(!!best&&G.closed>0)||provoked;
   else if(b.type==='성실파'||b.type==='아부꾼'){aggro=provoked||(G.final&&!!best);if(provoked)best=b.lastHitBy;}
   else if(b.type==='루팡'){aggro=(best&&best.g<35)||provoked||G.final;if(provoked)best=b.lastHitBy;}
+  /* 보통 and up: a person who comes close gets jumped, whatever the bot's type (bots still mind the bosses when throwing) */
+  if(!aggro&&b.hunter&&!G.lunch&&diff().hunt&&!b.carry){
+    const h=G.actors.find(o=>o.isPlayer&&visibleTo(b,o)&&dist(o,b)<diff().hunt&&shotLos(f,b.x,b.y,o.x,o.y)&&G.actors.filter(x=>x!==b&&x.mode==='fight'&&x.target===o).length<diff().huntMax);
+    if(h){best=h;aggro=true;}}
   if(aggro&&best&&!(b.carry&&!provoked)){b.mode='fight';b.target=best;b.goal=null;return;}
   if(b.carry){setGoal(b,fl.spots.box,'deliver');return;}
   const dr=G.drops.find(d=>d.f===f&&Math.hypot(d.x-b.x,d.y-b.y)<320);
@@ -66,14 +74,14 @@ function think(b){
   }
   if(b.g<38){
     const s=b.seats[f];
-    if(s&&(!s.occ||s.occ===b)&&!warnFloor(f)){setGoal(b,s,'rest');return;}
+    if(s&&(!s.occ||s.occ===b)&&!warnFloor(f)&&b.deskCd<=0){setGoal(b,s,'rest');return;}
     if(b.coffeeCd<=0&&f>0){setGoal(b,fl.spots.coffee,'coffee');return;}
   }
   if(b.coolerCd<=0&&b.g<60&&dist(b,fl.spots.cooler)<300){setGoal(b,{x:fl.spots.cooler.x-40,y:fl.spots.cooler.y+20},'cooler');return;}
   const door=G.doors[f];
   if(door&&door.v&&door.v.t>4&&dist(b,DOOR)<420&&(b.type==='성실파'||b.type==='아부꾼'||(b.doorRoll??=Math.random())<.15)){setGoal(b,DOOR,'door');return;}
-  if(b.type==='루팡'&&!G.final&&Math.random()<.5){if(!b.hide||b.hideF!==f){const s=b.seats[f];b.hide=s&&!s.occ?s:randFree(f);b.hideF=f;}setGoal(b,b.hide,'hide');return;}
-  let tk=null,td=1e9;for(const t of G.tasks){if(t.f!==f)continue;if(t.kind==='print'&&b.carry)continue;const d=Math.hypot(b.x-t.x,b.y-t.y)*(t.ready?.6:1);if(d<td){td=d;tk=t;}}
+  if(b.type==='루팡'&&!G.final&&G.t-b.workT<IDLE*.6&&Math.random()<.5){if(!b.hide||b.hideF!==f){const s=b.seats[f];b.hide=s&&!s.occ?s:randFree(f);b.hideF=f;}setGoal(b,b.hide,'hide');return;}
+  let tk=null,td=1e9;for(const t of G.tasks){if(t.f!==f||t.by&&t.by!==b)continue;if(t.kind==='print'&&b.carry)continue;const d=Math.hypot(b.x-t.x,b.y-t.y)*(t.ready?.6:1);if(d<td){td=d;tk=t;}}
   if(tk){
     let p=tk;if(tk.zone){if(!b.taskPt||b.taskPtId!==tk.id){b.taskPt={x:tk.zone.x+rnd(24,tk.zone.w-24),y:tk.zone.y+rnd(24,tk.zone.h-24)};b.taskPtId=tk.id;}p=b.taskPt;}
     else if(tk.kind==='copy'||tk.kind==='print'){p={x:tk.x+K(56),y:tk.y};}
@@ -93,7 +101,7 @@ function updBot(b,dt){
   b.pathAge-=dt;b.react-=dt;
   if(locked(b)||b.chan||b.sit||b.f<0)return;
   const fl=FLOORS[b.f];
-  if(b.mode==='rest'){const s=b.seats[b.f];if(s&&dist(b,s)<14&&!s.occ){sit(b,s);b.sitGoal=Math.min(100,b.g+15);return;}}
+  if(b.mode==='rest'){const s=b.seats[b.f];if(s&&dist(b,s)<14&&!s.occ&&b.deskCd<=0){sit(b,s);b.sitGoal=Math.min(100,b.g+15);return;}}
   if(b.mode==='door'&&dist(b,DOOR)<44&&G.doors[b.f].v){openDoor(b);b.mode='idle';return;}
   if(b.mode==='coffee'&&dist(b,fl.spots.coffee)<34&&b.coffeeCd<=0){b.mode='idle';}
   for(const d of fl.doors)if(!d.open&&Math.hypot(b.x-(d.x+d.w/2),b.y-(d.y+d.h/2))<46)toggleDoor(b.f,d,true);
@@ -111,7 +119,7 @@ function updBot(b,dt){
     if(b.cd<=0&&b.react<=0&&d<330&&see){
       const careful=b.type!=='폭주'&&!G.final;
       const risky=watchers(b).some(n=>!immune(b,n)&&(sees(n,b)||dist(n,t)<VIS[n.kind].sound*.8));
-      if(!(careful&&risky)){throwPaper(b,b.face+(Math.random()-.5)*(b.type==='폭주'?.5:.3));b.react=.15+Math.random()*.45;}
+      if(!(careful&&risky)){throwPaper(b,b.face+(Math.random()-.5)*(b.type==='폭주'?.5:.3)*diff().aim);b.react=Math.max(.08,.15+Math.random()*.45+diff().react);}
     }
   }else{if(b.mode==='fight')b.mode='idle';[vx,vy]=follow(b);if(vx||vy)b.face=Math.atan2(vy,vx);}
   b.stuckT+=dt;

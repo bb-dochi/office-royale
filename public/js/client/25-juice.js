@@ -72,10 +72,14 @@ function scrapsStep(dt){
   if(any)pGeo.attributes.position.needsUpdate=true;
 }
 /* what a rank gives you, shown on the promotion slip */
-function rankPerks(r){const p=[`공격력 ${DMG[r]}배`,`사원증 태그 ${TAG[r]}초`];if(r==='팀장')p.push('부서 스킬(Q)');if(r==='임원')p.push('부장님 프리패스','스킬 강화');return p.join(' · ');}
+function rankPerks(r){const p=[`공격력 ×${DMG[r]}`];if(r==='팀장')p.push(isTouch?'부서 스킬':'부서 스킬 Q');if(r==='임원')p.push('부장님 프리패스','스킬 강화');return p.join(' · ');}
 let bannerAnim=null;
 function banner(stamp,title,sub,gold){
-  const b=$('banner');$('bannerStamp').textContent=stamp;$('bannerTitle').textContent=title;$('bannerSub').textContent=sub||'';b.classList.toggle('gold',!!gold);b.hidden=false;
+  const b=$('banner');$('bannerStamp').textContent=stamp;$('bannerTitle').textContent=title;
+  $('bannerSub').innerHTML=(sub||'').split(' · ').filter(Boolean).map(x=>`<i>${x}</i>`).join(''); // each point as its own chip
+  b.classList.toggle('gold',!!gold);b.hidden=false;
+  /* in the tutorial the guide card sits at the top: put the slip just under it instead of on top of it */
+  const tc=typeof TUT!=='undefined'&&TUT.on&&!$('tut').hidden?$('tut').getBoundingClientRect():null;b.style.top=tc?`${Math.round(tc.bottom+12)}px`:'';
   if(bannerAnim)bannerAnim.cancel();
   if(reduceMotion){bannerAnim=b.animate([{opacity:1},{opacity:1},{opacity:0}],{duration:2200});}
   else{bannerAnim=b.animate([{opacity:0,transform:'translateX(-50%) translateY(10px)'},{opacity:1,transform:'translateX(-50%)',offset:.08},{opacity:1,transform:'translateX(-50%)',offset:.85},{opacity:0,transform:'translateX(-50%) translateY(-6px)'}],{duration:2400,easing:'ease-out'});

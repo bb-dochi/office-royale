@@ -13,6 +13,7 @@ const ACT={
   answer:k=>NETC.on?netSend({t:'cmd',c:'answer',k}):answer(G.me,k),
   branch:k=>NETC.on?netSend({t:'cmd',c:'branch',k}):chooseBranch(G.me,k),
   floor:dir=>NETC.on?netSend({t:'cmd',c:'floor',dir}):useFloor(G.me,dir),
+  desk:k=>NETC.on?netSend({t:'cmd',c:'desk',k}):deskKey(G.me,k),
 };
 /* what the action button would do now: computed by the server online (it sees the whole state) */
 const myAction=()=>NETC.on?NETC.act:contextAction(G.me);
@@ -46,7 +47,7 @@ function netBegin(){
   NETC.byA.clear();NETC.byN.clear();NETC.byT.clear();NETC.byE.clear();NETC.act=null;NETC.sentIn='';NETC.off=null;
   for(const fl of FLOORS){for(const s of fl.seats){s.owner=null;s.occ=null;}let ch=false;for(const d of fl.doors)if(d.open){d.open=false;ch=true;}if(ch)refreshObs(fl);}
   G={t:0,actors:[],me:null,proj:[],items:[],traps:[],tasks:[],drops:[],wet:[],pops:[],dings:[],bursts:[],closed:0,nextClose:INTERVAL,warn:false,final:false,finalT:0,over:false,winner:null,
-     npcs:[],doors:[],events:[],notice:null,ceo:null,blackout:null,cake:null,fire:0,star:null,audit:null,lunch:null,airdrops:[],net:true};
+     npcs:[],doors:[],events:[],notice:null,ceo:null,blackout:null,cake:null,fire:0,star:null,audit:null,lunch:null,airdrops:[],smokes:[],net:true};
   NETC.on=true;startScreens();
 }
 /* reuse one object per server id so renderer caches (keyed by object) stay valid */
@@ -67,7 +68,7 @@ function netApply(m){
     a.sit=seatAt(s.sit);a.transit=s.transit||null;a.chan=s.chan||null;a.call=s.call||null;return a;});
   for(const s of P.N){const n=keep(NETC.byN,s.id,()=>({...s,samp:[],path:[]}));const jump=n.f!==s.f;Object.assign(n,{kind:s.kind,f:s.f,slot:s.slot,on:s.on,senior:!!s.sr,ask:s.ask>0,job:s.ask>0?{r:s.ask}:null});pushSamp(n,P.t,s,jump);}
   G.npcs=P.N.map(s=>NETC.byN.get(s.id));G.ceo=npcBy(P.ceo);
-  G.tasks=P.T.map(s=>{const t=keep(NETC.byT,s.id,()=>({react:{}}));Object.assign(t,s);t.seat=seatAt(s.seat);return t;});
+  G.tasks=P.T.map(s=>{const t=keep(NETC.byT,s.id,()=>({react:{}}));Object.assign(t,s);t.seat=seatAt(s.seat);t.by=actorBy(s.by);return t;});
   G.items=listFrom(P.I,'i',(o,s)=>Object.assign(o,s));
   G.proj=listFrom(P.P,'p',(o,s)=>{Object.assign(o,s);o.bx=s.x;o.by=s.y;o.bt=P.t;o.o=actorBy(s.o);});
   G.traps=listFrom(P.TR,'r',(o,s)=>{Object.assign(o,s);o.o=actorBy(s.o);});
@@ -75,9 +76,10 @@ function netApply(m){
   G.drops=listFrom(P.D,'d',(o,s)=>Object.assign(o,s));
   G.bursts=listFrom(P.B,'b',(o,s)=>Object.assign(o,s));
   G.airdrops=listFrom(P.AD,'a',(o,s)=>Object.assign(o,s));
+  G.smokes=listFrom(P.SM||[],'m',(o,s)=>Object.assign(o,s));
   G.pops=listFrom(P.PO,'o',(o,s)=>Object.assign(o,s));
   G.dings=listFrom(P.DI,'g',(o,s)=>Object.assign(o,s));
-  {const live=new Set([...G.items,...G.proj,...G.traps,...G.wet,...G.drops,...G.bursts,...G.airdrops,...G.pops,...G.dings]);for(const[k,o]of NETC.byE)if(!live.has(o))NETC.byE.delete(k);}
+  {const live=new Set([...G.smokes,...G.items,...G.proj,...G.traps,...G.wet,...G.drops,...G.bursts,...G.airdrops,...G.pops,...G.dings]);for(const[k,o]of NETC.byE)if(!live.has(o))NETC.byE.delete(k);}
   G.doors=P.DV.map((v,f)=>({f,v}));
   for(const f in P.fdoors){const fl=FLOORS[f],bits=P.fdoors[f];let ch=false;fl.doors.forEach((d,i)=>{const o=bits[i]==='1';if(d.open!==o){d.open=o;d.t=0;ch=true;}});if(ch)refreshObs(fl);}
   if(P.seats)for(const f in P.seats)P.seats[f].forEach(([ow,oc],i)=>{const s=FLOORS[f].seats[i];if(s){s.owner=actorBy(ow);s.occ=actorBy(oc);}});
@@ -137,7 +139,7 @@ function netFrame(dt){
   for(const a of G.actors)if(a!==me)sampleAt(a,rt);
   for(const n of G.npcs)sampleAt(n,rt);
   for(const p of G.proj){const d=Math.max(-p.d,p.sp*(rt-p.bt));p.x=p.bx+p.dx*d;p.y=p.by+p.dy*d;p.spin+=dt*14;}
-  for(const p of G.pops)p.t+=dt;for(const b of G.bursts)b.t+=dt;for(const d of G.airdrops)d.t+=dt;
+  for(const p of G.pops)p.t+=dt;for(const b of G.bursts)b.t+=dt;for(const d of G.airdrops)d.t+=dt;for(const s of G.smokes||[])s.t+=dt;
   if(!me)return;
   const k=Math.min(1,dt*10);
   if(me.alive&&me.f>=0&&!me.transit&&!me.sit&&!me.chan&&!locked(me)&&me.input){

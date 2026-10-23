@@ -17,24 +17,61 @@
 <canvas id="game" aria-label="오피스 로얄 게임 화면"></canvas>
 
 <div class="hud">
-  <div class="idcard">
-    <div class="row"><span>사원증</span><button class="mutebtn" aria-label="소리 끄기">🔊</button><button class="pausebtn" id="pauseBtn" aria-label="일시정지" hidden>❚❚</button><span class="grade" id="grade">B</span></div>
-    <div class="who" id="pname">나 · 인턴</div>
-    <div class="bar" id="gbarWrap"><i id="gbar"></i></div>
-    <div class="gnum"><span>고과</span><b id="gval">50</b></div>
-    <div class="promo"><span id="promoT">대리까지 10</span><i><b id="promoB"></b></i></div>
-    <div class="buffs" id="buffs"></div>
+  <div class="rcol">
+  <div class="mapbox" id="mapbox" role="button" aria-label="지도 크게 보기">
+    <div class="mhead"><b id="mFloor"></b><span class="msys"><button class="mfold touch-only" id="mFold" aria-label="지도 접기">▴</button><button class="mutebtn" aria-label="소리 끄기">🔊</button><button class="pausebtn" id="pauseBtn" aria-label="일시정지" hidden>❚❚</button><i class="mexp" aria-hidden="true">⤢</i></span></div>
+    <div class="mbody"><div class="tower" id="tower"></div><canvas id="mm" width="300" height="207"></canvas></div>
+    <div class="mtap" id="mTap"></div>
   </div>
-  <div class="tower" id="tower"></div>
+  <!-- what I am on right now: a favour (부탁) and my task, small, under the map -->
+  <div class="quests" id="quests" hidden></div>
+  </div>
 </div>
-<div id="notice" hidden><b>사내 메신저 · 공지</b><span id="noticeText"></span></div>
+<!-- the round, in one line: alive count, what's next, how long. A full-width coloured band while it is urgent -->
+<div id="status" hidden><span class="salive" id="sAlive"></span><i id="sIco"></i><span id="sText"></span><b id="sTime"></b></div>
+<!-- everything about me in one place. PC: a dock at the bottom centre (effects above it).
+     Phones: the dock dissolves (display:contents) and its parts sit in their own corners -->
+<div id="pdock">
+  <div id="fx" aria-label="적용 중인 효과"></div>
+  <div class="drow">
+    <div class="idcard">
+      <div class="row"><b class="who" id="pname">나 · 인턴</b><span class="grade" id="grade">B</span></div>
+      <div class="gline"><span>고과</span><b id="gval">50</b><div class="bar" id="gbarWrap"><i id="gbar"></i></div></div>
+      <div class="promo"><span id="promoT">사원까지 5</span><i><b id="promoB"></b></i></div>
+    </div>
+    <div class="gear" id="gear" aria-label="아이템"><div class="gs" id="gAtk"></div><div class="gs" id="gDef"></div></div>
+    <div id="keybar" hidden></div>
+  </div>
+</div>
+<!-- desk work: the view goes first-person onto my monitor and this is what is on it -->
+<div id="desk" hidden>
+  <div class="mon"><div class="scr">
+    <div class="sbar"><span>사내 업무 시스템</span><span id="dRound"></span></div>
+    <h3 id="dJob"></h3>
+    <div class="seq" id="dSeq"></div>
+    <div class="tm"><i id="dTm"></i></div>
+    <p class="res" id="dRes"></p>
+    <p class="help pc-only"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 또는 방향키로 순서대로 · <kbd>E</kbd> 일어나기</p>
+    <p class="help touch-only">아래 버튼을 순서대로 누르세요</p>
+  </div></div>
+  <div class="dpad touch-only" id="dPad"><button data-k="L" aria-label="왼쪽">◀</button><button data-k="U" aria-label="위">▲</button><button data-k="D" aria-label="아래">▼</button><button data-k="R" aria-label="오른쪽">▶</button><button class="quit" data-k="Q">일어나기</button></div>
+</div>
+<!-- 화캉스: the phone in my hand while I'm on the toilet -->
+<div id="phone" hidden><div class="ph">
+  <div class="pbar"><span>오피스코인 OFC</span><span id="pTime"></span></div>
+  <b id="pMult">×1.00</b><small id="pGain"></small>
+  <canvas id="pChart" width="240" height="150"></canvas>
+  <p class="pres" id="pRes"></p>
+  <button id="pCash">익절<kbd class="pc-only">E</kbd></button>
+  <p class="phelp">언제 터질지 몰라요 · <span class="pc-only">WASD</span><span class="touch-only">이동</span>하면 폰 내려놓기</p>
+</div></div>
+<div id="notice" hidden><b>공지</b><span id="noticeText"></span></div>
 <div id="feed" aria-live="polite"></div>
-<div id="fx" aria-label="적용 중인 효과"></div>
 <div class="hint" id="hint" hidden>왼쪽을 드래그해서 이동</div>
 <div id="stick" hidden><div id="knob"></div></div>
 <div class="pills" id="pills"></div>
-<div id="keybar" hidden></div>
 <button id="greetBtn" class="rbtn" aria-label="상호작용" disabled><span id="actLabel">상호작용</span></button>
+<button id="downBtn" class="rbtn" aria-label="아래층으로" hidden><span id="downLabel">▼</span></button>
 <button id="skillBtn" class="rbtn" aria-label="팀장 스킬" hidden><span id="skillLabel">스킬</span></button>
 <div id="slots" class="slots"></div>
 <button id="throwBtn" class="rbtn" aria-label="서류 던지기"><span id="throwLabel">서류<br>투척</span></button>
@@ -44,7 +81,7 @@
   <div class="tm"><i id="callTm"></i></div>
   <div class="opts" id="callOpts"></div>
 </div>
-<div id="branchBox" hidden><div class="who">팀장 승진! 어느 팀을 맡을까요? <small>임원이 되면 스킬 강화</small></div><div class="tm"><i id="branchTm"></i></div><div class="bopts" id="branchOpts"></div></div>
+<div id="branchBox" hidden><div class="who">팀장 승진! 팀을 고르세요 <small id="branchLeft"></small></div><div class="tm"><i id="branchTm"></i></div><div class="bopts" id="branchOpts"></div></div>
 <div id="banner" hidden aria-live="polite"><b class="bs" id="bannerStamp"></b><div><strong id="bannerTitle"></strong><small id="bannerSub"></small></div></div>
 <div id="countdown" hidden><span id="cdName"></span><b id="cdNum"></b></div>
 <div id="tut" hidden><div class="top"><span id="tutStep"></span><span class="dots" id="tutDots"></span></div><b id="tutTitle"></b><p id="tutText"></p>
@@ -78,7 +115,7 @@
       <div class="sec"><p class="items"><span class="lbl">아이템</span><b style="color:#2f9e57">●회복</b><b style="color:#d23b2e">●공격</b><b style="color:#2f74c4">●방어</b><b style="color:#b39516">●이동</b><b style="color:#8d4bbf">●방해</b></p></div>
       <div class="sec"><div><ul class="keys pc-only">
         <li><kbd>WASD</kbd>이동</li><li><kbd>Shift</kbd>달리기</li><li><kbd>Space</kbd><svg class="mouse" viewBox="0 0 12 16" role="img" aria-label="좌클릭"><rect x=".75" y=".75" width="10.5" height="14.5" rx="5.25"/><path d="M6 .75A5.25 5.25 0 0 0 .75 6v1H6z"/></svg>공격</li><li><kbd>E</kbd>모든 상호작용</li>
-        <li><kbd>Q</kbd>팀 스킬</li><li><kbd>Tab</kbd>지도</li>
+        <li><kbd>Q</kbd>팀 스킬</li><li><kbd>Shift</kbd>+<kbd>E</kbd>아래층</li><li><kbd>Tab</kbd>지도 크게</li>
       </ul>
       <ul class="keys touch-only">
         <li><kbd>왼쪽 드래그</kbd>이동</li><li><kbd>점선 밖까지 밀기</kbd>달리기</li><li><kbd>서류 투척</kbd>공격</li>
@@ -132,6 +169,15 @@
   </div>
 </section>
 
+<section class="sheet" id="diffSheet" hidden>
+  <div class="memo diffmemo">
+    <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span>혼자 하기<button class="homeX" id="diffX" aria-label="닫기">✕</button></span></div>
+    <h1>난이도</h1>
+    <p class="subj">봇 동료들이 얼마나 독한지 골라 주세요.</p>
+    <div class="diffopts" id="diffOpts"></div>
+  </div>
+</section>
+
 <section class="sheet" id="pause" hidden>
   <div class="memo pausememo">
     <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span>자리 비움 신청</span></div>
@@ -152,8 +198,7 @@
       <dt>최종 순위</dt><dd id="rPlace">-</dd>
       <dt>근속 시간</dt><dd id="rTime">-</dd>
       <dt>최종 직급</dt><dd id="rRank">-</dd>
-      <dt>최고 도달</dt><dd id="rFloor">-</dd>
-      <dt>제출한 업무</dt><dd id="rTasks">-</dd>
+      <dt>성과 요약</dt><dd id="rPerf">-</dd>
     </dl>
     <p class="note" id="rNote"></p>
     <button class="btn mainbtn" id="againBtn">다시 출근</button>
