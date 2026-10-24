@@ -62,7 +62,7 @@ function tutShow(){
 }
 function tutGo(i){const prev=TUT_STEPS[TUT.i];if(prev&&prev.leave&&i!==TUT.i)prev.leave();TUT.i=i;TUT.target=null;TUT.wait=0;const s=TUT_STEPS[i];if(s.setup)s.setup();tutShow();}
 function tutStart(){
-  netClose();TUT_STEPS=tutSteps();newGame({humans:[{key:'me',name:'나',fit:myFit()}],bots:3,tutorial:true});startScreens();
+  netClose();TUT_STEPS=tutSteps();newGame({humans:[{key:'me',name:'나',fit:myFit(),team:myTeam()}],bots:3,tutorial:true});startScreens();
   TUT.on=true;$('tut').hidden=false;tutGo(0);
 }
 function tutStop(){TUT.on=false;TUT.target=null;$('tut').hidden=true;}

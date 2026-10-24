@@ -12,7 +12,7 @@ function npcActive(n){
 function sees(n,a){
   const v=VIS[n.kind];if(!v||a.f!==n.f||!a.alive)return false;
   if(G.blackout&&G.blackout.f===n.f)return false;
-  const d=dist(n,a),k=a.branch==='design'?.7:1; // 디자인팀장: 눈에 덜 띔
+  const d=dist(n,a),k=a.branch==='design'?1-.3*teamK(a):1; // 디자인: 눈에 덜 띔 (대리 -15%, 팀장 -30%)
   if(d<v.pres*k)return sightLos(n.f,n.x,n.y,a.x,a.y);
   if(d>v.len*k)return false;
   if(Math.abs(angDiff(Math.atan2(a.y-n.y,a.x-n.x),n.face))>v.half)return false;

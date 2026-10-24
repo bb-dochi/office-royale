@@ -56,6 +56,9 @@
   </div></div>
   <div class="dpad touch-only" id="dPad"><button data-k="L" aria-label="왼쪽">◀</button><button data-k="U" aria-label="위">▲</button><button data-k="D" aria-label="아래">▼</button><button data-k="R" aria-label="오른쪽">▶</button><button class="quit" data-k="Q">일어나기</button></div>
 </div>
+<!-- lunch on the roof: the score and what it's for, big, under the status strip -->
+<div id="lunchBoard" hidden><div class="lb"><b class="tl">전담파</b><em id="lbL">0</em><i>:</i><em id="lbR">0</em><b class="tr">연초파</b></div>
+  <p>🔥 라이터를 <u>우리 재떨이</u>에 → <strong>이긴 팀 전원 고과 +8</strong><span class="pc-only"> · E 담배 연막</span></p></div>
 <!-- 화캉스: the phone in my hand while I'm on the toilet -->
 <div id="phone" hidden><div class="ph">
   <div class="pbar"><span>오피스코인 OFC</span><span id="pTime"></span></div>
@@ -110,7 +113,7 @@
         <li>고과 0이면 권고사직. 최후의 1인만 <b>CEO층</b>으로.</li>
         <li>40초마다 <b>아래층부터 폐쇄</b>돼요. 계속 위로 올라가세요.</li>
         <li>부장님과 눈이 마주치면 <b>먼저 인사</b>.</li>
-        <li>승진할수록 공격이 세지고, 팀장이 되면 <b>팀 스킬</b>이 생겨요.</li>
+        <li>로비에서 <b>팀</b>을 골라요. 대리부터 팀 효과, 팀장이 되면 <b>팀 스킬(Q)</b>.</li>
       </ul></div>
       <div class="sec"><p class="items"><span class="lbl">아이템</span><b style="color:#2f9e57">●회복</b><b style="color:#d23b2e">●공격</b><b style="color:#2f74c4">●방어</b><b style="color:#b39516">●이동</b><b style="color:#8d4bbf">●방해</b></p></div>
       <div class="sec"><div><ul class="keys pc-only">
@@ -123,7 +126,7 @@
       </ul></div></div>
       </div>
       <div class="btns"><button class="btn" id="hSolo">혼자 하기</button><button class="btn" id="hMulti">같이 하기</button></div>
-      <p class="foot"><button class="tlink" id="hTut">튜토리얼</button><button class="tlink" id="hDress">옷 갈아입기</button></p>
+      <p class="foot"><button class="tlink" id="hTut">튜토리얼</button><button class="tlink" id="hTeam">팀 고르기</button><button class="tlink" id="hDress">옷 갈아입기</button></p>
     </div>
     <div id="dress" hidden>
       <h1>옷 갈아입기</h1>
@@ -139,6 +142,7 @@
   <button data-go="solo" class="pri">혼자 하기</button>
   <button data-go="multi" class="pri">같이 하기</button>
   <button data-go="tut">튜토리얼</button>
+  <button data-go="team" id="dockTeam">팀 고르기</button>
   <button data-go="dress">옷 갈아입기</button>
 </nav>
 
@@ -175,6 +179,15 @@
     <h1>난이도</h1>
     <p class="subj">봇 동료들이 얼마나 독한지 골라 주세요.</p>
     <div class="diffopts" id="diffOpts"></div>
+  </div>
+</section>
+
+<section class="sheet" id="teamSheet" hidden>
+  <div class="memo teammemo">
+    <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span>부서 배치 신청<button class="homeX" id="teamX" aria-label="닫기">✕</button></span></div>
+    <h1>팀 고르기</h1>
+    <p class="subj">입사할 부서예요. 대리부터 약한 패시브, 팀장이 되면 Q 스킬, 임원은 스킬 강화.</p>
+    <div class="bopts" id="teamOpts"></div>
   </div>
 </section>
 

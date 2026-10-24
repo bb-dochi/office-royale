@@ -24,7 +24,7 @@ export class Room extends DurableObject {
       let msg; try { msg = JSON.parse(typeof ev.data === 'string' ? ev.data : ''); } catch { return; }
       if (!joined) {
         if (msg.t !== 'hello') return;
-        const err = this.core.join(peer, msg.name, msg.fit);
+        const err = this.core.join(peer, msg.name, msg.fit, msg.team);
         if (err) { server.send(JSON.stringify({ t: 'err', m: err })); server.close(1000, 'full'); return; }
         joined = true; return;
       }

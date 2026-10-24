@@ -2,8 +2,16 @@
    Talks to a room server (tools/dev-server.mjs locally, the Worker in server/ when deployed). The server runs the rules;
    this file rebuilds a local G from its snapshots (same object shapes, stable identities) so render/HUD code works unchanged.
    ACT is the one place player actions go: straight into the rules in solo, over the socket online. */
-/* others are drawn INTERP seconds in the past, between two snapshots (10/s), so they move smoothly despite network jitter */
-const INTERP=.15;
+/* others are drawn INTERP seconds in the past, between two snapshots (10/s), so they move smoothly despite network jitter.
+   INTERP adapts: one snapshot interval plus about three times the measured jitter of their arrival (0.15–0.4 s),
+   so a shaky connection trades a little delay for no freezes and jumps */
+let INTERP=.15;
+const NJ={last:0,avg:.1,dev:.02};
+function netJitter(now){
+  if(NJ.last){const g=now-NJ.last;if(g<1){NJ.avg+=(g-NJ.avg)*.1;NJ.dev+=(Math.abs(g-NJ.avg)-NJ.dev)*.1;}}
+  NJ.last=now;const want=Math.max(.15,Math.min(.4,NJ.avg+NJ.dev*3));
+  INTERP+=(want-INTERP)*(want>INTERP?.3:.02); // grow fast, shrink slowly
+}
 const NETC={on:false,ws:null,code:'',you:null,room:null,act:null,sentIn:'',sentT:0,snapT:0,off:null,rtt:.12,pingT:0,byA:new Map(),byN:new Map(),byT:new Map(),byE:new Map()};
 const ACT={
   throw:ang=>NETC.on?netSend({t:'cmd',c:'throw',ang}):throwPaper(G.me,ang),
@@ -27,7 +35,7 @@ function netConnect(code,name,onRoom,onFail){
   netClose();
   let ws;try{ws=new WebSocket(netURL(code));}catch(e){onFail('서버 주소가 잘못됐어요');return;}
   NETC.ws=ws;NETC.code=code;let opened=false;
-  ws.onopen=()=>{opened=true;ws.send(JSON.stringify({t:'hello',name,fit:myFit()}));};
+  ws.onopen=()=>{opened=true;ws.send(JSON.stringify({t:'hello',name,fit:myFit(),team:myTeam()}));};
   ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch{return;}
     if(m.t==='room'){NETC.room=m;NETC.you=m.you;onRoom(m);}
     else if(m.t==='start'){NETC.you=m.you;netBegin();}
@@ -54,7 +62,7 @@ function netBegin(){
 function keep(map,key,make){let o=map.get(key);if(!o){o=make();map.set(key,o);}return o;}
 function listFrom(arr,prefix,fill){const out=[];for(const s of arr){const o=keep(NETC.byE,prefix+s.n,()=>({}));fill(o,s);out.push(o);}return out;}
 function netApply(m){
-  const P=m.pub,first=!G.actors.length,now=performance.now()/1000;NETC.act=m.act;NETC.snapT=now;
+  const P=m.pub,first=!G.actors.length,now=performance.now()/1000;NETC.act=m.act;NETC.snapT=now;netJitter(now);
   /* server clock = local clock + off. Late packets only lower the sample, so take the max and let it sink slowly */
   {const o=P.t-now;NETC.off=NETC.off==null||o>NETC.off||NETC.off-o>1?o:NETC.off-.004;}
   if(first)G.t=P.t-INTERP;
@@ -118,15 +126,15 @@ function netEvent(e){
 function pushSamp(o,t,s,jump){
   const q={t,x:s.x??0,y:s.y??0,face:s.face??0};
   if(jump||!o.samp.length||Math.hypot(q.x-o.samp.at(-1).x,q.y-o.samp.at(-1).y)>200){o.samp=[q];o.x=q.x;o.y=q.y;o.face=q.face;return;}
-  o.samp.push(q);if(o.samp.length>8)o.samp.shift();
+  o.samp.push(q);if(o.samp.length>12)o.samp.shift();
 }
 const lerpAng=(a,b,k)=>{let d=b-a;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;return a+d*k;};
 function sampleAt(o,rt){
   const S=o.samp;if(!S||!S.length)return;
   let q=S[0];if(rt<=q.t){o.x=q.x;o.y=q.y;o.face=q.face;return;}
   for(let i=0;i<S.length-1;i++){const a=S[i],b=S[i+1];if(rt<b.t){const k=(rt-a.t)/(b.t-a.t||1);o.x=a.x+(b.x-a.x)*k;o.y=a.y+(b.y-a.y)*k;o.face=lerpAng(a.face,b.face,k);return;}}
-  /* ran out of samples (late packet): keep going the same way for up to 0.15 s, then hold */
-  q=S.at(-1);const p=S.at(-2),e=p?Math.min(.15,rt-q.t)/(q.t-p.t||1):0;o.x=q.x+(p?(q.x-p.x)*e:0);o.y=q.y+(p?(q.y-p.y)*e:0);o.face=q.face;
+  /* ran out of samples (late packet): keep going the same way for up to 0.25 s, then hold */
+  q=S.at(-1);const p=S.at(-2),e=p?Math.min(.25,rt-q.t)/(q.t-p.t||1):0;o.x=q.x+(p?(q.x-p.x)*e:0);o.y=q.y+(p?(q.y-p.y)*e:0);o.face=q.face;
 }
 function histAt(me,t){const H=me.hist;if(!H||!H.length)return null;let best=H[0];for(const h of H)if(Math.abs(h.t-t)<Math.abs(best.t-t))best=h;return Math.abs(best.t-t)<.25?best:null;}
 /* every frame: draw others at server time minus INTERP, fly projectiles on the same clock, predict my own walking */
@@ -146,7 +154,7 @@ function netFrame(dt){
     let{vx,vy}=me.input;const m=Math.hypot(vx,vy);if(m>1){vx/=m;vy/=m;}if(m>.15)me.face=Math.atan2(vy,vx);
     me.sprint=me.input.run&&m>.15;
     drive(me,m>.15?vx:0,m>.15?vy:0,dt);
-    if(me.cx||me.cy){const c=Math.min(1,dt*6),ox=me.cx*c,oy=me.cy*c;me.cx-=ox;me.cy-=oy;moveActor(me,ox/dt,oy/dt,dt);}
+    if((me.cx||me.cy)&&dt>0){const c=Math.min(1,dt*6),ox=me.cx*c,oy=me.cy*c;me.cx-=ox;me.cy-=oy;moveActor(me,ox/dt,oy/dt,dt);}
     (me.hist||(me.hist=[])).push({t:now,x:me.x,y:me.y});while(me.hist.length&&now-me.hist[0].t>1.5)me.hist.shift();
   }else{me.x+=(me.nx-me.x)*k;me.y+=(me.ny-me.y)*k;me.hist=[];}
 }

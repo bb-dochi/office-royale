@@ -52,7 +52,7 @@ function keybar(){
   /* the item itself is in the slot next to this, so the attack key just says attack / use */
   const ch=[['E',act?act.label:'상호작용',(act?(act.cls||''):'off')+' wide'],
     [ 'Space',me.ammo>0||held?'아이템 사용':`던지기 -${Math.round(5*dmgMul(me))}`,me.ammo>0||held?'atk':'',Math.max(0,me.cd)/me.lastCd,held&&held.c],
-    ...(B&&B.cd?[['Q',me.skillCd>0?`${B.sk} ${Math.ceil(me.skillCd)}초`:B.sk,me.skillCd>0?'off':'go']]:[]),
+    ...(B&&B.cd&&rankAt(me,'팀장')?[['Q',me.skillCd>0?`${B.sk} ${Math.ceil(me.skillCd)}초`:B.sk,me.skillCd>0?'off':'go']]:[]),
     ['Shift',me.sprint?'달리는 중':'달리기','']];
   {const dn=me.f-1;if(me.f>=0&&me.f!==ROOF&&padOf(me)&&!me.sit&&dn>=0&&isOpen(dn)&&!G.lunch)ch.splice(1,0,['Shift+E',`▼ ${FLOORS[dn].short}로`,'wide']);}
   const h=ch.map(([k,t,c,cd,col])=>`<div class="kc ${c||''}"${col?` style="border-color:${col};box-shadow:0 0 12px ${col}"`:''}><kbd>${k}</kbd><span>${t}</span>${cd>0?`<i class="cd" style="width:${cd*100}%"></i>`:''}</div>`).join('');
@@ -71,7 +71,7 @@ $('pRestart').addEventListener('click',()=>{pauseOpen(false);start();});
 $('pHome').addEventListener('click',()=>{pauseOpen(false);running=false;plazaStart();});
 /* solo: d is the difficulty picked on the 난이도 sheet; restarts (다시 출근, pause) reuse the last one */
 function start(d){netClose();if(DIFF[d])store.set('or-diff',d);$('diffSheet').hidden=true;
-  newGame({humans:[{key:'me',name:'나',fit:myFit()}],diff:store.get('or-diff')||'normal'});startScreens();}
+  newGame({humans:[{key:'me',name:'나',fit:myFit(),team:myTeam()}],diff:store.get('or-diff')||'normal'});startScreens();}
 const DIFF_TXT={easy:'봇이 굼뜨고 서류가 잘 빗나가요. 한동안 안 맞으면 고과가 조금씩 회복돼요.',normal:'기본 난이도. 자동 회복은 없어요.',hard:'봇이 빠르고 정확하게 던져요. 자동 회복 없음.'};
 function diffOpen(){
   const last=store.get('or-diff')||'normal';
@@ -88,6 +88,22 @@ $('againBtn').addEventListener('click',()=>{if(NETC.room)showLobby();else start(
 
 /* ---------- online lobby ---------- */
 const store={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
+/* the team picked in the lobby (remembered); none picked = a random one at the start of each match */
+const myTeam=()=>{const t=store.get('or-team');return BRANCH[t]?t:null;};
+function teamOpen(){const cur=myTeam();
+  $('teamOpts').innerHTML=Object.entries(BRANCH).map(([k,v],i)=>`<button data-t="${k}" style="--tc:${v.c}" class="${k===cur?'cur':''}">
+    <b>${isTouch?'':`<kbd>${i+1}</kbd>`}${teamShort(k)}팀${k===cur?'<i>지금 내 팀</i>':''}</b>
+    <span><small>대리</small> ${v.pw}</span><span><small>팀장</small> ${v.pt} · <em>${isTouch?'':'Q '}${v.sk}</em> ${v.kt}</span></button>`).join('');
+  $('teamSheet').hidden=false;}
+function teamPick(k){if(!BRANCH[k])return;store.set('or-team',k);$('teamSheet').hidden=true;teamLabel();}
+function teamLabel(){const t=myTeam();$('dockTeam').textContent=t?`팀: ${teamShort(t)}`:'팀 고르기';$('hTeam').textContent=t?`내 팀: ${teamShort(t)}팀`:'팀 고르기';}
+$('teamOpts').addEventListener('click',e=>{const b=e.target.closest('button');if(b)teamPick(b.dataset.t);});
+$('teamX').addEventListener('click',()=>{$('teamSheet').hidden=true;});
+$('hTeam').addEventListener('click',teamOpen);
+addEventListener('keydown',e=>{if($('teamSheet').hidden)return;
+  if(e.key==='Escape'){e.stopImmediatePropagation();$('teamSheet').hidden=true;return;}
+  const n=/^(?:Digit|Numpad)([1-4])$/.exec(e.code);if(n){e.stopImmediatePropagation();teamPick(Object.keys(BRANCH)[+n[1]-1]);}},true);
+teamLabel();
 const roomParam=()=>(new URLSearchParams(location.search).get('room')||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
 function lobbyNote(t,err){const n=$('lobbyNote');n.textContent=t||'';n.classList.toggle('err',!!err);}
 /* no room yet: a sheet to create or join (an invite link narrows it to one join button).

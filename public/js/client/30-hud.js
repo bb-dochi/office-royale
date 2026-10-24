@@ -64,7 +64,7 @@ function drawMini(){
   }
   for(const n of G.npcs){if(n.f!==f||!npcActive(n)||(n.kind!=='boss'&&n.kind!=='ceo'))continue;
     const col=n.kind==='ceo'?'#e0b52a':'#e5483a',v=VIS[n.kind],x=X(n.x),y=Y(n.y);
-    if(!(G.blackout&&G.blackout.f===f)){const g=c.createRadialGradient(x,y,0,x,y,v.len*s);g.addColorStop(0,n.kind==='ceo'?'rgba(224,181,42,.45)':'rgba(229,72,58,.45)');g.addColorStop(1,'rgba(229,72,58,0)');
+    if(!(G.blackout&&G.blackout.f===f)&&!(n.kind==='boss'&&!n.senior&&me.rank==='임원')){const g=c.createRadialGradient(x,y,0,x,y,v.len*s);g.addColorStop(0,n.kind==='ceo'?'rgba(224,181,42,.45)':'rgba(229,72,58,.45)');g.addColorStop(1,'rgba(229,72,58,0)');
       c.fillStyle=g;c.beginPath();c.moveTo(x,y);c.arc(x,y,v.len*s,n.face-v.half,n.face+v.half);c.closePath();c.fill();}
     dot(x,y,2.8*k,col,'#1d2328');if(big)lbl(bossTitle(n),x,y-8,'#ffb4aa',11);}
   for(const o of G.actors){if(o===me||!o.alive||o.f!==f||o.transit)continue;
@@ -86,7 +86,7 @@ function statusLine(me){
   if(me.f>=0&&me.f<G.closed&&me.f!==ROOF)return{c:'danger',i:'⚠',t:'폐쇄된 층! 고과가 깎이는 중 · 계단·엘리베이터로 올라가세요',m:'폐쇄된 층! 바로 위층으로'};
   if(G.lunch&&!onRoof)return{c:'lunch',i:'🍱',t:`점심시간! 계단·엘리베이터에서 ${isTouch?'상호작용':'E'} → 옥상 라이터 쟁탈전`,m:'점심시간! 계단·엘베 → 옥상',n:s(G.lunch.t)};
   if(G.lunch){const sc=G.lunch.score||{L:0,R:0},mine=me.side?teamOf(me.side):'';
-    return{c:'',i:'🚬',t:`전담파 ${sc.L} : ${sc.R} 연초파 · 나는 ${mine} · 라이터를 우리 재떨이로`,m:`전담 ${sc.L} : ${sc.R} 연초 · ${mine}`,n:s(G.lunch.t)};}
+    return{c:'',i:'🚬',t:`점심 난투 · 나는 ${mine}`,m:`점심 난투 · ${mine}`,n:s(G.lunch.t)};}
   if(warnFloor(me.f))return{c:'danger',i:'⚠',t:`${fn(me.f)} 곧 폐쇄! 위층으로 · 지금 업무는 보상 x2`,m:`${fn(me.f)} 곧 폐쇄! 위층으로`,n:s(G.nextClose)};
   if(G.final)return G.finalT>30?{c:'danger',i:'⏰',t:'야근 모드: 모두의 고과가 줄어듭니다 · 최후의 1인까지',m:'야근 모드: 고과 감소 중'}:{c:'',i:'🏁',t:'인사 시즌: 6F만 남았다 · 최후의 1인이 CEO실로',m:'인사 시즌 · 최후의 1인',n:s(30-G.finalT)};
   const ev=G.ceo&&G.ceo.f===me.f?' · 대표님 이 층 방문 중':G.audit&&G.audit.f===me.f?' · 감사 중: 아이템 금지':G.blackout&&G.blackout.f===me.f?' · 정전':G.fire>0?' · 엘리베이터 정지':'';
@@ -110,6 +110,15 @@ function gearSlots(me){
     el.innerHTML=`<small>${lbl}</small><i>${v?v.g:''}</i>${v&&v.n!=null?`<b>${v.n}</b>`:''}<span>${v?v.t:none}</span>`;};
   slot($('gAtk'),atk,'공격','서류');slot($('gDef'),def,'방어','-');
   $('gear').hidden=!(running&&me.alive&&!G.plaza);
+}
+/* lunch scoreboard: shown while I'm on the roof, my team marked */
+let lastLB='';
+function lunchBoard(me){
+  const on=running&&me&&me.alive&&G.lunch&&me.f===ROOF&&me.side,el=$('lunchBoard');
+  if(!on){if(!el.hidden){el.hidden=true;lastLB='';}return;}
+  const sc=G.lunch.score||{L:0,R:0},key=sc.L+'|'+sc.R+'|'+me.side;if(key===lastLB)return;lastLB=key;
+  el.hidden=false;$('lbL').textContent=sc.L;$('lbR').textContent=sc.R;el.dataset.me=me.side;
+  el.dataset.lead=sc.L>sc.R?'L':sc.R>sc.L?'R':'';
 }
 /* quest list under the map: the favour I accepted and the task I'm doing */
 let lastQ='';
@@ -226,7 +235,7 @@ function hud(dt){
   $('gbarWrap').classList.toggle('low',me.g<30);$('grade').textContent=gradeOf(me.g);$('pname').textContent='나 · '+rankName(me);
   {const nx=RANKS.find(([t])=>t>me.peak);if(nx){const pv=[...RANKS].reverse().find(([t])=>t<=me.peak)[0],base=Math.max(pv,50);$('promoT').textContent=`${nx[1]}까지 ${Math.ceil(nx[0]-me.peak)}`;$('promoB').style.width=Math.max(0,Math.min(100,(me.peak-base)/(nx[0]-base)*100))+'%';}else{$('promoT').textContent='최고 직급';$('promoB').style.width='100%';}}
   fxBar(me);
-  statusBar(me);gearSlots(me);deskHud(me);questList(me);
+  statusBar(me);gearSlots(me);deskHud(me);questList(me);lunchBoard(me);
   $('mFloor').textContent=viewF>=0?(viewF===ROOF?'옥상':`${FLOORS[viewF].short} ${FLOORS[viewF].name.replace(/^\d층 /,'')}`):'';
   {const fh=floorsHTML();if(fh!==lastFloors){lastFloors=fh;$('tower').innerHTML=fh;}}
   $('mTap').textContent=`${isTouch?'탭해서':'Tab'} 닫기`;
@@ -234,7 +243,7 @@ function hud(dt){
   tb.style.setProperty('--cd',Math.max(0,me.cd)/me.lastCd);
   {const dn=me.f-1,show=isTouch&&running&&me.alive&&me.f>=0&&me.f!==ROOF&&!me.sit&&!G.lunch&&!!padOf(me)&&dn>=0&&isOpen(dn),db=$('downBtn');
     if(db.hidden===show)db.hidden=!show;if(show)$('downLabel').textContent=`▼${FLOORS[dn].short}`;}
-  const sb=$('skillBtn'),B=me.branch&&BRANCH[me.branch];sb.hidden=!(me.alive&&B&&B.cd);
+  const sb=$('skillBtn'),B=me.branch&&BRANCH[me.branch];sb.hidden=!(me.alive&&B&&B.cd&&rankAt(me,'팀장'));
   if(!sb.hidden){sb.style.setProperty('--cd',Math.max(0,me.skillCd)/(B.cd*(me.rank==='임원'?EXEC_CD:1)));$('skillLabel').textContent=me.skillCd>0?Math.ceil(me.skillCd)+'초':B.sk;}
   const held=me.items[0]&&ITEMS[me.items[0]],tl=me.ammo>0?`스테이플<br>${me.ammo}발`:held?held.n.replace(' ','<br>'):'서류<br>투척';
   if(tl!==lastTl){lastTl=tl;$('throwLabel').innerHTML=tl;tb.classList.toggle('staple',me.ammo>0||!!held);tb.style.setProperty('--ic',held?held.c:'');}

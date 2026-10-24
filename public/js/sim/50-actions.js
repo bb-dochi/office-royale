@@ -7,7 +7,7 @@ function throwPaper(a,ang){
   if(a.isPlayer&&a.items.length&&!staple){a.face=ang;a.cd=a.lastCd=base;useItem(a,0,ang);return true;}
   if(staple)a.ammo--;
   a.cd=base*(staple?.35:1);a.lastCd=a.cd;a.face=ang;a.cloakT=0;
-  G.proj.push({f:a.f,x:a.x+Math.cos(ang)*(R+4),y:a.y+Math.sin(ang)*(R+4),ox:a.x,oy:a.y,dx:Math.cos(ang),dy:Math.sin(ang),d:0,o:a,spin:Math.random()*6,staple,sp:staple?720:560,rng:(staple?300:340)*(a.branch==='mkt'?1.25:1)}); // 마케팅팀장: 멀리 던짐
+  G.proj.push({f:a.f,x:a.x+Math.cos(ang)*(R+4),y:a.y+Math.sin(ang)*(R+4),ox:a.x,oy:a.y,dx:Math.cos(ang),dy:Math.sin(ang),d:0,o:a,spin:Math.random()*6,staple,sp:staple?720:560,rng:(staple?300:340)*(a.branch==='mkt'?1+.25*teamK(a):1)}); // 마케팅: 멀리 던짐 (대리 +12%, 팀장 +25%)
   if(staple&&a.ammo===0)tell(a,'스테이플러를 다 썼다');
   for(const n of watchers(a))if(!immune(a,n)&&sees(n,a)){caught(a,n,'act');break;}
   return true;
@@ -52,7 +52,7 @@ function applyItem(a,k,aim){
   return true;
 }
 function useSkill(a){
-  if(!a.alive||a.f<0||locked(a)||a.sit||a.chan||!a.branch||a.skillCd>0)return false;
+  if(!a.alive||a.f<0||locked(a)||a.sit||a.chan||!a.branch||!rankAt(a,'팀장')||a.skillCd>0)return false; // the Q skill opens at 팀장
   const B=BRANCH[a.branch];if(!B.cd)return false;const ex=a.rank==='임원';
   if(a.branch==='mkt'){const n=ex?14:10;for(let i=0;i<n;i++){const ang=i/n*Math.PI*2;G.proj.push({f:a.f,x:a.x+Math.cos(ang)*(R+4),y:a.y+Math.sin(ang)*(R+4),ox:a.x,oy:a.y,dx:Math.cos(ang),dy:Math.sin(ang),d:0,o:a,spin:Math.random()*6,flyer:true,sp:480,rng:ex?300:230});}
     pop(a.f,a.x,a.y-44,ex?'전사 전단지 살포!':'전단지 살포!','#c08a1e');a.cloakT=0;for(const n of watchers(a))if(!immune(a,n)&&sees(n,a)){caught(a,n,'act');break;}}

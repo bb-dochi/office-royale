@@ -57,7 +57,7 @@ server.on('upgrade', (req, sock) => {
     let msg; try { msg = JSON.parse(txt); } catch { return; }
     if (!joined) {
       if (msg.t !== 'hello') return;
-      const err = room.join(peer, msg.name, msg.fit);
+      const err = room.join(peer, msg.name, msg.fit, msg.team);
       if (err) { peer.sock.sendText(JSON.stringify({ t: 'err', m: err })); peer.sock.close(); return; }
       joined = true; return;
     }

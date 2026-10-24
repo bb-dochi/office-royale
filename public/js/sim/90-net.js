@@ -81,7 +81,7 @@ NET.start=function(players){
     snapCam:a=>push(a,{k:'snapCam'}),
     reset:()=>{},
   });
-  newGame({humans:players.map(p=>({key:p.key,name:String(p.name).slice(0,10),fit:p.fit||null}))});
+  newGame({humans:players.map(p=>({key:p.key,name:String(p.name).slice(0,10),fit:p.fit||null,team:p.team}))});
   G.nid=0;
 };
 NET.step=dt=>step(dt);

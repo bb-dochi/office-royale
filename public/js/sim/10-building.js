@@ -162,17 +162,23 @@ const ITEM_KEYS=Object.keys(ITEMS).filter(k=>ITEMS[k].w>0);
 function randItem(){let t=0;for(const k of ITEM_KEYS)t+=ITEMS[k].w;let r=Math.random()*t;for(const k of ITEM_KEYS){r-=ITEMS[k].w;if(r<=0)return k;}return 'coffee';}
 /* every 팀장 gets a Q skill; 임원 makes it stronger and quicker (see useSkill) */
 /* pas: always on · sk/skd: the Q skill and what it does (shown on the team choice memo) */
-/* pt / kt: the passive and the skill in a few words, for the team choice popup */
-const BRANCH={hr:{n:'인사팀장',pt:'탈락 시 1회 부활',kt:'1명 묶기',pas:'고과 0이 돼도 인턴으로 1회 재입사',sk:'면담',skd:'근처 1명을 1.5초 묶어 둠',cd:14,c:'#2f9e57'},
-  dev:{n:'개발팀장',pt:'업무 2배',kt:'업무·이동 가속',pas:'업무 속도 2배 · 사원증 태그 0.3초',sk:'야근',skd:'5초간 업무 2배 더 · 이동 빨라짐',cd:18,c:'#2f74c4'},
-  mkt:{n:'마케팅팀장',pt:'사거리 +25%',kt:'사방 공격',pas:'서류 사거리 +25%',sk:'전단지',skd:'사방으로 전단지 10장 광역 공격',cd:12,c:'#c08a1e'},
-  design:{n:'디자인팀장',pt:'부장님 시야 ↓',kt:'4초 투명',pas:'부장님 시야 30% 좁게',sk:'위장',skd:'4초간 투명 (던지면 풀림)',cd:20,c:'#8d4bbf'}};
+/* everyone picks a team before the match (lobby). pt / kt: the passive and the skill in a few words; pw: the weak
+   passive a 대리 already gets. Nothing below 대리, weak passive at 대리, full passive + Q skill at 팀장, stronger at 임원 */
+const BRANCH={hr:{n:'인사팀장',pw:'탈락 시 1회 재입사(고과 10)',pt:'탈락 시 1회 부활',kt:'1명 묶기',pas:'고과 0이 돼도 인턴으로 1회 재입사',sk:'면담',skd:'근처 1명을 1.5초 묶어 둠',cd:14,c:'#2f9e57'},
+  dev:{n:'개발팀장',pw:'업무 1.5배',pt:'업무 2배',kt:'업무·이동 가속',pas:'업무 속도 2배 · 사원증 태그 0.3초',sk:'야근',skd:'5초간 업무 2배 더 · 이동 빨라짐',cd:18,c:'#2f74c4'},
+  mkt:{n:'마케팅팀장',pw:'사거리 +12%',pt:'사거리 +25%',kt:'사방 공격',pas:'서류 사거리 +25%',sk:'전단지',skd:'사방으로 전단지 10장 광역 공격',cd:12,c:'#c08a1e'},
+  design:{n:'디자인팀장',pw:'부장님 시야 -15%',pt:'부장님 시야 ↓',kt:'4초 투명',pas:'부장님 시야 30% 좁게',sk:'위장',skd:'4초간 투명 (던지면 풀림)',cd:20,c:'#8d4bbf'}};
 const BRANCH_PICK=12; // seconds a new 팀장 has to pick a team before one is picked for them
 const EXEC_CD=.6; // 임원: skill cooldown ×0.6 and a bigger effect
 const RANKS=[[0,'인턴'],[55,'사원'],[60,'대리'],[75,'팀장'],[90,'임원']];
 const TAG={인턴:2,사원:1.75,대리:1.5,팀장:1,'임원':.5};
-const rankName=a=>!a.branch?a.rank:a.rank==='팀장'?BRANCH[a.branch].n:a.rank==='임원'?`임원(${BRANCH[a.branch].n.replace('팀장','')})`:a.rank;
-const tagOf=a=>a.branch==='dev'?.3:(TAG[a.rank]||2);
+const RANK_ORDER=['인턴','사원','대리','팀장','임원'];
+const rankAt=(a,r)=>RANK_ORDER.indexOf(a.rank)>=RANK_ORDER.indexOf(r);
+/* how much of the team's passive is on: 0 below 대리, half at 대리, all from 팀장 */
+const teamK=a=>!a.branch?0:rankAt(a,'팀장')?1:rankAt(a,'대리')?.5:0;
+const teamShort=k=>BRANCH[k]?BRANCH[k].n.replace('팀장',''):'';
+const rankName=a=>!a.branch?a.rank:a.rank==='팀장'?BRANCH[a.branch].n:`${teamShort(a.branch)}팀 ${a.rank}`;
+const tagOf=a=>(TAG[a.rank]||2)*(a.branch==='dev'?[1,.7,.3][teamK(a)*2]:1); // 개발: tag faster (대리 ×0.7, 팀장 ×0.3)
 const rankOf=p=>{let n='인턴';for(const[t,r]of RANKS)if(p>=t)n=r;return n;};
 const gradeOf=g=>g>=85?'S':g>=70?'A':g>=50?'B':g>=30?'C':'D';
 const GREET_P={아부꾼:.95,성실파:.75,정치꾼:.7,폭주:.3,루팡:.6};

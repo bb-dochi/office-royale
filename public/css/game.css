@@ -682,3 +682,31 @@ body:not(.pc) .rcol:has(.mapbox.folded){max-width:none}
 /* the boss's question sits clear of the bottom dock and the effect chips */
 #callBox{bottom:calc(env(safe-area-inset-bottom,0px) + 250px)}
 @media (min-width:1600px) and (min-height:820px){#callBox{bottom:290px}}
+
+/* lunch scoreboard */
+#lunchBoard{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 48px);z-index:3;pointer-events:none;text-align:center;
+  background:rgba(29,35,40,.9);color:#fff;border-radius:14px;padding:8px 18px 9px;box-shadow:0 10px 26px rgba(0,0,0,.3)}
+#lunchBoard .lb{display:flex;align-items:center;justify-content:center;gap:10px}
+#lunchBoard .lb b{font:900 17px var(--display);padding:3px 10px;border-radius:8px;opacity:.75}
+#lunchBoard .tl{background:#2b7fc4}#lunchBoard .tr{background:#c0452a}
+#lunchBoard[data-me="L"] .tl,#lunchBoard[data-me="R"] .tr{opacity:1;box-shadow:0 0 0 2px #fff}
+#lunchBoard[data-me="L"] .tl::after,#lunchBoard[data-me="R"] .tr::after{content:' (나)';font-size:12px}
+#lunchBoard em{font:900 34px/1 var(--display);font-style:normal;min-width:32px;font-variant-numeric:tabular-nums}
+#lunchBoard[data-lead="L"] #lbL,#lunchBoard[data-lead="R"] #lbR{color:#f3d77a}
+#lunchBoard i{font-style:normal;font-size:24px;opacity:.6}
+#lunchBoard p{margin:5px 0 0;font-size:13px;font-weight:700;color:#dfe3e6}
+#lunchBoard u{text-decoration:none;color:#f3d77a}#lunchBoard strong{color:#7fe0a4}
+@media (max-width:560px){#lunchBoard{top:calc(env(safe-area-inset-top,0px) + 150px);padding:6px 12px 7px;width:calc(100vw - 32px)}#lunchBoard em{font-size:26px}#lunchBoard .lb b{font-size:14px}#lunchBoard p{font-size:11.5px}}
+@media (min-width:1600px) and (min-height:820px){#lunchBoard{top:64px;zoom:1.2}}
+body.desking #lunchBoard,body.phoning #lunchBoard{display:none!important}
+
+/* lobby team picker */
+.teammemo{width:min(94vw,600px)}
+#teamOpts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+#teamOpts button{min-height:0;padding:12px 14px}
+#teamOpts b{display:flex;align-items:center;gap:6px;font-size:19px}
+#teamOpts b i{margin-left:auto;font-style:normal;font-size:11px;font-weight:800;color:#fff;background:var(--tc);border-radius:5px;padding:2px 6px}
+#teamOpts button.cur{outline:3px solid var(--tc);outline-offset:-1px}
+#teamOpts span{font-size:13px}
+#teamOpts small{display:inline-block;min-width:30px;font-size:10.5px;font-weight:900;color:var(--tc)}
+@media (max-width:520px){#teamOpts{grid-template-columns:1fr}}

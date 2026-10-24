@@ -132,7 +132,7 @@ function step(dt){
       if(work.length){
         let rate=1/t.need;
         if(t.seat&&work.some(a=>t.seat.owner===a&&a.sit===t.seat))rate*=1.5;
-        if(work.some(a=>a.branch==='dev'))rate*=2;
+        {const d=Math.max(0,...work.map(a=>a.branch==='dev'?teamK(a):0));rate*=1+d;} // 개발: 대리 1.5배, 팀장 2배
         if(work.some(a=>a.rushT>0))rate*=2; // 개발팀장 야근 모드
         t.prog+=rate*dt;
         if(t.prog>=1){
@@ -151,8 +151,8 @@ function step(dt){
   // deaths (none after the match is decided: the result is final)
   for(const a of G.over?[]:alive()){
     if(a.g>0)continue;
-    if(a.branch==='hr'&&!a.revived){a.revived=true;a.branch=null;a.rank='인턴';a.peak=50;a.g=20;a.inv=1.5;pop(a.f,a.x,a.y-44,'인사팀장 특권: 인턴으로 재입사','#2f7d4f');
-      feed(v=>a===v?'인사팀장 특권 발동: 인턴으로 재입사 (고과 20)':`${a.name}님이 인턴으로 재입사했습니다`,a.isPlayer);continue;}
+    if(a.branch==='hr'&&teamK(a)>0&&!a.revived){const back=teamK(a)>=1?20:10;a.revived=true;a.rank='인턴';a.peak=50;a.g=back;a.inv=1.5;pop(a.f,a.x,a.y-44,'인사팀 특권: 인턴으로 재입사','#2f7d4f');
+      feed(v=>a===v?`인사팀 특권 발동: 인턴으로 재입사 (고과 ${back})`:`${a.name}님이 인턴으로 재입사했습니다`,a.isPlayer);continue;}
     a.g=0;a.alive=false;a.chan=null;a.contact=null;a.call=null;stand(a);const left=aliveCount();a.place=left+1;
     const killer=(a.cause==='paper')&&a.lastHitBy&&G.t-a.lastHitT<4?a.lastHitBy:null;a.killer=killer;
     if(killer&&killer.alive){worked(killer);const RI=['인턴','사원','대리','팀장','임원'],v=10+(RI.indexOf(a.rank)>RI.indexOf(killer.rank)?6:0);gain(killer,v);killer.kills=(killer.kills||0)+1;

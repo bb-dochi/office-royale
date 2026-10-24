@@ -138,6 +138,7 @@ $('dock').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)
   else if(go==='solo')diffOpen();
   else if(go==='multi'){$('home').hidden=true;showLobby();}
   else if(go==='tut')tutStart();
+  else if(go==='team')teamOpen();
   else if(go==='dress'){PZ.dressFromDock=true;$('home').classList.remove('closed');dressOpen();}});
 $('hSolo').addEventListener('click',diffOpen);
 $('hMulti').addEventListener('click',()=>{$('home').hidden=true;showLobby();});

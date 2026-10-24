@@ -39,11 +39,11 @@ function newGame(opts={}){
   const actors=[],spots=[];
   const pickPos=()=>{for(let i=0;i<300;i++){const p=randFree(0,90);if(p.y>K(480)&&spots.every(s=>dist(s,p)>80)){spots.push(p);return p;}}const p=randFree(0,90);spots.push(p);return p;};
   const hs=(opts.humans||[{key:'me',name:'나'}]).slice(0,TOTAL);
-  for(const h of hs){const a=mk(h.name,true,'플레이어',HUMAN_COLORS[actors.length%HUMAN_COLORS.length],pickPos());a.key=h.key;a.fit=h.fit||null;actors.push(a);}
+  for(const h of hs){const a=mk(h.name,true,'플레이어',HUMAN_COLORS[actors.length%HUMAN_COLORS.length],pickPos());a.key=h.key;a.fit=h.fit||null;a.branch=BRANCH[h.team]?h.team:pick(Object.keys(BRANCH));actors.push(a);}
   const me=actors[0];
   /* opts.bots: how many bots (default: fill to TOTAL). opts.tutorial: a practice floor with no closures or events */
   const nb=opts.bots??TOTAL-hs.length;
-  for(let i=0;i<nb;i++){const b=mk(NAMES[i],false,TYPES[i],SHIRTS[i],pickPos());b.pref=Math.random()<.3?1:0;actors.push(b);}
+  for(let i=0;i<nb;i++){const b=mk(NAMES[i],false,TYPES[i],SHIRTS[i],pickPos());b.pref=Math.random()<.3?1:0;b.branch=pick(Object.keys(BRANCH));actors.push(b);}
   G={t:0,actors,me,proj:[],items:[],traps:[],tasks:[],drops:[],wet:[],pops:[],dings:[],bursts:[],closed:0,nextClose:INTERVAL,warn:false,final:false,finalT:0,over:false,itemT:0,winner:null,
      npcs:[],doors:[],events:[],notice:null,ceo:null,blackout:null,cake:null,fire:0,star:null,audit:null,taskId:0,fillT:0,lunch:null,airdrops:[],respawn:[],smokes:[]};
   for(let f=0;f<NF;f++){
@@ -121,7 +121,7 @@ function dmg(a,n,cause){if(!a.alive)return;a.g-=n;a.cause=cause;}
 function gain(a,n){
   if(!a.alive)return;a.g=Math.min(100,a.g+n);
   if(a.g>a.peak){a.peak=a.g;const r=rankOf(a.peak);if(r!==a.rank){a.rank=r;if(a.isPlayer)pop(a.f,a.x,a.y-40,'승진! '+r,'#2f7d4f'); // the promotion slip (client) says the rest
-    if((r==='팀장'||r==='임원')&&!a.branch){if(a.isPlayer){a.branchAsk=G.t+BRANCH_PICK;UI.branch(a);}else a.branch=pick(Object.keys(BRANCH));}}}
+    if((r==='팀장'||r==='임원')&&!a.branch)a.branch=pick(Object.keys(BRANCH));}} // the team is picked before the match; this only covers a missing one
 }
 const locked=a=>!!a.call||a.lockT>0||a.stunT>0;
 function stand(a){if(a.desk)endDesk(a);if(a.sit){a.sit.occ=null;a.sit=null;}}

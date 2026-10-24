@@ -903,15 +903,15 @@ function tag(x,y,text,bg,fg,size=12){
   ctx.font=F(800,size);const w=ctx.measureText(text).width+12*UIS;ctx.fillStyle=bg;rr(x-w/2,y-10*UIS,w,19*UIS,6*UIS);ctx.fill();
   ctx.fillStyle=fg;ctx.textAlign='center';ctx.fillText(text,x,y+4*UIS);ctx.textAlign='left';
 }
-/* name tag in a match: the rank (a 팀장 shows the team: 인사, 개발…) is a short coloured chip in front of the name */
-const RANK_TAG={인턴:'#8a949c',사원:'#3f9e63',대리:'#2f74c4',팀장:'#8d4bbf',임원:'#c08a1e'};
-const rankWord=a=>a.rank==='팀장'&&a.branch?BRANCH[a.branch].n.replace('팀장',''):a.rank||'인턴';
+/* name tag in a match: a plain dark chip in front of the name with the rank in words (a 팀장 shows the team:
+   인사, 개발…). One look for every rank: the word says it, no colours to learn */
+const rankWord=a=>a.rank||'인턴';
 function nameTag(x,y,name,a,bg,fg){
-  const ch=rankWord(a),col=a.branch&&a.rank==='팀장'?BRANCH[a.branch].c:RANK_TAG[a.rank]||RANK_TAG.인턴;
+  const ch=rankWord(a),col='#fff',cbg=a.branch&&BRANCH[a.branch]?BRANCH[a.branch].c:'rgba(29,35,40,.88)'; // team colour, the same all match
   ctx.font=F(800,10);const s=UIS,cw=ctx.measureText(ch).width+8*s;ctx.font=F(800,12);const nw=ctx.measureText(name).width,w=nw+cw+14*s,h=19*s,l=x-w/2;
   ctx.fillStyle=bg;rr(l,y-10*s,w,h,6*s);ctx.fill();
-  ctx.fillStyle=col;rr(l+2*s,y-8*s,cw,h-4*s,4*s);ctx.fill();
-  ctx.font=F(800,10);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText(ch,l+2*s+cw/2,y+3.5*s);
+  ctx.fillStyle=cbg;rr(l+2*s,y-8*s,cw,h-4*s,4*s);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=1.2*s;ctx.stroke(); // white rim: stands out even on my blue tag
+  ctx.font=F(800,10);ctx.fillStyle=col;ctx.textAlign='center';ctx.fillText(ch,l+2*s+cw/2,y+3.5*s);
   ctx.font=F(800,12);ctx.fillStyle=fg;ctx.fillText(name,l+cw+(w-cw)/2,y+4*s);ctx.textAlign='left';
 }
 function outlined(t,x,y,font,color){ctx.font=font;ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='rgba(251,250,246,.95)';ctx.strokeText(t,x,y);ctx.fillStyle=color;ctx.fillText(t,x,y);ctx.textAlign='left';}
@@ -939,6 +939,7 @@ function render(dt){
   if(builtF!==f)buildFloor(f);
   prewarmFloors();
   for(const fn of floorAnim)fn(dt);
+  if(!isFinite(cam.x)||!isFinite(cam.y))cam={x:focus.x||FW/2,y:focus.y||FH/2}; // never let a bad frame strand the camera
   const k=Math.min(1,dt*7);cam.x+=(focus.x-cam.x)*k;cam.y+=(focus.y-cam.y)*k;
   const zoom=VW<VH?1.4:VW<700?1.15:1,sx=shake>0?(Math.random()-.5)*.35:0,sz=shake>0?(Math.random()-.5)*.35:0;
   cam3.position.set(cam.x*U+sx,16.5*zoom,cam.y*U+10.5*zoom+sz);
@@ -995,7 +996,9 @@ function render(dt){
     if(!m){const col=n.senior?'#2b2f3a':{boss:'#55617a',ceo:'#2a2a2e',cleaner:'#9fb7ad',busy:'#7d8790',newbie:'#bfe3c8',courier:'#b5651d',cart:'#fbfaf6'}[n.kind]||'#7d8790';m=makeChar(col,n.kind,7);if(n.kind==='ceo')m.scale.setScalar(1.12);else if(n.senior)m.scale.setScalar(1.06);npcM.set(n,m);}
     m.visible=npcs.includes(n);if(!m.visible)continue;
     if(n.kind==='desk'){m.position.set(n.x*U,0,n.y*U);m.rotation.y=toYaw(n.face);poseRig(m.userData,'sit',dt);}else poseChar(m,n,dt,true);}
-  const coneList=G.blackout&&G.blackout.f===f?[]:npcs.filter(n=>VIS[n.kind]);
+  /* an 임원 doesn't have to greet a plain 부장님, so their cones are just clutter (전무님 and 대표님 still count) */
+  const exempt=n=>n.kind==='boss'&&!n.senior&&me.rank==='임원';
+  const coneList=G.blackout&&G.blackout.f===f?[]:npcs.filter(n=>VIS[n.kind]&&!exempt(n));
   syncSet(coneM,coneList,makeCone,updCone);
   /* items, traps, wet, tasks, drops */
   syncSet(itemM,G.items.filter(i=>i.f===f),makeItem,(it,m)=>{m.position.set(it.x*U,.5+Math.sin(G.t*4+it.x)*.07,it.y*U);m.children[0].rotation.y+=dt*1.4;m.children[1].scale.setScalar(1+Math.sin(G.t*4+it.x)*.14);});
@@ -1140,6 +1143,14 @@ function render(dt){
       if(sp){const m=(typeof p.by==='string'?npcM:actorM).get(sp);if(m&&!m.visible)continue;if(sp.f!==f)continue;x=sp.x;y=sp.y;}}
     const s=scr(x,y,1.75);if(!s)continue;
     const a=p.t<.12?p.t/.12:p.t>2.0?Math.max(0,(2.4-p.t)/.4):1;bubble(p.text,s[0],s[1]-40,p.color,a);}
+  /* lunch: my team's ashtrays are marked; carrying lighters, an arrow points to the nearest one */
+  if(f===ROOF&&G.lunch&&me.alive&&me.f===ROOF&&me.side){const col=me.side==='L'?'#2b7fc4':'#c0452a',ash=ashOf(me.side);
+    for(const a of ash){const p=scr(a.x,a.y,2.2);if(p)tag(p[0],p[1],'🔥 우리 재떨이',col,'#fbfaf6',11);}
+    if(me.lighter>0){const a=ash.sort((p,q)=>Math.hypot(p.x-me.x,p.y-me.y)-Math.hypot(q.x-me.x,q.y-me.y))[0],p=a&&scr(a.x,a.y,2.9+Math.sin(G.t*6)*.2);
+      if(p&&p[0]>20&&p[0]<VW-20&&p[1]>60&&p[1]<VH-60){ctx.fillStyle=col;ctx.strokeStyle='#1d2328';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(p[0]-16,p[1]-22);ctx.lineTo(p[0]+16,p[1]-22);ctx.lineTo(p[0],p[1]);ctx.closePath();ctx.fill();ctx.stroke();}
+      else if(p){const an=Math.atan2(p[1]-VH/2,p[0]-VW/2),ex=Math.max(30,Math.min(VW-30,p[0])),ey=Math.max(90,Math.min(VH-110,p[1]));
+        ctx.save();ctx.translate(ex,ey);ctx.rotate(an);ctx.fillStyle=col;ctx.strokeStyle='#1d2328';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(18,0);ctx.lineTo(-10,-14);ctx.lineTo(-10,14);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+        tag(ex-Math.cos(an)*50,ey-Math.sin(an)*26,'우리 재떨이',col,'#fbfaf6',11);}}}
   /* the roof during lunch is a haze of smoke */
   if(f===ROOF&&G.lunch){ctx.fillStyle='rgba(225,228,232,.13)';ctx.fillRect(0,0,VW,VH);
     for(let i=0;i<6;i++){const cx=VW*(.15+.14*i)+Math.sin(G.t*.2+i)*60,cy=VH*(.3+.4*((i*37)%10)/10)+Math.cos(G.t*.15+i*2)*40,r=Math.max(VW,VH)*.22;

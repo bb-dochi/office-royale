@@ -3,6 +3,7 @@
 // Transport-agnostic: the host hands in createSim() (a fresh copy of public/js/sim) and send(peer, obj).
 import { cleanFit } from './outfit.js';
 export const MAX_PLAYERS = 8;
+const TEAMS = ['hr', 'dev', 'mkt', 'design']; // the team picked in the lobby (BRANCH keys in the rules)
 const TICK = 1 / 30, SEND_EVERY = 3, AFTER_OVER = 8; // 30 steps/s, 10 snapshots/s, back to lobby 8s after the end
 
 export class RoomCore {
@@ -19,9 +20,9 @@ export class RoomCore {
   broadcastRoster() { const r = this.roster(); for (const p of this.peers) this.send(p, { ...r, you: p.key }); }
 
   /* returns an error string, or null when the peer joined */
-  join(peer, name, fit) {
+  join(peer, name, fit, team) {
     if (this.peers.length >= MAX_PLAYERS) return '방이 꽉 찼어요 (최대 8명)';
-    peer.key = 'p' + (++this.seq); peer.name = cleanName(name, this.peers); peer.inGame = false; peer.fit = cleanFit(fit);
+    peer.key = 'p' + (++this.seq); peer.name = cleanName(name, this.peers); peer.inGame = false; peer.fit = cleanFit(fit); peer.team = TEAMS.includes(team) ? team : null;
     this.peers.push(peer); this.broadcastRoster(); return null;
   }
   leave(peer) {
@@ -48,7 +49,7 @@ export class RoomCore {
   begin() {
     this.sim = this.createSim(); this.state = 'playing'; this.tick = 0; this.overT = 0;
     for (const p of this.peers) p.inGame = true;
-    this.sim.NET.start(this.peers.map(p => ({ key: p.key, name: p.name, fit: p.fit })));
+    this.sim.NET.start(this.peers.map(p => ({ key: p.key, name: p.name, fit: p.fit, team: p.team })));
     this.broadcastRoster();
     for (const p of this.peers) this.send(p, { t: 'start', you: p.key });
     this.last = Date.now(); this.acc = 0;
