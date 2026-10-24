@@ -676,7 +676,7 @@ body:not(.pc) .mapbox.folded .mfold{width:auto;height:24px;padding:0 9px;font-si
 body:not(.pc) .mapbox.folded .pausebtn{height:24px;width:24px}
 body:not(.pc) .rcol:has(.mapbox.folded){max-width:none}
 
-#tut p{white-space:pre-line} /* tutorial texts may break lines with 
+#tut p{white-space:pre-line;word-break:keep-all} /* tutorial texts may break lines with 
  */
 
 /* the boss's question sits clear of the bottom dock and the effect chips */
@@ -700,13 +700,42 @@ body:not(.pc) .rcol:has(.mapbox.folded){max-width:none}
 @media (min-width:1600px) and (min-height:820px){#lunchBoard{top:64px;zoom:1.2}}
 body.desking #lunchBoard,body.phoning #lunchBoard{display:none!important}
 
-/* lobby team picker */
-.teammemo{width:min(94vw,600px)}
-#teamOpts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
-#teamOpts button{min-height:0;padding:12px 14px}
-#teamOpts b{display:flex;align-items:center;gap:6px;font-size:19px}
-#teamOpts b i{margin-left:auto;font-style:normal;font-size:11px;font-weight:800;color:#fff;background:var(--tc);border-radius:5px;padding:2px 6px}
-#teamOpts button.cur{outline:3px solid var(--tc);outline-offset:-1px}
-#teamOpts span{font-size:13px}
-#teamOpts small{display:inline-block;min-width:30px;font-size:10.5px;font-weight:900;color:var(--tc)}
-@media (max-width:520px){#teamOpts{grid-template-columns:1fr}}
+
+/* a slip in a team colour (발령) */
+#banner.tinted .bs{border-color:var(--bc);color:var(--bc)}
+#banner.tinted strong{color:var(--bc)}
+
+/* popups grow on big screens too (they used fixed px sizes and looked tiny on 1440p/4K monitors at 100% scaling) */
+@media (min-width:1600px) and (min-height:820px){.sheet .memo,#home .homecard,#tut,#callBox,#banner,#branchBox,#desk .mon,#phone .ph,#cine .box,#countdown{zoom:1.2}}
+@media (min-width:2200px) and (min-height:1150px){.sheet .memo,#home .homecard,#tut,#callBox,#banner,#branchBox,#desk .mon,#phone .ph,#cine .box,#countdown{zoom:1.45}}
+@media (min-width:1600px) and (min-height:820px){.homecard{max-height:calc((100vh - 32px)/1.2)}.sheet .memo{max-height:calc((100vh - 32px)/1.2);overflow:auto}}
+@media (min-width:2200px) and (min-height:1150px){.homecard{max-height:calc((100vh - 32px)/1.45)}.sheet .memo{max-height:calc((100vh - 32px)/1.45)}}
+
+/* 부서 안내 (from 팀 보기 on the guide) */
+.tlink.inline{display:inline;margin:0 0 0 4px;padding:0;font-size:inherit;color:var(--msg);font-weight:800;text-decoration:underline;text-underline-offset:2px}
+.teammemo{width:min(94vw,640px)}
+#teamInfoCards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:8px}
+.tcard{border:1.5px solid var(--ink);border-top:6px solid var(--tc);border-radius:4px;background:#fff;padding:10px 12px 12px}
+.tcard b{display:block;font:900 18px var(--display);color:var(--tc);margin-bottom:6px}
+.tcard dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 8px;font-size:12.5px;line-height:1.35}
+.tcard dt{font-weight:800;color:var(--muted);white-space:nowrap}.tcard dd{margin:0;font-weight:700}
+.tcard em{font-style:normal;font-weight:900;color:var(--tc)}
+@media (max-width:560px){#teamInfoCards{grid-template-columns:1fr}}
+.sheet .memo.teammemo{max-width:none;width:min(94vw,720px)}
+.tcard dl{grid-template-columns:1fr;gap:1px}
+.tcard dt{font-size:10.5px;margin-top:5px}
+.tcard dd{font-size:13.5px}
+#tut .perks{margin-top:10px}
+
+/* 부서 안내 cards: plain white; the team colour only on the top edge and the name */
+.tcard dt{color:var(--muted);font-size:11px;font-weight:800}
+.tcard dd{font-size:14px;color:var(--ink)}
+.tcard em{color:var(--ink)}
+
+/* dressing room on wide screens: the card moves to the right edge, vertically centred, so the whole character shows */
+@media (min-width:900px){#home.dressing,body.pc #home.dressing{top:0;bottom:0;left:auto;right:max(24px,5vw);width:auto;transform:none;align-items:center;justify-content:flex-end}
+  #home.dressing .homecard{width:min(420px,38vw)}}
+#tut .perks i.gap{margin-top:8px}
+/* the game's subtitle under the name on the guide card: a second title, not a caption */
+.homecard .subj.title{font:900 19px var(--display);color:#3d6cc4;margin:2px 0 10px}
+@media (max-width:700px){.homecard .subj.title{font-size:16px}}

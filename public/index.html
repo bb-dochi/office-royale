@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="회사에서 살아남는 배틀로얄. 고과가 체력, 서류가 무기, 최후의 1인만 대표실로.">
 <meta name="theme-color" content="#2a3036">
-<meta property="og:title" content="오피스 로얄 · 퇴사자는 말이 없다">
+<meta property="og:title" content="오피스 로얄 · 인사평가 서바이벌">
 <meta property="og:description" content="같이 출근해요! 고과가 체력, 서류가 무기. 최후의 1인만 CEO실로.">
 <meta property="og:type" content="website">
 <title>오피스 로얄</title>
@@ -105,20 +105,20 @@
     </div>
     <div id="homeMenu">
       <h1>오피스 로얄</h1>
-      <p class="subj">제목: 퇴사자는 말이 없다</p>
+      <p class="subj title">인사평가 서바이벌</p>
       <button class="namechip" id="nameEdit" aria-label="사원명 바꾸기">사원명 <b id="myName"></b><svg class="pencil" viewBox="0 0 16 16" aria-hidden="true"><path d="M11.2 2.3l2.5 2.5-8.4 8.4-3.1.6.6-3.1z"/><path d="M9.6 3.9l2.5 2.5"/></svg></button>
       <div id="homeGuide">
       <div class="sec"><ul class="rules">
         <li><b>업무</b>로 고과를 쌓고, <b>서류</b>를 던져 남의 고과를 깎으세요.</li>
         <li>고과 0이면 권고사직. 최후의 1인만 <b>CEO층</b>으로.</li>
         <li>40초마다 <b>아래층부터 폐쇄</b>돼요. 계속 위로 올라가세요.</li>
-        <li>부장님과 눈이 마주치면 <b>먼저 인사</b>.</li>
-        <li>로비에서 <b>팀</b>을 골라요. 대리부터 팀 효과, 팀장이 되면 <b>팀 스킬(Q)</b>.</li>
+        <li>부장님과 눈이 마주치면 <b>먼저 인사</b>하세요.</li>
+        <li>인턴 때 <b>많이 한 일</b>로 팀 결정! 대리부터 <b>부서 혜택</b>, 팀장은 <button class="tlink inline" id="teamInfoBtn">팀 스킬</button>이 생겨요.</li>
       </ul></div>
       <div class="sec"><p class="items"><span class="lbl">아이템</span><b style="color:#2f9e57">●회복</b><b style="color:#d23b2e">●공격</b><b style="color:#2f74c4">●방어</b><b style="color:#b39516">●이동</b><b style="color:#8d4bbf">●방해</b></p></div>
       <div class="sec"><div><ul class="keys pc-only">
         <li><kbd>WASD</kbd>이동</li><li><kbd>Shift</kbd>달리기</li><li><kbd>Space</kbd><svg class="mouse" viewBox="0 0 12 16" role="img" aria-label="좌클릭"><rect x=".75" y=".75" width="10.5" height="14.5" rx="5.25"/><path d="M6 .75A5.25 5.25 0 0 0 .75 6v1H6z"/></svg>공격</li><li><kbd>E</kbd>모든 상호작용</li>
-        <li><kbd>Q</kbd>팀 스킬</li><li><kbd>Shift</kbd>+<kbd>E</kbd>아래층</li><li><kbd>Tab</kbd>지도 크게</li>
+        <li><kbd>Q</kbd>팀 스킬</li><li><kbd>Tab</kbd>지도 크게</li>
       </ul>
       <ul class="keys touch-only">
         <li><kbd>왼쪽 드래그</kbd>이동</li><li><kbd>점선 밖까지 밀기</kbd>달리기</li><li><kbd>서류 투척</kbd>공격</li>
@@ -126,7 +126,7 @@
       </ul></div></div>
       </div>
       <div class="btns"><button class="btn" id="hSolo">혼자 하기</button><button class="btn" id="hMulti">같이 하기</button></div>
-      <p class="foot"><button class="tlink" id="hTut">튜토리얼</button><button class="tlink" id="hTeam">팀 고르기</button><button class="tlink" id="hDress">옷 갈아입기</button></p>
+      <p class="foot"><button class="tlink" id="hTut">튜토리얼</button><button class="tlink" id="hDress">옷 갈아입기</button></p>
     </div>
     <div id="dress" hidden>
       <h1>옷 갈아입기</h1>
@@ -142,7 +142,6 @@
   <button data-go="solo" class="pri">혼자 하기</button>
   <button data-go="multi" class="pri">같이 하기</button>
   <button data-go="tut">튜토리얼</button>
-  <button data-go="team" id="dockTeam">팀 고르기</button>
   <button data-go="dress">옷 갈아입기</button>
 </nav>
 
@@ -182,12 +181,12 @@
   </div>
 </section>
 
-<section class="sheet" id="teamSheet" hidden>
+<section class="sheet" id="teamInfo" hidden>
   <div class="memo teammemo">
-    <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span>부서 배치 신청<button class="homeX" id="teamX" aria-label="닫기">✕</button></span></div>
-    <h1>팀 고르기</h1>
-    <p class="subj">입사할 부서예요. 대리부터 약한 패시브, 팀장이 되면 Q 스킬, 임원은 스킬 강화.</p>
-    <div class="bopts" id="teamOpts"></div>
+    <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span>부서 안내<button class="homeX" id="teamInfoX" aria-label="닫기">✕</button></span></div>
+    <h1>부서 안내</h1>
+    <p class="subj">인턴 때 가장 많이 한 일로, 사원이 될 때 팀이 정해져요.</p>
+    <div class="bopts" id="teamInfoCards"></div>
   </div>
 </section>
 

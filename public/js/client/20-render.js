@@ -381,7 +381,7 @@ function pantryProps(g){
 }
 function lobbyProps(g){
   const sign=textPlane('OFFICE ROYALE',420,70,null,'#2a3036',DF(54));onBackWall(g,sign,FW/2,1.75);
-  const sub=textPlane('살아남는 자가 대표가 된다',300,26,null,'#5d666e',F(800,18));onBackWall(g,sub,FW/2,1.18);
+  const sub=textPlane('인사평가 서바이벌',300,26,null,'#5d666e',F(800,18));onBackWall(g,sub,FW/2,1.24);sub.position.z=.16; // in front of the chair rail, or the rail z-fights it
   /* revolving door at the front entrance */
   const rv=new THREE.Group();rv.position.set(DOOR.x*U,0,(FH+20)*U);
   const glass=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.1,2.2,24,1,true,0,Math.PI*2),ownMat(new THREE.MeshLambertMaterial({color:'#c8d7e1',transparent:true,opacity:.35,depthWrite:false,side:THREE.DoubleSide})));glass.position.y=1.1;rv.add(glass);
@@ -393,9 +393,7 @@ function lobbyProps(g){
   const scr=textPlane('방문 등록\n1F 안내데스크',90,34,'#2b4a6b','#e8f1fb',F(800,11));scr.position.set(K(550)*U,1.16+bh/2,by*U+.01);g.add(scr);
 }
 function execProps(g){
-  shelf(g,K(200),K(180),true);
-  for(const[x,col]of[[K(320),'#8e5c8a'],[K(780),'#2f7d4f']]){const fr=bx(g,x-30,-1,60,2,1.08,1.0,lam('#5a3b28'),false);fr.position.z=.02;
-    const p=textPlane('★',52,25,col,'#e0c23d',DF(26));onBackWall(g,p,x,1.58);p.position.z=.05;}
+  shelf(g,K(200),K(180),true); // the back-wall posters on this floor are the executive ones (see decor)
 }
 function serverProps(g){
   for(let x=K(800);x<K(1030);x+=24)bx(g,x,K(482),18,6,2.25,.06,lam('#3d4a54'),false);
@@ -474,7 +472,7 @@ function clearSpot(fl,x,y,r){
 function wallDecor(g,f,fl){
   if(f===ROOF)return;
   /* keep plants out from in front of posters, the clock and the whiteboard */
-  const boards=f===0?[]:[[480,0,70],[1050,0,70],[770,0,40]];if(f>0&&f<5)boards.push([0,330,110]);if(f===5)boards.push([K(320),0,50],[K(780),0,50]);
+  const boards=f===0?[]:[[480,0,70],[1050,0,70],[770,0,40]];if(f>0&&f<5)boards.push([0,330,110]);
   const blocksBoard=(x,y)=>boards.some(([bx0,by0,r])=>by0===0?y<60&&Math.abs(x-bx0)<r:x<60&&Math.abs(y-by0)<r);
   const tryPlant=(x,y,s)=>{if(clearSpot(fl,x,y,22)&&!blocksBoard(x,y)){plantAt(g,x,y,s);return true;}return false;};
   /* between the windows on the back wall, then down both side walls */
@@ -489,6 +487,7 @@ function wallDecor(g,f,fl){
 function decor(g,f,fl){
   if(f===ROOF){roofProps(g);return;}
   if(f===0)lobbyProps(g);
+  else if(f===5){clock(g,770);poster(g,480,'경영 방침','성과로 말한다','#5a3b28');poster(g,1050,'임원층','정숙해 주세요','#2a2d31');}
   else{clock(g,770);poster(g,480,['이달의 목표','칼퇴 금지','고과는 실력','인사가 만사','보고는 짧게'][f%5],'경영지원팀',['#2b6cb0','#cf3626','#2f7d4f','#8e5c8a','#c08a1e'][f%5]);
     poster(g,1050,'안전 제일','복도에서 뛰지 마세요','#3d4a54');}
   if(f>0&&f<5)whiteboard(g,330,['주간 업무','· 보고서 마감','· 결재 받기']);
@@ -725,6 +724,27 @@ function makeChar(color,kind,seed,outfit){
   g.userData={inner,bm:cm,mats:[cm,...keep],ring,aura,carry,cloak:false,rig:{legL,legR,armL,armR,head},mop,mood:{happy,angry},slots:{head,top,bottom},outfit:o,walk:0};
   scene.add(g);return g;
 }
+/* team props: once someone is 발령, their character carries a team prop instead of any team colour on the UI.
+   개발 = a laptop tucked flat under the left arm, 마케팅 = a megaphone pointed forward, 인사 = a clipboard held up
+   in front of the chest: three different silhouettes, all in object colours so they never clash with the rank colours.
+   Chunky so they read from the quarter view; attached to the rig so they swing with the arms. */
+const PROP_G={horn:new THREE.CylinderGeometry(.13,.045,.3,14,1,true),grip:new THREE.CylinderGeometry(.03,.03,.12,8)};
+function teamProp(m,team){
+  const u=m.userData;if(u.team===team)return;u.team=team;
+  if(u.prop){u.prop.parent&&u.prop.parent.remove(u.prop);u.prop=null;}
+  if(!team)return;const R=u.rig,g=new THREE.Group(),M=(geo,c,x,y,z)=>{const o=new THREE.Mesh(geo,lam(c));o.position.set(x,y,z);o.castShadow=true;g.add(o);return o;};
+  if(team==='dev'){const lid=M(GEO.box,'#c3c9cd',0,0,0);lid.scale.set(.035,.3,.42);lid.material=lam('#c3c9cd',{metalness:.5,roughness:.35});
+    const base=M(GEO.box,'#aeb4b9',-.035,0,0);base.scale.set(.03,.3,.42);base.material=lam('#aeb4b9',{metalness:.5,roughness:.35});
+    const glow=M(GEO.box,'#dfe9f2',.019,0,0);glow.scale.set(.004,.1,.1);glow.material=lam('#dfe9f2',{emissive:'#dfe9f2',emissiveIntensity:.6});
+    g.position.set(.075,-.17,.02);R.armL.add(g);}
+  else if(team==='mkt'){g.scale.setScalar(1.3);const h=M(PROP_G.horn,'#fbfaf6',0,0,.18);h.rotation.x=Math.PI/2;h.material=lam('#fbfaf6',{side:THREE.DoubleSide});
+    const r=M(GEO.box,'#e0603d',0,0,.06);r.scale.set(.1,.1,.05);M(PROP_G.grip,'#2a2d31',0,-.07,.04);
+    g.position.set(0,-.3,.05);R.armL.add(g);}
+  else if(team==='hr'){g.scale.setScalar(1.15);const bd=M(GEO.box,'#9a6b3f',0,0,0);bd.scale.set(.22,.3,.02);const pp=M(GEO.box,'#fbfaf6',0,-.02,.012);pp.scale.set(.18,.24,.01);
+    const cl=M(GEO.box,'#9aa0a6',0,.14,.016);cl.scale.set(.09,.04,.03);for(let i=0;i<3;i++){const l=M(GEO.box,'#8a949c',0,.04-i*.06,.018);l.scale.set(.13,.012,.004);}
+    g.position.set(-.06,-.3,.16);g.rotation.set(-.35,.5,0);R.armR.add(g);}
+  u.prop=g;
+}
 const tmpC=new THREE.Color(),WHITE=new THREE.Color('#ffffff');
 const toYaw=face=>Math.atan2(Math.cos(face),Math.sin(face));
 function setCloak(u,alpha){
@@ -903,15 +923,18 @@ function tag(x,y,text,bg,fg,size=12){
   ctx.font=F(800,size);const w=ctx.measureText(text).width+12*UIS;ctx.fillStyle=bg;rr(x-w/2,y-10*UIS,w,19*UIS,6*UIS);ctx.fill();
   ctx.fillStyle=fg;ctx.textAlign='center';ctx.fillText(text,x,y+4*UIS);ctx.textAlign='left';
 }
-/* name tag in a match: a plain dark chip in front of the name with the rank in words (a 팀장 shows the team:
-   인사, 개발…). One look for every rank: the word says it, no colours to learn */
+/* name tag in a match: a chip in front of the name with the rank. One colour family: grey for 인턴, then a blue that
+   gets richer with every promotion, so a higher rank reads as "more" without a rainbow */
+const RANK_TIER={인턴:{g:['#a9b0b6','#8a929a']},사원:{g:['#97a8bb','#7a8ea6']},대리:{g:['#7f9ccc','#5f80b4']},
+  팀장:{g:['#5f8ee0','#3d6cc4']},임원:{g:['#3f7cf0','#1f52c8']}};
 const rankWord=a=>a.rank||'인턴';
 function nameTag(x,y,name,a,bg,fg){
-  const ch=rankWord(a),col='#fff',cbg=a.branch&&BRANCH[a.branch]?BRANCH[a.branch].c:'rgba(29,35,40,.88)'; // team colour, the same all match
+  const T=RANK_TIER[a.rank]||RANK_TIER.인턴,ch=rankWord(a);
   ctx.font=F(800,10);const s=UIS,cw=ctx.measureText(ch).width+8*s;ctx.font=F(800,12);const nw=ctx.measureText(name).width,w=nw+cw+14*s,h=19*s,l=x-w/2;
-  ctx.fillStyle=bg;rr(l,y-10*s,w,h,6*s);ctx.fill();
-  ctx.fillStyle=cbg;rr(l+2*s,y-8*s,cw,h-4*s,4*s);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=1.2*s;ctx.stroke(); // white rim: stands out even on my blue tag
-  ctx.font=F(800,10);ctx.fillStyle=col;ctx.textAlign='center';ctx.fillText(ch,l+2*s+cw/2,y+3.5*s);
+  ctx.fillStyle=bg;rr(l,y-10*s,w,h,6*s);ctx.fill();if(a===G.me){ctx.strokeStyle='#fbfaf6';ctx.lineWidth=1.5*s;ctx.stroke();} // me: a dark tag with a white rim
+  const cx=l+2*s,cy=y-8*s,chh=h-4*s,gr=ctx.createLinearGradient(0,cy,0,cy+chh);T.g.forEach((c,i)=>gr.addColorStop(i/(T.g.length-1),c));
+  ctx.fillStyle=gr;rr(cx,cy,cw,chh,4*s);ctx.fill();
+  ctx.font=F(800,10);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText(ch,cx+cw/2,y+3.5*s);
   ctx.font=F(800,12);ctx.fillStyle=fg;ctx.fillText(name,l+cw+(w-cw)/2,y+4*s);ctx.textAlign='left';
 }
 function outlined(t,x,y,font,color){ctx.font=font;ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='rgba(251,250,246,.95)';ctx.strokeText(t,x,y);ctx.fillStyle=color;ctx.fillText(t,x,y);ctx.textAlign='left';}
@@ -953,7 +976,9 @@ function render(dt){
   followSun(cam.x*U,cam.y*U-1,(9+5*VW/VH)*zoom);
   /* dressing room: a close look at me, framed above the menu card */
   /* (the view offset slides the picture so I stand in the free space above the card) */
-  if(G.plaza&&typeof PZ!=='undefined'&&PZ.dress){const n=VW<700;cam3.position.set(me.x*U,n?2.6:2.1,me.y*U+(n?6.2:4.0));cam3.lookAt(me.x*U,.75,me.y*U);cam3.setViewOffset(VW,VH,0,VH*(VW<700?.3:.2),VW,VH);}
+  /* wide screens: the dressing card sits on the right and I stand left of it, whole body in view; phones keep the card below */
+  if(G.plaza&&typeof PZ!=='undefined'&&PZ.dress){const n=VW<700,side=VW>=900;cam3.position.set(me.x*U,n?2.6:2.1,me.y*U+(n?6.2:4.0));cam3.lookAt(me.x*U,.75,me.y*U);
+    if(side)cam3.setViewOffset(VW,VH,VW*.2,0,VW,VH);else cam3.setViewOffset(VW,VH,0,VH*(n?.3:.2),VW,VH);}
   else if(G.plaza&&typeof PZ!=='undefined'&&PZ.cardH>0)cam3.setViewOffset(VW,VH,0,Math.min(VH*.3,PZ.cardH/2),VW,VH);
   else if(cam3.view&&cam3.view.enabled)cam3.clearViewOffset();
   const onFloor=me.alive&&me.f===f&&!me.transit;
@@ -976,11 +1001,11 @@ function render(dt){
     const vis=a.alive&&a.f===f&&!a.transit&&(a===me||seenBy(me,a))&&!(a.cloakT>0&&a!==me&&!ally(me,a))
       &&!(G.plaza&&PZ.dress&&a!==me&&Math.hypot(a.x-me.x,a.y-me.y)<150); // dressing room close-up: just me
     m.visible=vis&&!(a===me&&fpK>.3);if(!m.visible)continue;
-    poseChar(m,a,dt,false);const u=m.userData;
+    poseChar(m,a,dt,false);const u=m.userData;teamProp(m,a.branch&&TEAMS.includes(a.branch)?a.branch:null);
     setCloak(u,a.cloakT>0?.4:1);
     /* on the roof everyone wears their team colour (전담파 blue, 연초파 red) */
     const team=a.f===ROOF&&a.side?(a.side==='L'?'#4fa3e0':'#e0603d'):null;
-    u.ring.visible=a.isPlayer||ally(me,a)||!!team;if(u.ring.visible)u.ring.material.color.set(team||(a===me?'#2b6cb0':ally(me,a)?'#3fbf6a':OTHER_HUMAN));
+    u.ring.visible=a.isPlayer||ally(me,a)||!!team;if(u.ring.visible)u.ring.material.color.set(team||(a===me?'#fbfaf6':ally(me,a)?'#3fbf6a':OTHER_HUMAN));
     const aura=a.ammo>0?CAT.atk.c:a.speedT>0?CAT.move.c:a.shieldN>0||a.vipT>0?CAT.def.c:null;
     u.aura.visible=!!aura;if(aura){u.aura.material.color.set(aura);u.aura.scale.setScalar(.8+Math.sin(G.t*6)*.06);}
     u.carry.visible=!!a.carry;
@@ -1075,7 +1100,7 @@ function render(dt){
   for(const a of G.actors){const m=actorM.get(a);if(!m||!m.visible)continue;
     const p=scr(a.x,a.y,1.75);if(!p)continue;const x=p[0],y=p[1];
     if(G.plaza)tag(x,y-12,a===me?(store.get('or-name')||a.name):a.name,a===me?'#2b6cb0':a.isPlayer?OTHER_HUMAN:'rgba(251,250,246,.94)',a===me||a.isPlayer?'#fbfaf6':'#1d2328');
-    else nameTag(x,y-12,a===me?'나':a.name,a,a===me?'#2b6cb0':a.isPlayer?OTHER_HUMAN:'rgba(251,250,246,.94)',a===me||a.isPlayer?'#fbfaf6':'#1d2328');
+    else nameTag(x,y-12,a===me?'나':a.name,a,a===me?'#1d2328':a.isPlayer?OTHER_HUMAN:'rgba(251,250,246,.94)',a===me||a.isPlayer?'#fbfaf6':'#1d2328');
     if(G.plaza&&a.room){const near=a!==me&&!isTouch&&!NETC.room&&pzNear()===a;tag(x,y-36,`${a===me?'내 방':'같이 하기'} ${a.room[0]} · ${a.room[1]}/8${near?' · E 참가':''}`,'#f3d77a','#1d2328',12);}
     if(!G.plaza){ctx.fillStyle='#1d2328';ctx.fillRect(x-18,y+1,36,5);ctx.fillStyle=a.g<30?'#cf3626':'#2f7d4f';ctx.fillRect(x-17,y+2,34*Math.max(0,a.g)/100,3);}
     if(a.items.length&&a!==me)glyph(a.items[0],x+28,y-12,14);
@@ -1084,7 +1109,7 @@ function render(dt){
     const st=a.stunT>0?'회식 중':a.lockT>0?a.lockWhy:a.call?'호출당함':a.working?'근무 중 · 못 건드림':'';
     if(st)outlined(st,x,y-30,F(800,12),'#c08a1e');
     if(G.star&&G.star.a===a)outlined('★ 우수사원',x,y-(st?48:30),DF(16),'#c08a1e');
-    if(a.chan){const q=scr(a.x,a.y,.05);if(q){const kk=1-a.chan.t/a.chan.max;ctx.beginPath();ctx.arc(q[0],q[1],28,-Math.PI/2,-Math.PI/2+kk*Math.PI*2);ctx.strokeStyle='#f3d77a';ctx.lineWidth=5;ctx.stroke();
+    if(a.chan){const q=scr(a.x,a.y,.05);if(q){const kk=1-a.chan.t/a.chan.max;ctx.beginPath();ctx.arc(q[0],q[1],28,-Math.PI/2,-Math.PI/2+kk*Math.PI*2);ctx.strokeStyle=a===me?'#4f93e0':'#f3d77a';ctx.lineWidth=5;ctx.stroke();
       outlined(a.chan.max-a.chan.t<a.chan.tag?'사원증 태그':'이동 중',q[0],q[1]+44,F(800,10),'#1d2328');}}
   }
   /* npc labels */

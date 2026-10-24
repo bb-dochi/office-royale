@@ -146,7 +146,7 @@ for(const fl of FLOORS){
 const CAT={heal:{n:'회복',c:'#3fbf6a'},atk:{n:'공격',c:'#e5483a'},def:{n:'방어',c:'#3d8be0'},move:{n:'이동',c:'#e0c23d'},ctl:{n:'방해',c:'#a35dd6'}};
 /* d: full description · s: the short one shown when you pick it up */
 const ITEMS={
-  coffee:{n:'아이스 아메리카노',d:'즉시 고과 +7',s:'고과 +7',cat:'heal',g:'커',w:2},
+  coffee:{n:'아이스 아메리카노',d:'즉시 회복 +7',s:'회복 +7',cat:'heal',g:'커',w:2},
   stapler:{n:'스테이플러',d:'15발 연사',s:'15발 연사',cat:'atk',g:'철',w:2},
   bundle:{n:'서류 뭉치',d:'던지면 터져서 주변 -8',s:'맞은 자리 폭발',cat:'atk',g:'뭉',w:1.5},
   spill:{n:'식은 커피',d:'바닥에 쏟기: 밟으면 미끄러지고 -5',s:'바닥 함정',cat:'ctl',g:'쏟',w:1.5},
@@ -162,15 +162,17 @@ const ITEM_KEYS=Object.keys(ITEMS).filter(k=>ITEMS[k].w>0);
 function randItem(){let t=0;for(const k of ITEM_KEYS)t+=ITEMS[k].w;let r=Math.random()*t;for(const k of ITEM_KEYS){r-=ITEMS[k].w;if(r<=0)return k;}return 'coffee';}
 /* every 팀장 gets a Q skill; 임원 makes it stronger and quicker (see useSkill) */
 /* pas: always on · sk/skd: the Q skill and what it does (shown on the team choice memo) */
-/* everyone picks a team before the match (lobby). pt / kt: the passive and the skill in a few words; pw: the weak
+/* teams: decided at the 사원 promotion by what you did most as an intern (see assignTeam).
+   디자인 is kept here but out of TEAMS for now. pt / kt: the passive and the skill in a few words; pw: the weak
    passive a 대리 already gets. Nothing below 대리, weak passive at 대리, full passive + Q skill at 팀장, stronger at 임원 */
-const BRANCH={hr:{n:'인사팀장',pw:'탈락 시 1회 재입사(고과 10)',pt:'탈락 시 1회 부활',kt:'1명 묶기',pas:'고과 0이 돼도 인턴으로 1회 재입사',sk:'면담',skd:'근처 1명을 1.5초 묶어 둠',cd:14,c:'#2f9e57'},
+const BRANCH={hr:{n:'인사팀장',pw:'받는 피해 -5%',pt:'받는 피해 -10%',kt:'1명 묶기',pas:'받는 서류 피해 감소',sk:'면담',skd:'근처 1명을 1.5초 묶어 둠',cd:14,c:'#2f9e57'},
   dev:{n:'개발팀장',pw:'업무 1.5배',pt:'업무 2배',kt:'업무·이동 가속',pas:'업무 속도 2배 · 사원증 태그 0.3초',sk:'야근',skd:'5초간 업무 2배 더 · 이동 빨라짐',cd:18,c:'#2f74c4'},
   mkt:{n:'마케팅팀장',pw:'사거리 +12%',pt:'사거리 +25%',kt:'사방 공격',pas:'서류 사거리 +25%',sk:'전단지',skd:'사방으로 전단지 10장 광역 공격',cd:12,c:'#c08a1e'},
   design:{n:'디자인팀장',pw:'부장님 시야 -15%',pt:'부장님 시야 ↓',kt:'4초 투명',pas:'부장님 시야 30% 좁게',sk:'위장',skd:'4초간 투명 (던지면 풀림)',cd:20,c:'#8d4bbf'}};
+const TEAMS=['dev','mkt','hr'];
 const BRANCH_PICK=12; // seconds a new 팀장 has to pick a team before one is picked for them
 const EXEC_CD=.6; // 임원: skill cooldown ×0.6 and a bigger effect
-const RANKS=[[0,'인턴'],[55,'사원'],[60,'대리'],[75,'팀장'],[90,'임원']];
+const RANKS=[[0,'인턴'],[55,'사원'],[65,'대리'],[80,'팀장'],[95,'임원']];
 const TAG={인턴:2,사원:1.75,대리:1.5,팀장:1,'임원':.5};
 const RANK_ORDER=['인턴','사원','대리','팀장','임원'];
 const rankAt=(a,r)=>RANK_ORDER.indexOf(a.rank)>=RANK_ORDER.indexOf(r);

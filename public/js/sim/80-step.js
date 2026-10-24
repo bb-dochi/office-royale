@@ -34,7 +34,6 @@ function step(dt){
   for(const d of G.dings)d.t-=dt;G.dings=G.dings.filter(d=>d.t>0);
   // humans
   for(const me of hs){
-    if(me.branchAsk&&!me.branch&&G.t>=me.branchAsk)chooseBranch(me,pick(Object.keys(BRANCH)));
     if(!me.alive||me.f<0||locked(me))continue;
     let vx=0,vy=0;
     const inp=me.input||NOINPUT;vx=inp.vx;vy=inp.vy;
@@ -75,13 +74,13 @@ function step(dt){
     if((!a.isPlayer||diff().regen)&&!G.final&&G.t-a.lastHitT>6&&a.g<60&&!a.inRest&&a.f>=G.closed)gain(a,.5*dt); // players only on 쉬움
     if(a.sit){a.x=a.sit.x;a.y=a.sit.y;a.sitT+=dt;} // 고과 at your own desk now comes from the monitor work (deskStepA)
     /* idle clock: nothing done for IDLE s (no task, delivery, favour or hit) and 고과 starts to leak, so hiding upstairs doesn't pay */
-    if(!G.tutorial&&!G.lunch&&!G.final&&a.f!==ROOF&&!a.desk){const idle=G.t-a.workT;
+    if(!G.tutorial&&!G.lunch&&!G.final&&a.f!==ROOF&&!a.desk&&diff().idle){const idle=G.t-a.workT; // 쉬움: no idle penalty
       if(idle>IDLE){dmg(a,IDLE_DRAIN*dt,'idle');if(idle-dt<=IDLE)tell(a,'업무 태만: 할 일을 안 하면 고과가 깎여요',true);}}
     const fl=FLOORS[a.f];
     const wasIn=a.inRest;a.inRest=inRect(a,fl.rest);
     if(a.inRest){a.restT+=dt;if(a.restT>10){dmg(a,dt,'rest');if(a.restT-dt<=10)tell(a,'자리 비움이 길어졌다: 고과 감소 중',true);}}else a.restT=0;
-    if(a.coffeeCd<=0&&Math.hypot(a.x-fl.spots.coffee.x,a.y-fl.spots.coffee.y)<34){gain(a,5);a.coffeeCd=35;pop(a.f,a.x,a.y-30,'+5 커피','#7a4b2a');} // the pantry machine: a small top-up, not a heal
-    if(a.coolerCd<=0&&Math.hypot(a.x-fl.spots.cooler.x,a.y-fl.spots.cooler.y)<56){gain(a,4);a.coolerCd=10;pop(a.f,a.x,a.y-30,'+4 정수기','#3f6f99');}
+    if(a.coffeeCd<=0&&Math.hypot(a.x-fl.spots.coffee.x,a.y-fl.spots.coffee.y)<34){gain(a,5,true);a.coffeeCd=35;pop(a.f,a.x,a.y-30,'회복 +5','#7a4b2a');} // the pantry machine: a small top-up, not a heal
+    if(a.coolerCd<=0&&Math.hypot(a.x-fl.spots.cooler.x,a.y-fl.spots.cooler.y)<56){gain(a,4,true);a.coolerCd=10;pop(a.f,a.x,a.y-30,'회복 +4','#3f6f99');}
   }
   // separation (people at their desks stay put)
   for(let i=0;i<al.length;i++)for(let j=i+1;j<al.length;j++){const a=al[i],b=al[j];if(a.f!==b.f||a.sit||b.sit)continue;const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);
@@ -105,7 +104,7 @@ function step(dt){
     if(!a&&STORE.has(it.k))for(const h of humans())if(h.alive&&h.f===it.f&&!canTake(h,it.k)&&G.t>(h.fullT||0)&&Math.hypot(h.x-it.x,h.y-it.y)<24){h.fullT=G.t+6;tell(h,'들고 있는 공격 아이템부터 써야 새로 주울 수 있어요');}
     if(a){G.items.splice(i,1);
       if(it.k==='lighter'){a.lighter=(a.lighter||0)+1;pop(a.f,a.x,a.y-30,`라이터 ${a.lighter}`,'#e0603d');if(a.lighter===1)tell(a,'라이터! 우리 재떨이로 가져가요');}
-      else if(it.k==='coffee'){gain(a,7);pop(a.f,a.x,a.y-30,'+7 아이스 아메리카노','#7a4b2a');}
+      else if(it.k==='coffee'){gain(a,7,true);pop(a.f,a.x,a.y-30,'회복 +7','#7a4b2a');}
       else if(it.k==='food'){gain(a,15);pop(a.f,a.x,a.y-30,'+15 '+pick(['치킨','짜장면','피자','김밥','떡볶이']),'#2f7d4f');}
       else if(!STORE.has(it.k)){applyItem(a,it.k);if(a.isPlayer){const I=ITEMS[it.k];tell(a,`${I.n} · ${I.s}`);}}
       else if(it.k==='stapler'){a.ammo=15;pop(a.f,a.x,a.y-30,'스테이플러 장전 15발',ITEMS.stapler.c);tell(a,'스테이플러 · 15발 연사');}
@@ -113,7 +112,7 @@ function step(dt){
   }
   for(let i=G.drops.length-1;i>=0;i--){const d=G.drops[i];const a=al.find(a=>a.f===d.f&&!a.carry&&Math.hypot(a.x-d.x,a.y-d.y)<22);
     if(a){G.drops.splice(i,1);a.carry=true;pop(a.f,a.x,a.y-30,'출력물 주움','#1d2328');tell(a,'떨어진 출력물을 주웠다: 결재함으로 배달');}}
-  for(const a of al){if(!a.carry)continue;const b=FLOORS[a.f].spots.box;if(Math.hypot(a.x-b.x,a.y-b.y)<42){a.carry=false;const dbl=warnFloor(a.f)?2:1;gain(a,12*dbl);a.lastTaskT=G.t;a.tasksDone++;worked(a);
+  for(const a of al){if(!a.carry)continue;const b=FLOORS[a.f].spots.box;if(Math.hypot(a.x-b.x,a.y-b.y)<42){a.carry=false;const dbl=warnFloor(a.f)?2:1;jobDone(a,'dev');gain(a,12*dbl);a.lastTaskT=G.t;a.tasksDone++;worked(a);
     pop(a.f,a.x,a.y-30,`+${12*dbl} 출력물 배달`,'#2f7d4f');tell(a,`배달 완료 +${12*dbl}`);}}
   // tasks
   G.respawn=G.respawn.filter(r=>r.at>G.t);
@@ -151,8 +150,6 @@ function step(dt){
   // deaths (none after the match is decided: the result is final)
   for(const a of G.over?[]:alive()){
     if(a.g>0)continue;
-    if(a.branch==='hr'&&teamK(a)>0&&!a.revived){const back=teamK(a)>=1?20:10;a.revived=true;a.rank='인턴';a.peak=50;a.g=back;a.inv=1.5;pop(a.f,a.x,a.y-44,'인사팀 특권: 인턴으로 재입사','#2f7d4f');
-      feed(v=>a===v?`인사팀 특권 발동: 인턴으로 재입사 (고과 ${back})`:`${a.name}님이 인턴으로 재입사했습니다`,a.isPlayer);continue;}
     a.g=0;a.alive=false;a.chan=null;a.contact=null;a.call=null;stand(a);const left=aliveCount();a.place=left+1;
     const killer=(a.cause==='paper')&&a.lastHitBy&&G.t-a.lastHitT<4?a.lastHitBy:null;a.killer=killer;
     if(killer&&killer.alive){worked(killer);const RI=['인턴','사원','대리','팀장','임원'],v=10+(RI.indexOf(a.rank)>RI.indexOf(killer.rank)?6:0);gain(killer,v);killer.kills=(killer.kills||0)+1;

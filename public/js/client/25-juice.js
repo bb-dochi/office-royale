@@ -72,17 +72,21 @@ function scrapsStep(dt){
   if(any)pGeo.attributes.position.needsUpdate=true;
 }
 /* what a rank gives you, shown on the promotion slip */
-function rankPerks(r){const p=[`공격력 ×${DMG[r]}`];if(r==='팀장')p.push(isTouch?'부서 스킬':'부서 스킬 Q');if(r==='임원')p.push('부장님 프리패스','스킬 강화');return p.join(' · ');}
+/* what this promotion gives me, in my team's terms (대리: the 부서 혜택 starts, 팀장: the full one and the Q skill) */
+function rankPerks(r){const p=[`공격력 ×${DMG[r]}`],b=G&&G.me&&G.me.branch,B=b&&BRANCH[b],q=isTouch?'':'Q ';
+  if(r==='대리'&&B)p.push(`부서 혜택: ${B.pw}`);
+  if(r==='팀장')p.push(...(B?[`혜택 강화: ${B.pt}`,`팀 스킬 ${q}${B.sk}: ${B.kt}`]:[`팀 스킬 ${q}`.trim()]));
+  if(r==='임원')p.push('부장님 프리패스','팀 스킬 강화');return p.join(' · ');}
 let bannerAnim=null;
-function banner(stamp,title,sub,gold){
+function banner(stamp,title,sub,gold,col,dur=2400){
   const b=$('banner');$('bannerStamp').textContent=stamp;$('bannerTitle').textContent=title;
   $('bannerSub').innerHTML=(sub||'').split(' · ').filter(Boolean).map(x=>`<i>${x}</i>`).join(''); // each point as its own chip
-  b.classList.toggle('gold',!!gold);b.hidden=false;
+  b.classList.toggle('gold',!!gold);b.style.setProperty('--bc',col||'');b.classList.toggle('tinted',!!col);b.hidden=false;
   /* in the tutorial the guide card sits at the top: put the slip just under it instead of on top of it */
   const tc=typeof TUT!=='undefined'&&TUT.on&&!$('tut').hidden?$('tut').getBoundingClientRect():null;b.style.top=tc?`${Math.round(tc.bottom+12)}px`:'';
   if(bannerAnim)bannerAnim.cancel();
-  if(reduceMotion){bannerAnim=b.animate([{opacity:1},{opacity:1},{opacity:0}],{duration:2200});}
-  else{bannerAnim=b.animate([{opacity:0,transform:'translateX(-50%) translateY(10px)'},{opacity:1,transform:'translateX(-50%)',offset:.08},{opacity:1,transform:'translateX(-50%)',offset:.85},{opacity:0,transform:'translateX(-50%) translateY(-6px)'}],{duration:2400,easing:'ease-out'});
+  if(reduceMotion){bannerAnim=b.animate([{opacity:1},{opacity:1},{opacity:0}],{duration:dur});}
+  else{bannerAnim=b.animate([{opacity:0,transform:'translateX(-50%) translateY(10px)'},{opacity:1,transform:'translateX(-50%)',offset:.08},{opacity:1,transform:'translateX(-50%)',offset:.9},{opacity:0,transform:'translateX(-50%) translateY(-6px)'}],{duration:dur,easing:'ease-out'});
     $('bannerStamp').animate([{transform:'rotate(-12deg) scale(2.4)',opacity:0},{transform:'rotate(-12deg) scale(.92)',opacity:1,offset:.7},{transform:'rotate(-12deg) scale(1)'}],{duration:260,delay:90,easing:'ease-in',fill:'backwards'});}
   bannerAnim.onfinish=()=>{b.hidden=true;bannerAnim=null;};
 }
@@ -98,12 +102,12 @@ function juiceFrame(dt){
   if(!G||!G.me||G.plaza)return;
   const me=G.me;
   if(JU.g!==G){JU.g=G;JU.st.clear();JU.proj=new WeakSet();for(const p of G.proj)JU.proj.add(p);JU.warn=G.warn;JU.closed=G.closed;
-    for(const a of G.actors)JU.st.set(a.id,{flash:a.flash,alive:a.alive,rank:a.rank,ammo:a.ammo,items:a.items.length,sq:0});return;}
+    for(const a of G.actors)JU.st.set(a.id,{flash:a.flash,alive:a.alive,rank:a.rank,branch:a.branch,ammo:a.ammo,items:a.items.length,sq:0});return;}
   if(G.warn&&!JU.warn)SFX.warn();JU.warn=G.warn;
   if(G.closed>JU.closed)SFX.closure();JU.closed=G.closed;
   for(const p of G.proj)if(!JU.proj.has(p)){JU.proj.add(p);const v=p.o===me?1:sfxVol(p)*.5;if(v>0)(p.staple?SFX.staple:SFX.throw)(v);}
   for(const a of G.actors){
-    let s=JU.st.get(a.id);if(!s){s={flash:a.flash,alive:a.alive,rank:a.rank,ammo:a.ammo,items:a.items.length,sq:0};JU.st.set(a.id,s);continue;}
+    let s=JU.st.get(a.id);if(!s){s={flash:a.flash,alive:a.alive,rank:a.rank,branch:a.branch,ammo:a.ammo,items:a.items.length,sq:0};JU.st.set(a.id,s);continue;}
     const v=a===me?1:sfxVol(a),byMe=a!==me&&a.hitBy===me.id;
     /* got hit: the flash timer jumps back up */
     if(a.alive&&a.flash>.08&&a.flash>s.flash+.04){
@@ -123,13 +127,19 @@ function juiceFrame(dt){
       else if(v>0)SFX.ko(v);
     }
     if(a===me){
-      if(a.alive&&s.rank&&a.rank!==s.rank&&RI_J.indexOf(a.rank)>RI_J.indexOf(s.rank)){SFX.promote();scraps(a.x,a.y,40,null,CONFETTI,1.2);banner('승진',`${a.rank} 승진!`,rankPerks(a.rank),true);}
+      /* promotions stay up longer (they list what the new rank unlocks); the 사원 one also announces the team 발령 */
+      const promo=a.alive&&s.rank&&a.rank!==s.rank&&RI_J.indexOf(a.rank)>RI_J.indexOf(s.rank),newTeam=!!a.branch&&!s.branch;
+      if(promo){SFX.promote();scraps(a.x,a.y,40,null,CONFETTI,1.2);
+        if(newTeam)banner('발령',`${a.rank} 승진 · ${teamShort(a.branch)}팀 발령`,'',true,null,3500);
+        else banner('승진',`${a.rank} 승진!`,rankPerks(a.rank),true,null,4500);}
       if(a.ammo>s.ammo||a.items.length>s.items)SFX.pickup();
+      /* my team was just decided by my first achievement: a 발령 slip (teams have no colour; their prop shows) */
+      if(newTeam&&!promo){SFX.confirm();banner('발령',`${teamShort(a.branch)}팀 발령`,'',true,null,3500);}
     }
     /* squash and stretch on the inner rig (poseChar leaves its scale alone) */
     const m=actorM.get(a);
     if(m&&(s.sq>0||s.sqOn)){s.sq=Math.max(0,s.sq-dt);const k=s.sq/.16;m.userData.inner.scale.set(1+.22*k,1-.26*k,1+.22*k);s.sqOn=s.sq>0;}
-    s.flash=a.flash;s.alive=a.alive;s.rank=a.rank;s.ammo=a.ammo;s.items=a.items.length;
+    s.flash=a.flash;s.alive=a.alive;s.rank=a.rank;s.branch=a.branch;s.ammo=a.ammo;s.items=a.items.length;
   }
 }
 /* drawn on the 2D overlay after everything else: hit markers, the 'fired' stamp, red edges when I get hit */

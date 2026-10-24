@@ -47,7 +47,7 @@ function applyItem(a,k,aim){
   else if(k==='card'){let n=0;for(const o of G.actors)if(o!==a&&o.alive&&o.f===a.f&&dist(a,o)<200&&o.inv<=0&&!o.desk&&!ally(a,o)){o.stunT=3;o.chan=null;stand(o);n++;pop(o.f,o.x,o.y-44,'회식 참석','#c08a1e');}say(n?`회식 소집 (${n}명)`:'아무도 안 옴');}
   else if(k==='bundle'){const ang=aim??aimOf(a);G.proj.push({f:a.f,x:a.x+Math.cos(ang)*(R+4),y:a.y+Math.sin(ang)*(R+4),ox:a.x,oy:a.y,dx:Math.cos(ang),dy:Math.sin(ang),d:0,o:a,spin:0,bundle:true,sp:420,rng:260});a.cloakT=0;a.face=ang;
     say('서류 뭉치 투척!');for(const n of watchers(a))if(!immune(a,n)&&sees(n,a)){caught(a,n,'act');break;}}
-  else if(k==='coffee'){gain(a,7);say('+7 커피');}
+  else if(k==='coffee'){gain(a,7,true);say('회복 +7');}
   if(k!=='coffee')tell(a,`${it.n} 사용`);
   return true;
 }
@@ -147,7 +147,7 @@ function openDoor(a){
 function submitTask(a,t){
   if(!G.tasks.includes(t))return;
   if(t.by&&t.by!==a)return;
-  const dbl=warnFloor(t.f)?2:1,v=t.reward*dbl;gain(a,v);a.lastTaskT=G.t;a.tasksDone++;worked(a);
+  const dbl=warnFloor(t.f)?2:1,v=t.reward*dbl;jobDone(a,'dev');gain(a,v);a.lastTaskT=G.t;a.tasksDone++;worked(a);
   pop(a.f,a.x,a.y-30,`+${v} ${t.name}${dbl>1?' (막판 실적 x2)':''}`,'#2f7d4f');
   if(TASK_GAP(t.f))G.respawn.push({f:t.f,at:G.t+TASK_GAP(t.f)});
   if(Math.random()<.3&&a.docs<2){a.docs++;tell(a,'결재 서류 획득: 부장님 근처에서 결재 올리기 +8');}
@@ -172,7 +172,7 @@ function endDesk(a){
 }
 function deskDone(a,ok){
   const d=a.desk,r=DESK.rew[d.round];
-  if(ok){d.ok++;d.gain+=r;gain(a,r);pop(a.f,a.x,a.y-30,`+${r} ${d.job}`,'#2f7d4f');}
+  if(ok){jobDone(a,'dev');d.ok++;d.gain+=r;gain(a,r);pop(a.f,a.x,a.y-30,`+${r} ${d.job}`,'#2f7d4f');}
   d.res=ok?'ok':'bad';d.resT=G.t;d.round++;d.wait=DESK.gap;d.seq='';
 }
 function deskKey(a,k){
@@ -214,7 +214,19 @@ function wcStep(a,dt){
 }
 /* ================= player commands (shared by the browser and the room server) ================= */
 function useFloor(a,dir){if(a.sit)return;const p=padOf(a);if(!a.alive||!p)return;if(startChan(a,p,dir))tell(a,`${PADS[p].n} → ${FLOORS[a.f+dir].name}`);}
-function chooseBranch(a,k){if(!a||!BRANCH[k]||a.branch)return;a.branch=k;a.branchAsk=0;tell(a,`${BRANCH[k].n}이 되었습니다`);pop(a.f,a.x,a.y-44,BRANCH[k].n,'#2f7d4f');}
+function chooseBranch(a,k){if(!a||!BRANCH[k]||a.branch)return;a.branch=k;a.branchAsk=0;
+  tell(a,`${teamShort(k)}팀 발령!`);pop(a.f,a.x,a.y-44,`${teamShort(k)}팀 발령`,BRANCH[k].c);}
+/* teams: while an intern, what you do is counted (tasks → 개발, papers that land → 마케팅, dealing with bosses and
+   colleagues → 인사); at the 사원 promotion the most-done one is your team. Weights even out how often each comes up */
+const JOB_W={dev:1,mkt:.5,hr:1.5};
+function jobDone(a,k){if(a&&!a.branch&&a.alive&&a.jobs)a.jobs[k]++;}
+/* the team the counts point to right now (null while nothing is counted); ties go to the first in TEAMS */
+function leadTeam(a){const j=a.jobs;if(!j)return null;let best=0,k=null;for(const t of TEAMS){const v=(j[t]||0)*JOB_W[t];if(v>best){best=v;k=t;}}return k;}
+function assignTeam(a){
+  if(a.branch)return;const j=a.jobs||{};let best=0,ks=[];
+  for(const t of TEAMS){const v=(j[t]||0)*JOB_W[t];if(v>best+1e-9){best=v;ks=[t];}else if(v>0&&Math.abs(v-best)<1e-9)ks.push(t);}
+  chooseBranch(a,pick(ks.length?ks:TEAMS)); // nothing counted: just a team
+}
 function callOptions(a){return[{key:'greet',t:'인사',s:'죄송합니다!'},a.docs>0?{key:'doc',t:'결재 요청',s:'여기 있습니다'}:{key:'report',t:'보고',s:'진행 중입니다'},{key:'busy',t:'바쁜 척',s:'타닥타닥'}];}
 /* What E / the action button does right now for actor me: {label, cls, fn} or null. */
 function contextAction(me){

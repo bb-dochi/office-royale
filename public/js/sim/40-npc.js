@@ -44,7 +44,7 @@ function errandStep(a,dt){
   const e=a.errand;e.t-=dt;
   if(a.f!==e.f||e.t<=0){a.errand=null;tell(a,'부탁을 못 들어줬다 (층을 떠났거나 시간 초과)');return;}
   if(e.step===0&&Math.hypot(a.x-e.tx,a.y-e.ty)<50){e.step=1;pop(a.f,a.x,a.y-36,'챙겼다!','#3f6f99');tell(a,'이제 부탁한 사람 자리로 돌아가요');}
-  else if(e.step===1&&Math.hypot(a.x-e.bx,a.y-e.by)<55){a.errand=null;gain(a,e.r);worked(a);pop(a.f,a.x,a.y-36,`부탁 완료 +${e.r}`,'#2f7d4f');tell(a,`동료 부탁 완료: 고과 +${e.r}`);
+  else if(e.step===1&&Math.hypot(a.x-e.bx,a.y-e.by)<55){a.errand=null;jobDone(a,'hr');gain(a,e.r);worked(a);pop(a.f,a.x,a.y-36,`부탁 완료 +${e.r}`,'#2f7d4f');tell(a,`동료 부탁 완료: 고과 +${e.r}`);
     const n=G.npcs.find(n=>n.kind==='desk'&&n.f===a.f&&Math.hypot(n.x-e.bx,n.y-e.by)<2);if(n)say(n,pick(['고마워요!','역시 최고예요','다음에 밥 살게요!']),'#2f7d4f');}
 }
 function soundAlert(f,victim,ox,oy,thrower){
@@ -66,14 +66,15 @@ function answer(a,choice){
   const c=a.call;if(!c)return;a.call=null;const L=c.line;
   {const o=callOptions(a).find(o=>o.key===choice);say(a,o?o.s:'……');}
   let ok=choice===L.ans;
-  if(ok&&L.ans==='report'&&G.t-a.lastTaskT>20)ok=false;
   if(ok&&L.ans==='doc'){a.docs--;a.shieldN+=1;}
-  if(ok){if(L.ok)gain(a,L.ok);a.stampT=G.t+5;a.stampNpc=c.n;pop(a.f,a.x,a.y-36,L.ok?`잘했어 +${L.ok}`:'무사 통과',L.ok?'#2f7d4f':'#5d666e');tell(a,L.ans==='doc'?'결재 완료: +5, 결재 도장 1개':`호출 통과${L.ok?` +${L.ok}`:''} · 눈도장 5초`);}
+  /* 보고 is always the right answer; the bonus only comes with a task finished in the last 20s */
+  const bonus=L.ans==='report'&&G.t-a.lastTaskT>20?0:L.ok;
+  if(ok){jobDone(a,'hr');if(bonus)gain(a,bonus);a.stampT=G.t+5;a.stampNpc=c.n;pop(a.f,a.x,a.y-36,bonus?`잘했어 +${bonus}`:'무사 통과',bonus?'#2f7d4f':'#5d666e');tell(a,L.ans==='doc'?'결재 완료: +5, 결재 도장 1개':`호출 통과${bonus?` +${bonus}`:''} · 눈도장 5초`);}
   else{dmg(a,L.bad,'boss');pop(a.f,a.x,a.y-36,`-${L.bad}`,'#cf3626');if(L.lock){a.lockT=L.lock;a.lockWhy='잡무 지시';}
     tell(a,choice?`틀린 대답: 고과 -${L.bad}${L.lock?' · 잡무 지시 3초':''}`:`대답을 못 했다: 고과 -${L.bad}`,true);}
 }
 function submitDoc(a,n){
-  if(a.docs<=0)return;a.docs--;gain(a,8);a.shieldN+=1;a.stampT=G.t+10;a.stampNpc=n;a.met[n.id]=G.t;a.contact=null;
+  if(a.docs<=0)return;a.docs--;jobDone(a,'hr');gain(a,8);a.shieldN+=1;a.stampT=G.t+10;a.stampNpc=n;a.met[n.id]=G.t;a.contact=null;
   pop(a.f,a.x,a.y-36,'결재 완료 +8','#2f7d4f');tell(a,'결재 올리기 +8 · 결재 도장 1개 · 눈도장 10초');
 }
 function greet(a){
@@ -81,7 +82,7 @@ function greet(a){
   if(a.contact){
     const n=a.contact.n;a.contact=null;
     const first=G.t-n.lastGreet>1.5;n.lastGreet=G.t;
-    const v=n.kind==='ceo'?10:n.senior?(first?5:2):(first?3:1);gain(a,v);a.stampT=G.t+10;a.stampNpc=n;
+    const v=n.kind==='ceo'?10:n.senior?(first?5:2):(first?3:1);jobDone(a,'hr');gain(a,v);a.stampT=G.t+10;a.stampNpc=n;
     say(a,n.kind==='ceo'?'대표님, 안녕하십니까!':pick(['안녕하십니까!','좋은 아침입니다!',`${bossTitle(n)} 안녕하세요!`]));
     if(first)say(n,n.kind==='ceo'?pick(['허허, 열심히 하게','자네 이름이 뭐였지?']):pick(['어, 그래','수고가 많아','오늘도 힘내고']),n.kind==='ceo'?'#c08a1e':'#5d666e');
     pop(a.f,a.x,a.y-36,`인사 +${v}`,'#2f7d4f');
@@ -96,7 +97,7 @@ function greet(a){
     return;}
   a.greetLock=2;if(a.isPlayer)say(a,'안녕하… 세요?','#5d666e');
 }
-function answerQuest(a){if(!a.quest)return;const n=a.quest.n;a.quest=null;a.questCd=G.t+15;n.att=null;n.cool=G.t+10;n.path=[];gain(a,2);pop(a.f,a.x,a.y-36,'멘토링 +2','#2f7d4f');tell(a,'신입에게 친절하게 알려줬다 +2');}
+function answerQuest(a){if(!a.quest)return;jobDone(a,'hr');const n=a.quest.n;a.quest=null;a.questCd=G.t+15;n.att=null;n.cool=G.t+10;n.path=[];gain(a,2);pop(a.f,a.x,a.y-36,'멘토링 +2','#2f7d4f');tell(a,'신입에게 친절하게 알려줬다 +2');}
 function updNpcs(dt){
   for(const n of G.npcs){if(n.kind!=='courier')continue;
     if(!n.on){n.cd-=dt;if(n.cd<=0&&isOpen(n.f)&&!G.lunch){n.on=true;n.left=24;n.dropT=3;n.x=PADS.elev.x;n.y=PADS.elev.y-20;n.path=[];say(n,'택배 왔습니다!','#b5651d');for(const h of humans())if(h.alive&&h.f===n.f)tell(h,'택배 기사 등장: 따라다니면 아이템 상자가 떨어져요');}}
@@ -141,7 +142,7 @@ function updNpcs(dt){
     }
   }
   for(const n of G.npcs){if(n.kind!=='cart'||!npcActive(n))continue;
-    for(const a of G.actors)if(a.alive&&a.f===n.f&&!a.transit&&a.g<70&&dist(a,n)<75)gain(a,1.3*dt);}
+    for(const a of G.actors)if(a.alive&&a.f===n.f&&!a.transit&&a.g<70&&dist(a,n)<75)gain(a,1.3*dt,true);}
   // contact & chats
   for(const a of alive()){
     if(a.f<0||a.transit)continue;

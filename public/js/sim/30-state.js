@@ -10,7 +10,7 @@ function mk(name,isPlayer,type,color,pos){
     path:[],pathAge:0,goal:null,mode:'idle',think:Math.random()*.3,target:null,strafe:Math.random()<.5?1:-1,react:.4,
     speed:isPlayer?175:135+Math.random()*25,flash:0,lastHitBy:null,hitBy:0,lastHitT:-99,cause:null,sx:pos.x,sy:pos.y,stuckT:0,nudge:null,place:0,
     items:[],docs:0,intelT:0,sprint:false,runCd:0,fallCd:0,side:null,lunchGo:false,rapidT:0,slipT:0,ammo:0,lastCd:.6,cloakT:0,skillCd:0,rushT:0,branch:null,revived:false,shieldN:0,speedT:0,stunT:0,vipT:0,slowT:0,lockT:0,lockWhy:'',chan:null,transit:null,inv:0,
-    seats:{},sit:null,sitT:0,sitHeal:0,sitStart:0,sitGoal:0,desk:null,deskCd:0,working:false,wc:null,wcCd:0,lighter:0,smokeCd:0,workT:0,carry:false,lastTaskT:-99,tasksDone:0,coffeeCd:0,coolerCd:0,
+    seats:{},sit:null,sitT:0,sitHeal:0,sitStart:0,sitGoal:0,desk:null,deskCd:0,working:false,wc:null,wcCd:0,jobs:{dev:0,mkt:0,hr:0},lighter:0,smokeCd:0,workT:0,carry:false,lastTaskT:-99,tasksDone:0,coffeeCd:0,coolerCd:0,
     contact:null,call:null,met:{},stampT:0,stampNpc:null,greetLock:0,cleanCd:0,cleanFriend:false,chatCd:0,restT:0,inRest:false,
     pref:0,padPref:Math.random()<.5?'stair':'elev',greed:rnd(2,10),maxF:0,killer:null};
 }
@@ -31,19 +31,19 @@ function assignSeats(f){
    keeps out of trouble slowly gets 고과 back. Online rooms always play 'normal'. */
 /* hunt: how close a person has to be before a bot goes for them unprovoked (0 = bots only hit back);
    huntP: the share of bots that do that at all; huntMax: how many may go after the same person at once */
-const DIFF={easy:{n:'쉬움',aim:1.8,react:.35,cd:1.35,speed:.9,regen:true,hunt:0,huntP:0,huntMax:0},normal:{n:'보통',aim:1,react:0,cd:1,speed:1,regen:false,hunt:130,huntP:.2,huntMax:1},
-  hard:{n:'어려움',aim:.55,react:-.08,cd:.8,speed:1.07,regen:false,hunt:180,huntP:.3,huntMax:2}};
+const DIFF={easy:{n:'쉬움',aim:1.8,react:.35,cd:1.35,speed:.9,regen:false,idle:false,hunt:0,huntP:0,huntMax:0},normal:{n:'보통',aim:1,react:0,cd:1,speed:1,regen:false,idle:true,hunt:130,huntP:.2,huntMax:1},
+  hard:{n:'어려움',aim:.55,react:-.08,cd:.8,speed:1.07,regen:false,idle:true,hunt:180,huntP:.3,huntMax:2}};
 const diff=()=>DIFF[G&&G.diff]||DIFF.normal;
 function newGame(opts={}){
   NID=0;
   const actors=[],spots=[];
   const pickPos=()=>{for(let i=0;i<300;i++){const p=randFree(0,90);if(p.y>K(480)&&spots.every(s=>dist(s,p)>80)){spots.push(p);return p;}}const p=randFree(0,90);spots.push(p);return p;};
   const hs=(opts.humans||[{key:'me',name:'나'}]).slice(0,TOTAL);
-  for(const h of hs){const a=mk(h.name,true,'플레이어',HUMAN_COLORS[actors.length%HUMAN_COLORS.length],pickPos());a.key=h.key;a.fit=h.fit||null;a.branch=BRANCH[h.team]?h.team:pick(Object.keys(BRANCH));actors.push(a);}
+  for(const h of hs){const a=mk(h.name,true,'플레이어',HUMAN_COLORS[actors.length%HUMAN_COLORS.length],pickPos());a.key=h.key;a.fit=h.fit||null;actors.push(a);}
   const me=actors[0];
   /* opts.bots: how many bots (default: fill to TOTAL). opts.tutorial: a practice floor with no closures or events */
   const nb=opts.bots??TOTAL-hs.length;
-  for(let i=0;i<nb;i++){const b=mk(NAMES[i],false,TYPES[i],SHIRTS[i],pickPos());b.pref=Math.random()<.3?1:0;b.branch=pick(Object.keys(BRANCH));actors.push(b);}
+  for(let i=0;i<nb;i++){const b=mk(NAMES[i],false,TYPES[i],SHIRTS[i],pickPos());b.pref=Math.random()<.3?1:0;actors.push(b);}
   G={t:0,actors,me,proj:[],items:[],traps:[],tasks:[],drops:[],wet:[],pops:[],dings:[],bursts:[],closed:0,nextClose:INTERVAL,warn:false,final:false,finalT:0,over:false,itemT:0,winner:null,
      npcs:[],doors:[],events:[],notice:null,ceo:null,blackout:null,cake:null,fire:0,star:null,audit:null,taskId:0,fillT:0,lunch:null,airdrops:[],respawn:[],smokes:[]};
   for(let f=0;f<NF;f++){
@@ -77,6 +77,9 @@ const taskQuota=f=>!isOpen(f)?0:(G.closed>=NF-1?5:f===topOpen()?3:4);
 const itemQuota=f=>!isOpen(f)?0:(G.closed>=NF-1?3:f===G.closed?4:f===topOpen()?2:3);
 /* a handed-in task leaves a gap for a while before another one turns up (the lobby's few desks stay empty longer) */
 const TASK_GAP=f=>f===0?15:0;
+/* promotion progress (peak) only takes part of the 고과 you gain above it once you're 대리 or 팀장, so the top ranks
+   take real work (고과 itself is not affected) */
+const PROMO_K={사원:.5,대리:.3,팀장:.7};
 const IDLE=45,IDLE_DRAIN=.35; // seconds without doing anything before 고과 leaks, and how fast
 function fillTasks(f){let n=0;const gaps=G.respawn.filter(r=>r.f===f&&r.at>G.t).length;while(G.tasks.filter(t=>t.f===f).length+gaps<taskQuota(f)&&n++<10)spawnTask(f);}
 function spawnTask(f){
@@ -118,10 +121,11 @@ function pop(f,x,y,text,color){G.pops.push({f,x,y,text,color,t:0});}
 function say(o,text,color){if(!o||o.f<0)return;const by=o.id??null;if(by!=null)G.pops=G.pops.filter(p=>!(p.say&&p.by===by));G.pops.push({f:o.f,x:o.x,y:o.y,text,color:color||'#1d2328',t:0,say:true,by});}
 function burst(p){for(const a of G.actors){if(a===p.o||!a.alive||a.f!==p.f||a.inRest||ally(p.o,a))continue;if(Math.hypot(a.x-p.x,a.y-p.y)<95)hit(a,p.o,7,'서류 폭탄 -7',p);}G.bursts.push({f:p.f,x:p.x,y:p.y,t:0});}
 function dmg(a,n,cause){if(!a.alive)return;a.g-=n;a.cause=cause;}
-function gain(a,n){
-  if(!a.alive)return;a.g=Math.min(100,a.g+n);
-  if(a.g>a.peak){a.peak=a.g;const r=rankOf(a.peak);if(r!==a.rank){a.rank=r;if(a.isPlayer)pop(a.f,a.x,a.y-40,'승진! '+r,'#2f7d4f'); // the promotion slip (client) says the rest
-    if((r==='팀장'||r==='임원')&&!a.branch)a.branch=pick(Object.keys(BRANCH));}} // the team is picked before the match; this only covers a missing one
+/* drink=true: coffee and the like top 고과 up but don't count toward promotion */
+function gain(a,n,drink){
+  if(!a.alive)return;const was=a.g;a.g=Math.min(100,a.g+n);
+  if(!drink&&a.g>a.peak){a.peak+=(a.g-Math.max(was,a.peak))*(PROMO_K[a.rank]??1);const r=rankOf(a.peak);if(r!==a.rank){a.rank=r;if(a.isPlayer)pop(a.f,a.x,a.y-40,'승진! '+r,'#2f7d4f'); // the promotion slip (client) says the rest
+    if(rankAt(a,'사원')&&!a.branch)assignTeam(a);}} // 사원 promotion: 발령 to the team of what you did most as an intern
 }
 const locked=a=>!!a.call||a.lockT>0||a.stunT>0;
 function stand(a){if(a.desk)endDesk(a);if(a.sit){a.sit.occ=null;a.sit=null;}}
@@ -131,12 +135,13 @@ function sit(a,s){if(s.npc||s.occ&&s.occ!==a)return false;stand(a);a.sit=s;s.occ
 const DMG={인턴:1,사원:1.15,대리:1.3,팀장:1.6,'임원':2};
 const dmgMul=o=>o&&o.rank?(DMG[o.rank]||1):1;
 function hit(t,o,n,label,p){
-  n=Math.round(n*dmgMul(o));if(label)label=label.replace(/-\d+/,'-'+n);
+  n=Math.round(n*dmgMul(o));if(t.branch==='hr')n*=1-.1*teamK(t); // 인사: 대리 -5%, 팀장 -10% damage taken
+  if(label)label=label.replace(/-\d+/,'-'+Math.round(n));
   if(t.inv>0){pop(t.f,t.x,t.y-26,'도착 보호','#5d666e');return;}
   if(t.desk){pop(t.f,t.x,t.y-26,'근무 중 (못 건드림)','#5d666e');return;}
   if(t.f===ROOF){n=Math.max(1,Math.round(n*LUNCH.dmg));if(label)label=label.replace(/-\d+/,'-'+n);dropLighters(t);}
   if(t.shieldN>0){t.shieldN--;pop(t.f,t.x,t.y-26,'결재 도장으로 막음','#cf3626');return;}
-  dmg(t,n,'paper');if(o)o.workT=G.t;t.lastHitBy=o;t.hitBy=o?o.id:0;t.lastHitT=G.t;t.flash=.22;pop(t.f,t.x,t.y-26,label||('-'+n),'#cf3626');
+  dmg(t,n,'paper');if(o){o.workT=G.t;jobDone(o,'mkt');}t.lastHitBy=o;t.hitBy=o?o.id:0;t.lastHitT=G.t;t.flash=.22;pop(t.f,t.x,t.y-26,label||('-'+Math.round(n)),'#cf3626');
   UI.shake(.15,t);
   stand(t);
   if(t.chan&&t.chan.pad==='stair'){t.chan=null;pop(t.f,t.x,t.y-44,'계단 오르다 맞음','#cf3626');}

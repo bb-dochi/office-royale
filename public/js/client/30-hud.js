@@ -125,6 +125,8 @@ let lastQ='';
 function questList(me){
   const Q=[];
   if(running&&me.alive&&!G.plaza){
+    if(!me.branch&&!G.lunch&&!G.tutorial&&me.jobs){const j=me.jobs,l=leadTeam(me);
+      Q.push({c:'#8a949c',h:'부서 발령',n:'사원 승진 때',t:`업무 ${j.dev} · 명중 ${j.mkt} · 응대 ${j.hr}`,bar:0,r:l?`→ ${teamShort(l)}팀`:''});}
     if(me.lighter>0)Q.push({c:'#e0603d',h:'라이터',t:`${me.lighter}개 → 우리 재떨이`,bar:me.lighter/LUNCH.carry,r:`+${me.lighter}점`});
     if(me.carry)Q.push({c:'#e0b52a',h:'배달',t:'출력물 → 결재함',bar:1,r:'+12'});
     if(me.docs>0)Q.push({c:'#3fbf6a',h:'결재',t:`서류 ${me.docs}장 → 부장님께`,bar:1,r:'+8'});
@@ -207,7 +209,7 @@ function fxBar(me){
   if(me.lockT>0)E.push({k:'lock',g:'⏸',t:me.lockWhy,bad:1});
   if(me.slowT>0)E.push({k:'slow',g:'↓',t:'둔화',bad:1});
   if(onWet(me))E.push({k:'wet',g:'~',t:'미끄러움',bad:1});
-  {const idle=G.t-me.workT;if(!G.tutorial&&!G.lunch&&!G.final&&me.f!==ROOF&&!me.desk&&idle>IDLE-15)E.push({k:'idle',g:'태',t:idle>IDLE?'업무 태만 · 고과 감소':`업무 태만 ${Math.ceil(IDLE-idle)}초 전`,bad:1});}
+  {const idle=G.t-me.workT;if(!G.tutorial&&!G.lunch&&!G.final&&me.f!==ROOF&&!me.desk&&diff().idle&&idle>IDLE-15)E.push({k:'idle',g:'태',t:idle>IDLE?'업무 태만 · 고과 감소':`업무 태만 ${Math.ceil(IDLE-idle)}초 전`,bad:1});}
   if(me.inRest&&me.restT>6)E.push({k:'rest2',g:'WC',t:me.restT>10?'화장실 오래 · 고과 감소':`화장실 ${Math.ceil(10-me.restT)}초 남음`,bad:1});
   if(me.rushT>0)E.push({k:'rush',g:'야',c:C('move'),t:`야근 모드 ${sec(me.rushT)}`,bar:me.rushT/(me.rank==='임원'?8:5)});
   if(me.speedT>0&&!(me.rushT>0))E.push({k:'speed',g:I.ticket.g,c:I.ticket.c,t:`빨라짐 ${sec(me.speedT)}`,bar:me.speedT/8});

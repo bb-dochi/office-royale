@@ -12,9 +12,13 @@ function tutSteps(){const PC=!isTouch;return[
     setup(){const me=G.me;TUT.n0=me.tasksDone;TUT.task=G.tasks.filter(t=>t.f===me.f).sort((a,b)=>dist(a,me)-dist(b,me))[0]||null;TUT.target=TUT.task;},
     tick(){if(TUT.task&&!G.tasks.includes(TUT.task)){TUT.task=G.tasks.filter(t=>t.f===G.me.f).sort((a,b)=>dist(a,G.me)-dist(b,G.me))[0]||null;TUT.target=TUT.task;}},
     done:()=>G.me.tasksDone>TUT.n0},
-  {t:'승진',d:'고과 최고점이 오르면 직급이 올라요.',
+  {t:'부서 발령',d:'인턴 때 가장 많이 한 일로, 사원이 될 때 팀이 정해져요.',
+    h:`<span class="perks"><i>업무 → 개발팀</i><i>서류 맞히기 → 마케팅팀</i><i>부장님·동료 응대 → 인사팀</i><i class="gap">💻 개발은 노트북, 📣 마케팅은 메가폰, 📋 인사는 클립보드를 들고 다녀요</i></span>`,
+    read:true,setup(){TUT.target=null;const me=G.me;if(me.branch)this.d=`방금 사원이 되면서 ${teamShort(me.branch)}팀으로 발령났어요!
+인턴 때 가장 많이 한 일로 팀이 정해져요.`;}},
+  {t:'승진',d:'고과가 오르면 직급이 올라요. 한 번 오른 직급은 고과가 떨어져도 그대로예요.',
     h:`<span class="ladder">${RANKS.map(([n,r])=>`<em data-r="${r}">${r}${n>0?`<small>${n}</small>`:''}</em>`).join('<s>›</s>')}</span>
-      <span class="perks"><i>직급 ⬆ = 서류 공격력 ⬆</i><i>팀장: 부서 스킬 ${PC?'(Q)':''}</i><i>임원: 부장님이 먼저 인사</i></span>`,
+      <span class="perks"><i>직급이 오를수록 공격이 더 세져요</i><i>대리: 부서 혜택</i><i>팀장: 팀 스킬${PC?' (Q)':''}</i><i>임원: 부장님께 더 이상 인사를 안 해도 돼요</i></span>`,
     read:true,setup(){const me=G.me;if(me.peak<55)gain(me,56-me.g);TUT.target=null;}},
   {t:'부장님께 인사',d:`부장님 노란 시야에 들어가면 ${PC?'E':'상호작용'}로 먼저 인사하세요. (지금은 천천히 해도 돼요)`,
     setup(){const me=G.me,b=G.npcs.find(n=>n.kind==='boss'&&n.f===me.f);TUT.boss=b;if(!b)return;b.tut=true;
@@ -40,10 +44,9 @@ function tutSteps(){const PC=!isTouch;return[
       me.items=[];me.ammo=0;spawnItem(me.f,'stapler',p);TUT.item=G.items.at(-1);TUT.target=TUT.item;},
     tick(){if(TUT.item&&!G.items.includes(TUT.item)){TUT.item=null;TUT.target=TUT.dummy;}},
     done:()=>G.me.ammo>0&&G.me.ammo<15},
-  {t:'위층으로',d:`40초마다 아래층부터 폐쇄돼요. 계단이나 엘리베이터 위에서 ${PC?'E':'상호작용'}로 위층으로 올라가세요!`,
+  {t:'위층으로',d:`40초마다 아래층부터 폐쇄돼요. 계단이나 엘리베이터 위에서 ${PC?'E':'상호작용'}로 위층으로 올라가세요!
+내려갈 땐 ${PC?'Shift+E':'▼ 버튼'}를 누르면 돼요.`,
     setup(){TUT.f0=G.me.f;TUT.target={f:G.me.f,x:PADS.stair.x,y:PADS.stair.y};},done:()=>G.me.f>TUT.f0},
-  {t:'아래층으로',d:PC?'계단·엘리베이터 위에서 Shift+E를 누르면 아래층으로 내려가요. 도망칠 때 써요!':'계단·엘리베이터 위에서 ▼ 버튼을 누르면 아래층으로 내려가요. 도망칠 때 써요!',
-    setup(){TUT.f1=G.me.f;const p=padOf(G.me)||'stair';TUT.target={f:G.me.f,x:PADS[p].x,y:PADS[p].y};},done:()=>G.me.f<TUT.f1&&G.me.f>=0},
   {t:'돌발 이벤트',d:'실전에선 점심시간(옥상 난투전), 소방 훈련, 감사팀, 우수사원 발표 같은 이벤트가 갑자기 터져요. 화면 공지를 잘 보세요!',
     read:true,setup(){TUT.target=null;}},
   {t:'고과 올리는 법',d:'일은 찾아서 하는 거예요. 솔선수범할수록 고과가 올라요.',
@@ -55,14 +58,15 @@ let TUT_STEPS=tutSteps();
 const blocked=(f,x,y)=>x<40||y<40||x>FW-40||y>FH-40||obsOf(f).some(o=>x>o.x-24&&x<o.x+o.w+24&&y>o.y-24&&y<o.y+o.h+24);
 function tutShow(){
   const s=TUT_STEPS[TUT.i];$('tutStep').textContent=s.final?'튜토리얼 완료':`튜토리얼 ${TUT.i+1}/${TUT_STEPS.length-1}`;
-  $('tutTitle').textContent=s.t;$('tutText').innerHTML='';$('tutText').append(s.d);
+  /* PC has room for one sentence per line; phones let the text wrap */
+  $('tutTitle').textContent=s.t;$('tutText').innerHTML='';$('tutText').append(isTouch?s.d:s.d.replace(/([.!?])[ \t]+(?=\S)/g,'$1\n'));
   if(s.h){$('tutText').insertAdjacentHTML('beforeend',s.h);const cur=$('tutText').querySelector(`[data-r="${G.me.rank}"]`);if(cur)cur.classList.add('cur');}
   $('tutDots').innerHTML=TUT_STEPS.slice(0,-1).map((_,k)=>`<i class="${k<TUT.i?'on':k===TUT.i?'now':''}"></i>`).join('');
   $('tutNext').hidden=!s.read;$('tutSkip').hidden=!!s.final||!!s.read;$('tutPlay').hidden=$('tutHome').hidden=!s.final;$('tutQuit').hidden=!!s.final;$('tut').classList.remove('ok');
 }
 function tutGo(i){const prev=TUT_STEPS[TUT.i];if(prev&&prev.leave&&i!==TUT.i)prev.leave();TUT.i=i;TUT.target=null;TUT.wait=0;const s=TUT_STEPS[i];if(s.setup)s.setup();tutShow();}
 function tutStart(){
-  netClose();TUT_STEPS=tutSteps();newGame({humans:[{key:'me',name:'나',fit:myFit(),team:myTeam()}],bots:3,tutorial:true});startScreens();
+  netClose();TUT_STEPS=tutSteps();newGame({humans:[{key:'me',name:'나',fit:myFit()}],bots:3,tutorial:true});startScreens();
   TUT.on=true;$('tut').hidden=false;tutGo(0);
 }
 function tutStop(){TUT.on=false;TUT.target=null;$('tut').hidden=true;}

@@ -33,7 +33,7 @@ function resultCard(){
   if(line)x.fillText(line,P,y);
   x.restore();
   x.fillStyle='#fbfaf6';x.font=f(900,44);x.textAlign='center';x.fillText('오피스 로얄',W/2,H-62);
-  x.fillStyle='#f3d77a';x.font=f(700,26);x.fillText('제목: 퇴사자는 말이 없다 · '+location.host,W/2,H-24);
+  x.fillStyle='#f3d77a';x.font=f(700,26);x.fillText('인사평가 서바이벌 · '+location.host,W/2,H-24);
   return c;
 }
 const shareURL=()=>location.origin+location.pathname;

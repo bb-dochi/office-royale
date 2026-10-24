@@ -127,8 +127,8 @@ $('homeName').addEventListener('keydown',e=>{if(e.key==='Enter')nameSave();});
 $('nameEdit').addEventListener('click',()=>nameStep(true));
 /* ---------- open card ↔ binder tabs on the right ---------- */
 /* first visit: the card is open (it asks for a name); after that the lobby opens with just the tabs, unless the card was left open */
-function homeClose(c,remember=true){$('home').classList.toggle('closed',c);if(remember)store.set('or-home',c?'closed':'open');pzCover();}
-homeClose(!!store.get('or-name')&&store.get('or-home')!=='open',false);
+function homeClose(c){$('home').classList.toggle('closed',c);pzCover();}
+homeClose(false); // the guide card greets every page load
 if(!store.get('or-name'))nameStep(true);
 $('homeX').addEventListener('click',()=>homeClose(true));
 $('home').addEventListener('click',e=>{if(e.target===$('home')&&$('nameStep').hidden&&!PZ.dress)homeClose(true);}); // tap the dimmed lobby to close
@@ -138,9 +138,19 @@ $('dock').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)
   else if(go==='solo')diffOpen();
   else if(go==='multi'){$('home').hidden=true;showLobby();}
   else if(go==='tut')tutStart();
-  else if(go==='team')teamOpen();
   else if(go==='dress'){PZ.dressFromDock=true;$('home').classList.remove('closed');dressOpen();}});
 $('hSolo').addEventListener('click',diffOpen);
+/* 부서 안내: one card per team, opened from the 팀 보기 link on the guide */
+const TEAM_FIRST={dev:'업무 많이',mkt:'서류 명중 많이',hr:'윗선·동료 응대 많이'},PROP_NAME={dev:'💻',mkt:'📣',hr:'📋'},TEAM_PERK={dev:'업무 속도 ↑',mkt:'서류 사거리 ↑',hr:'받는 피해 ↓'};
+function teamInfoOpen(){
+  /* three rows per team: how you get there, what promotions give, the Q skill. Each card wears its team's colour here */
+  $('teamInfoCards').innerHTML=TEAMS.map(k=>{const B=BRANCH[k];return`<div class="tcard" style="--tc:${B.c}"><b>${PROP_NAME[k]} ${teamShort(k)}팀</b>
+    <dl><dt>발령 기준</dt><dd>인턴 때 ${TEAM_FIRST[k]}</dd><dt>승진 혜택</dt><dd>${TEAM_PERK[k]}</dd><dt>팀 스킬${isTouch?'':' (Q)'}</dt><dd><em>${B.sk}:</em> ${B.kt}</dd></dl></div>`;}).join('');
+  $('teamInfo').hidden=false;}
+$('teamInfoBtn').addEventListener('click',e=>{e.stopPropagation();teamInfoOpen();});
+$('teamInfoX').addEventListener('click',()=>{$('teamInfo').hidden=true;});
+$('teamInfo').addEventListener('click',e=>{if(e.target===$('teamInfo'))$('teamInfo').hidden=true;});
+addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('teamInfo').hidden){e.stopImmediatePropagation();$('teamInfo').hidden=true;}},true);
 $('hMulti').addEventListener('click',()=>{$('home').hidden=true;showLobby();});
 /* ---------- dressing room ---------- */
 const DRESS_ROWS=[
@@ -178,7 +188,7 @@ function dressOpen(){if(!PZ.on)return;PZ.dress=true;$('home').classList.add('dre
    G.me.x=best.x;G.me.y=best.y;}
   G.me.vx=G.me.vy=0;cam={x:G.me.x,y:G.me.y};$('homeMenu').hidden=true;$('dress').hidden=false;dressRender();}
 function dressClose(){PZ.dress=false;$('home').classList.remove('dressing');$('homeMenu').hidden=false;$('dress').hidden=true;
-  if(PZ.dressFromDock){PZ.dressFromDock=false;homeClose(true,false);}} // opened from the tabs: go back to the tabs
+  if(PZ.dressFromDock){PZ.dressFromDock=false;homeClose(true);}} // opened from the tabs: go back to the tabs
 $('dressRows').addEventListener('click',e=>{const b=e.target.closest('button');if(b)dressSet(b.dataset.k,b.dataset.v||null);});
 $('hDress').addEventListener('click',dressOpen);
 $('dressDone').addEventListener('click',dressClose);
