@@ -88,7 +88,8 @@ NET.start=function(players){
 NET.step=dt=>step(dt);
 NET.input=function(key,m){const a=byKey(key);if(!a||!a.isPlayer)return;
   a.input={vx:clampN(m.vx,-1,1),vy:clampN(m.vy,-1,1),run:!!m.run,fire:!!m.fire};
-  a.aim=typeof m.aim==='number'&&isFinite(m.aim)?m.aim:null;};
+  a.aim=typeof m.aim==='number'&&isFinite(m.aim)?m.aim:null;
+  if(typeof m.ct==='number'&&isFinite(m.ct)){a.inCt=m.ct;a.inSt=G.t;}};
 NET.cmd=function(key,m){const a=byKey(key);if(!a||!a.isPlayer||G.over)return;
   switch(m.c){
     case 'throw':throwPaper(a,typeof m.ang==='number'&&isFinite(m.ang)?m.ang:autoAim(a));break;
@@ -105,4 +106,6 @@ NET.leave=function(key){const a=byKey(key);NET.out.delete(key);if(!a||!a.isPlaye
   if(a.alive)feed(`${a.name}님 연결 끊김: 봇이 대신 근무합니다`);};
 NET.snap=function(key){const a=byKey(key);const ev=NET.out.get(key)||[];NET.out.set(key,[]);
   const act=a&&a.isPlayer?contextAction(a):null;
-  return{pub:pubSnap(),me:a?serA(a,true):null,act:act?{label:act.label,cls:act.cls}:null,ev};};
+  /* ack: the sender's own clock (ms) that this snapshot's state lines up with, so its prediction compares like with like */
+  const ack=a&&a.inCt!=null?Math.round(a.inCt+(G.t-a.inSt)*1000):null;
+  return{pub:pubSnap(),me:a?serA(a,true):null,act:act?{label:act.label,cls:act.cls}:null,ack,ev};};

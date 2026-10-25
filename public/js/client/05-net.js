@@ -52,7 +52,7 @@ const seatAt=r=>r?FLOORS[r[0]].seats[r[1]]||null:null;
 const actorBy=id=>id==null?null:NETC.byA.get(id)||null;
 const npcBy=id=>id==null?null:NETC.byN.get(id)||null;
 function netBegin(){
-  NETC.byA.clear();NETC.byN.clear();NETC.byT.clear();NETC.byE.clear();NETC.act=null;NETC.sentIn='';NETC.off=null;
+  NETC.byA.clear();NETC.byN.clear();NETC.byT.clear();NETC.byE.clear();NETC.act=null;NETC.sentIn='';NETC.off=null;NETC.fT=0;
   for(const fl of FLOORS){for(const s of fl.seats){s.owner=null;s.occ=null;}let ch=false;for(const d of fl.doors)if(d.open){d.open=false;ch=true;}if(ch)refreshObs(fl);}
   G={t:0,actors:[],me:null,proj:[],items:[],traps:[],tasks:[],drops:[],wet:[],pops:[],dings:[],bursts:[],closed:0,nextClose:INTERVAL,warn:false,final:false,finalT:0,over:false,winner:null,
      npcs:[],doors:[],events:[],notice:null,ceo:null,blackout:null,cake:null,fire:0,star:null,audit:null,lunch:null,airdrops:[],smokes:[],net:true};
@@ -71,7 +71,8 @@ function netApply(m){
   G.actors=P.A.map(s=>{const a=keep(NETC.byA,s.id,()=>({id:s.id,seats:{},samp:[]}));
     const px=a.x,py=a.y,pf=a.face;
     for(const k in PUB_A){const v=s[k];a[k]=v===undefined?(Array.isArray(PUB_A[k])?[]:PUB_A[k]):v;}
-    if(s.id!==meId){a.x=px??a.x;a.y=py??a.y;a.face=pf??a.face;pushSamp(a,P.t,s,a.f!==a.lastF||!!a.transit);}
+    a.x=px??a.x;a.y=py??a.y;a.face=pf??a.face; // keep where each one is drawn: others ease toward samples, I am predicted
+    if(s.id!==meId)pushSamp(a,P.t,s,a.f!==a.lastF||!!a.transit);
     a.nx=s.x??0;a.ny=s.y??0;a.lastF=a.f;
     a.sit=seatAt(s.sit);a.transit=s.transit||null;a.chan=s.chan||null;a.call=s.call||null;return a;});
   for(const s of P.N){const n=keep(NETC.byN,s.id,()=>({...s,samp:[],path:[]}));const jump=n.f!==s.f;Object.assign(n,{kind:s.kind,f:s.f,slot:s.slot,on:s.on,senior:!!s.sr,ask:s.ask>0,job:s.ask>0?{r:s.ask}:null});pushSamp(n,P.t,s,jump);}
@@ -100,11 +101,11 @@ function netApply(m){
     me.call=m.me.call?{n:npcBy(m.me.call.n)||{kind:'boss'},line:m.me.call.line,t:m.me.call.t,max:m.me.call.max}:null;
     me.contact=m.me.contact?{n:npcBy(m.me.contact.n)||{kind:'boss'},t:m.me.contact.t,max:m.me.contact.max}:null;
     me.quest=m.me.quest;me.killer=actorBy(m.me.killer);me.stampNpc=npcBy(m.me.stampNpc);
-    /* my own position is predicted locally. The server's answer reflects my input from about one round trip ago,
-       so compare it with where I was back then and feed only that difference in gradually. */
+    /* my own position is predicted locally. The server says which moment of my clock its answer matches (ack, from the
+       time stamp on my input), so compare it with where I was then and feed only that difference in gradually. */
     me.nx=me.x;me.ny=me.y;
     if(mine&&!me.sit&&!me.chan){
-      const h=histAt(me,now-NETC.rtt-.02),ex=h?me.nx-h.x:me.nx-px,ey=h?me.ny-h.y:me.ny-py;
+      const h=histAt(me,m.ack!=null?m.ack/1000:now-NETC.rtt-.02),ex=h?me.nx-h.x:me.nx-px,ey=h?me.ny-h.y:me.ny-py;
       if(Math.hypot(ex,ey)<120){me.x=px;me.y=py;me.face=pface;me.cx=(me.cx||0)+ex;me.cy=(me.cy||0)+ey;for(const q of me.hist)q.x+=ex,q.y+=ey;}
       else{me.cx=me.cy=0;me.hist=[];}
     }else{me.cx=me.cy=0;me.hist=[];}
@@ -149,18 +150,20 @@ function netFrame(dt){
   for(const p of G.proj){const d=Math.max(-p.d,p.sp*(rt-p.bt));p.x=p.bx+p.dx*d;p.y=p.by+p.dy*d;p.spin+=dt*14;}
   for(const p of G.pops)p.t+=dt;for(const b of G.bursts)b.t+=dt;for(const d of G.airdrops)d.t+=dt;for(const s of G.smokes||[])s.t+=dt;
   if(!me)return;
+  /* my walking uses real elapsed time: the frame loop caps dt at 0.05 s, and on a slow frame the server would get ahead */
+  const pdt=NETC.fT?Math.min(.25,now-NETC.fT):dt;NETC.fT=now;dt=pdt;
   const k=Math.min(1,dt*10);
   if(me.alive&&me.f>=0&&!me.transit&&!me.sit&&!me.chan&&!locked(me)&&me.input){
     let{vx,vy}=me.input;const m=Math.hypot(vx,vy);if(m>1){vx/=m;vy/=m;}if(m>.15)me.face=Math.atan2(vy,vx);
     me.sprint=me.input.run&&m>.15;
     drive(me,m>.15?vx:0,m>.15?vy:0,dt);
     if((me.cx||me.cy)&&dt>0){const c=Math.min(1,dt*6),ox=me.cx*c,oy=me.cy*c;me.cx-=ox;me.cy-=oy;moveActor(me,ox/dt,oy/dt,dt);}
-    (me.hist||(me.hist=[])).push({t:now,x:me.x,y:me.y});while(me.hist.length&&now-me.hist[0].t>1.5)me.hist.shift();
+    (me.hist||(me.hist=[])).push({t:now,x:me.x+(me.cx||0),y:me.y+(me.cy||0)}); // where I'll be once the pending correction is in, or it gets counted twicewhile(me.hist.length&&now-me.hist[0].t>1.5)me.hist.shift();
   }else{me.x+=(me.nx-me.x)*k;me.y+=(me.ny-me.y)*k;me.hist=[];}
 }
 function netSendInput(){
   const me=G&&G.me;if(!me||!me.input)return;
   const i=me.input,msg={t:'in',vx:Math.round(i.vx*100)/100,vy:Math.round(i.vy*100)/100,run:!!i.run,fire:!!i.fire,aim:me.aim==null?null:Math.round(me.aim*100)/100};
   const s=JSON.stringify(msg),now=performance.now();
-  if(s!==NETC.sentIn&&now-NETC.sentT>40||now-NETC.sentT>500){NETC.sentIn=s;NETC.sentT=now;netSend(msg);}
+  if(s!==NETC.sentIn&&now-NETC.sentT>40||now-NETC.sentT>500){NETC.sentIn=s;NETC.sentT=now;msg.ct=Math.round(now);netSend(msg);}
 }
