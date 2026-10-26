@@ -84,8 +84,13 @@ function statusLine(me){
   const s=n=>Math.max(0,Math.ceil(n)),fn=f=>f===0?'로비':FLOORS[f].short;
   const onRoof=me.f===ROOF||(me.transit&&me.transit.to===ROOF);
   if(me.f>=0&&me.f<G.closed&&me.f!==ROOF)return{c:'danger',i:'⚠',t:'폐쇄된 층! 고과가 깎이는 중 · 계단·엘리베이터로 올라가세요',m:'폐쇄된 층! 바로 위층으로'};
-  if(G.lunch&&!onRoof)return{c:'lunch',i:'🍱',t:`점심시간! 계단·엘리베이터에서 ${isTouch?'상호작용':'E'} → 옥상 라이터 쟁탈전`,m:'점심시간! 계단·엘베 → 옥상',n:s(G.lunch.t)};
-  if(G.lunch){const sc=G.lunch.score||{L:0,R:0},mine=me.side?teamOf(me.side):'';
+  if(G.lunch&&G.lunch.kind==='ladder'){const L=G.lunch,pk=L.phase==='pick';
+    return{c:'lunch',i:'☕',t:pk?'점심 커피 내기 · 사다리 번호를 고르세요':'점심 커피 내기 · 두구두구',m:pk?'커피 내기 · 번호 고르기':'커피 내기 · 결과 발표',n:pk?s(L.t-LUNCH.lad.show-2):null};}
+  if(G.lunch&&!onRoof)return{c:'lunch',i:'🍱',t:`점심시간! 계단·엘리베이터에서 ${isTouch?'상호작용':'E'} → 옥상 ${LUNCH_INFO[G.lunch.kind].n}`,m:'점심시간! 계단·엘베 → 옥상',n:s(G.lunch.t)};
+  if(G.lunch){const k=G.lunch.kind;
+    if(k==='bill')return me.bill?{c:'danger',i:'🧾',t:'계산서를 들고 있다! 서류로 맞혀서 넘기세요',m:'계산서! 맞혀서 넘기기',n:s(G.lunch.t)}:{c:'',i:'🧾',t:'계산서 폭탄 · 계산서 든 사람을 피하세요',m:'계산서 든 사람 피하기',n:s(G.lunch.t)};
+    if(k==='meal')return{c:'',i:'🍱',t:'오늘의 특식 · 배식대 원 안에 버티기',m:'특식 · 배식대 차지',n:s(G.lunch.t)};
+    const mine=me.side?teamOf(me.side):'';
     return{c:'',i:'🚬',t:`점심 난투 · 나는 ${mine}`,m:`점심 난투 · ${mine}`,n:s(G.lunch.t)};}
   if(warnFloor(me.f))return{c:'danger',i:'⚠',t:`${fn(me.f)} 곧 폐쇄! 위층으로 · 지금 업무는 보상 x2`,m:`${fn(me.f)} 곧 폐쇄! 위층으로`,n:s(G.nextClose)};
   if(G.final)return G.finalT>30?{c:'danger',i:'⏰',t:'야근 모드: 모두의 고과가 줄어듭니다 · 최후의 1인까지',m:'야근 모드: 고과 감소 중'}:{c:'',i:'🏁',t:'인사 시즌: 6F만 남았다 · 최후의 1인이 CEO실로',m:'인사 시즌 · 최후의 1인',n:s(30-G.finalT)};
@@ -111,15 +116,54 @@ function gearSlots(me){
   slot($('gAtk'),atk,'공격','서류');slot($('gDef'),def,'방어','-');
   $('gear').hidden=!(running&&me.alive&&!G.plaza);
 }
-/* lunch scoreboard: shown while I'm on the roof, my team marked */
+/* lunch scoreboard: shown while I'm on the roof. Lighters: the two teams' points, mine marked. Bill: how many bills are
+   going round and whether I hold one. Special meal: the top three plates and mine */
 let lastLB='';
+const plate=a=>Math.round((a.meal||0)*10);
 function lunchBoard(me){
-  const on=running&&me&&me.alive&&G.lunch&&me.f===ROOF&&me.side,el=$('lunchBoard');
+  const L=G&&G.lunch,on=running&&me&&me.alive&&L&&L.kind!=='ladder'&&me.f===ROOF,el=$('lunchBoard');
   if(!on){if(!el.hidden){el.hidden=true;lastLB='';}return;}
-  const sc=G.lunch.score||{L:0,R:0},key=sc.L+'|'+sc.R+'|'+me.side;if(key===lastLB)return;lastLB=key;
-  el.hidden=false;$('lbL').textContent=sc.L;$('lbR').textContent=sc.R;el.dataset.me=me.side;
-  el.dataset.lead=sc.L>sc.R?'L':sc.R>sc.L?'R':'';
+  const k=L.kind,sc=L.score||{L:0,R:0},up=G.actors.filter(a=>a.alive&&a.f===ROOF);
+  const top=k==='meal'?up.filter(a=>plate(a)>0).sort((p,q)=>q.meal-p.meal).slice(0,3):[];
+  const key=[k,sc.L,sc.R,me.side,me.bill,L.dealt,up.filter(a=>a.bill).length,plate(me),top.map(a=>a.id+':'+plate(a)).join()].join('|');if(key===lastLB)return;lastLB=key;
+  el.hidden=false;el.dataset.kind=k;$('lbTeams').hidden=k!=='lighter';$('lbX').hidden=k==='lighter';
+  if(k==='lighter'){$('lbL').textContent=sc.L;$('lbR').textContent=sc.R;el.dataset.me=me.side||'';el.dataset.lead=sc.L>sc.R?'L':sc.R>sc.L?'R':'';
+    $('lbP').innerHTML=`🔥 라이터를 <u>우리 재떨이</u>에 → <strong>이긴 팀 전원 고과 +${LUNCH.win}</strong><span class="pc-only"> · E 담배 연막</span>`;}
+  else if(k==='bill'){const n=up.filter(a=>a.bill).length;el.dataset.me='';
+    $('lbX').innerHTML=!L.dealt?'<b>🧾 곧 계산서가 돕니다</b>':`<b>🧾 계산서 <em>${n}</em>장</b><span class="${me.bill?'bad':'ok'}">${me.bill?'내가 들고 있음!':'나는 안전'}</span>`;
+    $('lbP').innerHTML=`끝날 때 들고 있으면 <u>-${LUNCH.bill.pay}</u> · 나머지 <strong>+${LUNCH.bill.treat}</strong> · 서류로 맞히면 넘어가요`;}
+  else{el.dataset.me='';
+    $('lbX').innerHTML=(top.length?top.map((a,i)=>`<span class="${a===me?'me':''}">${i+1}등 ${a===me?'나':a.name} <em>${plate(a)}</em></span>`).join(''):'<span>아직 아무도 못 먹음</span>')+(top.includes(me)?'':`<span class="me">내 식판 <em>${plate(me)}</em></span>`);
+    $('lbP').innerHTML=`🍱 배식대 원 안: 혼자면 2배, 맞으면 흘림 → <strong>1~3등 +${LUNCH.meal.prize.join('/+')}</strong>`;}
 }
+/* coffee ladder: my group's ladder over the whole screen. Pick a lane (tap, or number keys), then every line is traced
+   down at once and the one that lands on the cup buys */
+let lastLad='';
+function ladderGroup(me){const L=G&&G.lunch;return L&&L.kind==='ladder'&&L.groups?L.groups.find(g=>g.ids.includes(me.id)):null;}
+function ladderPath(g,i,X,Y,H){const pts=[[X(i),0]];const has=(r,c)=>g.rungs.some(([R,C])=>R===r&&C===c);
+  for(let r=0;r<LUNCH.lad.rows;r++){const y=Y(r);if(has(r,i)){pts.push([X(i),y],[X(i+1),y]);i++;}else if(has(r,i-1)){pts.push([X(i),y],[X(i-1),y]);i--;}}
+  pts.push([X(i),H]);return pts.map(p=>p.join(',')).join(' ');}
+function ladderBox(me){
+  const el=$('ladder'),g=running&&me&&me.alive?ladderGroup(me):null;
+  if(!g){if(!el.hidden){el.hidden=true;lastLad='';}return;}
+  const L=G.lunch,S=LUNCH.lad,n=g.ids.length,W=n*64,H=230,X=i=>32+i*64,Y=r=>14+(r+.5)*(H-28)/S.rows;
+  const prog=L.phase==='pick'?0:Math.max(0,Math.min(1,(S.show+2-L.t)/(S.show-.6)));
+  const key=[L.phase,g.lane.join(),Math.round(prog*40),g.payer,Math.ceil(L.t)].join('|');if(key===lastLad)return;lastLad=key;
+  el.hidden=false;const who=id=>G.actors.find(a=>a.id===id),mine=g.lane.indexOf(me.id),pk=L.phase==='pick';
+  $('ladT').textContent=pk?`번호를 고르세요 · ${Math.max(0,Math.ceil(L.t-S.show-2))}초`:L.phase==='show'?'두구두구…':g.payer===me.id?'☕ 내가 커피 쏜다!':`☕ ${who(g.payer)?.name||'?'}님이 쏩니다`;
+  $('ladTop').style.gridTemplateColumns=$('ladBot').style.gridTemplateColumns=`repeat(${n},1fr)`;
+  $('ladTop').innerHTML=g.lane.map((id,i)=>{const a=id!=null&&who(id);return`<button data-i="${i}" class="${id===me.id?'me':a?'taken':''}" ${!pk||(a&&id!==me.id)?'disabled':''}>${a?(id===me.id?'나':a.name):i+1}</button>`;}).join('');
+  $('ladBot').innerHTML=g.lane.map((_,i)=>i===g.pay?'<b class="pay">☕ 쏘기</b>':'<b>얻어먹기</b>').join('');
+  let svg=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">`;
+  for(let i=0;i<n;i++)svg+=`<line x1="${X(i)}" y1="0" x2="${X(i)}" y2="${H}" class="rail"/>`;
+  if(g.rungs&&L.phase!=='pick'){for(const[r,c]of g.rungs)svg+=`<line x1="${X(c)}" y1="${Y(r)}" x2="${X(c+1)}" y2="${Y(r)}" class="rail"/>`;
+    g.lane.forEach((id,i)=>{if(id==null)return;const a=who(id),me2=id===me.id;
+      svg+=`<polyline points="${ladderPath(g,i,X,Y,H)}" pathLength="1" stroke-dasharray="1" stroke-dashoffset="${1-prog}" class="trace${me2?' me':''}" style="stroke:${me2?'#2b6cb0':a?a.color:'#888'}"/>`;});}
+  else svg+=`<rect x="8" y="${H*.18}" width="${W-16}" height="${H*.64}" rx="10" class="cover"/><text x="${W/2}" y="${H/2+14}" class="q">?</text>`;
+  $('ladSvg').innerHTML=svg+'</svg>';
+  $('ladHelp').textContent=pk?(mine<0?(isTouch?'위 번호를 눌러 고르세요':`위 번호를 누르거나 1~${n} 키`):'다른 번호로 바꿀 수 있어요'):'';
+}
+$('ladTop').addEventListener('click',e=>{const b=e.target.closest('button');if(b&&!b.disabled)ACT.lane(+b.dataset.i);});
 /* quest list under the map: the favour I accepted and the task I'm doing */
 let lastQ='';
 function questList(me){
@@ -237,7 +281,7 @@ function hud(dt){
   $('gbarWrap').classList.toggle('low',me.g<30);$('grade').textContent=gradeOf(me.g);$('pname').textContent='나 · '+rankName(me);
   {const nx=RANKS.find(([t])=>t>me.peak);if(nx){const pv=[...RANKS].reverse().find(([t])=>t<=me.peak)[0],base=Math.max(pv,50);$('promoT').textContent=`${nx[1]}까지 ${Math.ceil(nx[0]-me.peak)}`;$('promoB').style.width=Math.max(0,Math.min(100,(me.peak-base)/(nx[0]-base)*100))+'%';}else{$('promoT').textContent='최고 직급';$('promoB').style.width='100%';}}
   fxBar(me);
-  statusBar(me);gearSlots(me);deskHud(me);questList(me);lunchBoard(me);
+  statusBar(me);gearSlots(me);deskHud(me);questList(me);lunchBoard(me);ladderBox(me);
   $('mFloor').textContent=viewF>=0?(viewF===ROOF?'옥상':`${FLOORS[viewF].short} ${FLOORS[viewF].name.replace(/^\d층 /,'')}`):'';
   {const fh=floorsHTML();if(fh!==lastFloors){lastFloors=fh;$('tower').innerHTML=fh;}}
   $('mTap').textContent=`${isTouch?'탭해서':'Tab'} 닫기`;

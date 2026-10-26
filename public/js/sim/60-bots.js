@@ -25,13 +25,23 @@ function think(b){
   if(f===ROOF){
     /* lunch: light up when someone is on us, bring lighters home, grab lighters, otherwise fight */
     if(G.lunch&&enemy&&ed<190&&b.smokeCd<=0&&(G.t-b.lastHitT<2||Math.random()<.15))smoke(b);
+    const L=G.lunch;
+    if(L&&L.kind==='bill'){ /* holding a bill: go and pass it on; otherwise keep away from whoever has one */
+      if(b.bill){const t=G.actors.filter(o=>o!==b&&o.alive&&o.f===ROOF&&!o.bill&&!(b.billFrom===o&&G.t-b.billT<LUNCH.bill.safe)).sort((p,q)=>dist(b,p)-dist(b,q))[0];
+        if(t){b.mode='fight';b.target=t;b.goal=null;return;}}
+      else{const h=G.actors.find(o=>o.alive&&o.f===ROOF&&o.bill&&dist(o,b)<170);
+        if(h){if(b.smokeCd<=0&&Math.random()<.3)smoke(b);if(Math.random()<.65){if(b.mode!=='flee'||!b.goal||dist(b,b.goal)<30)setGoal(b,[0,1,2,3].map(()=>randFree(ROOF)).sort((p,q)=>dist(q,h)-dist(p,h))[0],'flee');return;}}}}
+    if(L&&L.kind==='meal'&&L.zone){ /* hold the serving counter, push out whoever else is in the ring */
+      const z=L.zone,rival=G.actors.find(o=>o!==b&&o.alive&&o.f===ROOF&&dist(o,z)<LUNCH.meal.r*1.3);
+      if(dist(b,z)<LUNCH.meal.r*.7){if(rival){b.mode='fight';b.target=rival;b.goal=null;return;}b.mode='hold';b.goal=null;b.path=[];return;}
+      if(!(enemy&&ed<90)){setGoal(b,z,'meal');return;}}
     if(b.lighter>0&&!(enemy&&ed<110)){const ash=ashOf(b.side).sort((p,q)=>dist(b,p)-dist(b,q))[0];if(ash){setGoal(b,ash,'deliver');return;}}
     const it=G.items.filter(x=>x.f===ROOF&&(x.k==='lighter'?(b.lighter||0)<LUNCH.carry:canTake(b,x.k))).sort((p,q)=>dist(b,p)*(p.k==='lighter'?.6:1)-dist(b,q)*(q.k==='lighter'?.6:1))[0];
     if(enemy&&(ed<160||!it)){b.mode='fight';b.target=enemy;b.goal=null;return;}
     if(it){setGoal(b,it,'loot');return;}
     if(b.mode!=='wander'||!b.goal||dist(b,b.goal)<20)setGoal(b,randFree(ROOF),'wander');return;
   }
-  if(G.lunch&&G.lunch.t>4&&b.lunchGo){stand(b);const pk=b.lunchPad||'elev';
+  if(roofLunch()&&G.lunch.t>4&&b.lunchGo){stand(b);const pk=b.lunchPad||'elev';
     if(dist(b,PADS[pk])<34){goRoof(b);return;}setGoal(b,PADS[pk],'roof');return;}
   if(b.branch==='mkt'&&b.skillCd<=0&&G.actors.filter(o=>visibleTo(b,o)&&dist(o,b)<200).length>=2&&!watchers(b).some(n=>!immune(b,n)&&sees(n,b)))useSkill(b);
   if(b.branch==='design'&&b.skillCd<=0&&b.g<35&&G.t-b.lastHitT<2)useSkill(b);

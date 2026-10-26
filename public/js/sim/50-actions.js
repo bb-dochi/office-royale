@@ -85,31 +85,76 @@ function startChan(a,padKey,dir){
   stand(a);const tag=tagOf(a);
   a.chan={pad:padKey,dir,tag,t:padKey==='stair'?tag+.8:tag,max:padKey==='stair'?tag+.8:tag};return true;
 }
-/* ================= lunch on the roof: 전담파 vs 연초파 =================
-   Whoever comes up is put in the smaller team (ties at random), whichever door they used. Lighters drop from the sky:
-   carry them to one of your team's ashtrays for a point (get hit and you drop them). E lights up a cigarette: a
-   smoke cloud you can hide in. The team with more points gets 고과. 고과 lost up here stays lost, but hits are softer
-   and nobody drops below 10 during lunch. L = 전담파 (left smoking area), R = 연초파 (right). */
-const LUNCH={dmg:.6,floor:10,win:8,carry:3,smokeCd:9,smokeLife:6,smokeR:K(75),names:{L:'전담파',R:'연초파'}};
+/* ================= lunch =================
+   One of four per match (G.lunchKind). The first three are on the roof: 고과 lost up there stays lost, but hits are softer,
+   nobody drops below 10 and E lights a cigarette (a smoke cloud you can hide in).
+   lighter: 전담파 vs 연초파. Whoever comes up is put in the smaller team (ties at random), whichever door they used.
+     Lighters drop from the sky: carry them to one of your team's ashtrays for a point (get hit and you drop them).
+     The team with more points gets 고과. L = 전담파 (left smoking area), R = 연초파 (right).
+   bill: every one for themself. A few people are handed the "오늘 점심 쏨" bill; hit someone with paper to pass yours on
+     (no passing straight back for 2 s). Holding one at the end costs 고과, everyone else up there gets a treat.
+   meal: the special at the serving counter. Stand in its ring and your plate fills: twice as fast alone, slower the more
+     people share it, and a hit spills some. Halfway through the counter moves. The three fullest plates get 고과.
+   ladder: nobody goes anywhere. Everyone is held where they stand and put in ladders of about five; pick a lane, and
+     whoever's line ends on the coffee cup buys (고과 down), the rest are treated. */
+const LUNCH_KINDS=['lighter','bill','meal','ladder'];
+const LUNCH={dmg:.6,floor:10,win:8,carry:3,smokeCd:9,smokeLife:6,smokeR:K(75),names:{L:'전담파',R:'연초파'},
+  bill:{pay:8,treat:5,safe:2},meal:{r:K(58),prize:[12,8,4],spill:.6,spots:[{x:K(550),y:K(232)},{x:K(550),y:K(532)}]},
+  lad:{pick:8,show:5,pay:8,treat:3,size:5,rows:7}};
+const LUNCH_INFO={lighter:{n:'라이터 쟁탈전',s:'옥상에서 전담파 vs 연초파 · 라이터 쟁탈전'},bill:{n:'계산서 폭탄 돌리기',s:'옥상에서 계산서 돌리기 · 끝날 때 들고 있으면 내가 쏨'},
+  meal:{n:'오늘의 특식',s:'옥상 배식대를 혼자 차지하면 식판이 차요'},ladder:{n:'커피 내기 사다리',s:'다 같이 사다리타기 · ☕ 걸리면 커피 쏘기'}};
+const roofLunch=()=>!!(G.lunch&&G.lunch.kind!=='ladder');
 const teamOf=s=>LUNCH.names[s]||'';
 const ashOf=side=>FLOORS[ROOF].ob.filter(o=>o.k==='ashtray'&&(side==='L')===(o.x<FW/2)).map(o=>({x:o.x+o.w/2,y:o.y+o.h/2}));
 function pickTeam(){const n=s=>G.actors.filter(o=>o.alive&&o.side===s&&(o.f===ROOF||(o.transit&&o.transit.to===ROOF))).length;
   const l=n('L'),r=n('R');return l<r?'L':r<l?'R':Math.random()<.5?'L':'R';}
+/* side: which stairhouse you come out of; it is also your team in the lighter game */
 function arriveRoof(a,side){
-  a.f=ROOF;a.side=side;a.x=K(side==='L'?135:965);a.y=K(380)+rnd(-60,60);a.path=[];a.goal=null;a.mode='idle';a.target=null;a.transit=null;a.inv=1.5;a.vx=a.vy=0;a.lighter=0;
-  if(a.isPlayer){UI.cine(teamOf(side),'흡연 동맹 · 라이터를 우리 재떨이로!',2.2,a);tell(a,`${teamOf(side)}: 같은 편끼리는 못 때려요 · E 담배로 연막`);UI.snapCam(a);}
+  const team=G.lunch&&G.lunch.kind==='lighter',k=G.lunch?G.lunch.kind:'lighter';
+  a.f=ROOF;a.side=team?side:null;a.roofPad=side==='L'?'stair':'elev';a.x=K(side==='L'?135:965);a.y=K(380)+rnd(-60,60);a.path=[];a.goal=null;a.mode='idle';a.target=null;a.transit=null;a.inv=1.5;a.vx=a.vy=0;a.lighter=0;
+  if(a.isPlayer){
+    if(team){UI.cine(teamOf(side),'흡연 동맹 · 라이터를 우리 재떨이로!',2.2,a);tell(a,`${teamOf(side)}: 같은 편끼리는 못 때려요 · E 담배로 연막`);}
+    else if(k==='bill'){UI.cine('계산서 폭탄','계산서 든 사람이 서류로 맞히면 넘어와요 · 끝날 때 들고 있으면 -'+LUNCH.bill.pay,2.4,a);tell(a,'계산서 든 사람을 피하세요 · E 담배로 연막');}
+    else if(k==='meal'){UI.cine('오늘의 특식','배식대 원 안에 있으면 식판이 차요 · 혼자면 2배 · 1~3등 고과',2.4,a);tell(a,'배식대를 차지하세요 · 사람이 많으면 느리고, 맞으면 흘려요');}
+    UI.snapCam(a);}
 }
 function goRoof(a){
-  if(!G.lunch||G.lunch.t<3||!a.alive||a.f<0||a.f===ROOF||locked(a))return;stand(a);a.chan=null;a.preLunchF=a.f;a.transit={to:ROOF,t:.6,side:pickTeam()};a.f=-1;
+  if(!roofLunch()||G.lunch.t<3||!a.alive||a.f<0||a.f===ROOF||locked(a))return;stand(a);a.chan=null;a.preLunchF=a.f;a.transit={to:ROOF,t:.6,side:pickTeam()};a.f=-1;
 }
 function dropLighters(a){if(!(a.lighter>0)||a.f!==ROOF)return;for(let i=0;i<a.lighter;i++)spawnItem(ROOF,'lighter',{x:a.x+rnd(-22,22),y:a.y+rnd(-22,22)});pop(a.f,a.x,a.y-44,'라이터 떨어뜨림','#cf3626');a.lighter=0;}
+/* bill game: a hit from someone holding a bill hands it over (unless the target just gave it to them) */
+function passBill(t,o){
+  const L=G.lunch;if(!L||L.kind!=='bill'||!o||!o.bill||t.bill||t.f!==ROOF||o.f!==ROOF)return;
+  if(o.billFrom===t&&G.t-o.billT<LUNCH.bill.safe)return;
+  o.bill=false;t.bill=true;t.billFrom=o;t.billT=G.t;
+  pop(ROOF,t.x,t.y-54,'계산서 받음!','#cf3626');pop(ROOF,o.x,o.y-54,'계산서 넘김','#2f7d4f');
+  tell(t,`${o.name}님이 계산서를 넘겼다! 서류로 다른 사람을 맞혀 넘기세요`,true);tell(o,`계산서를 ${t.name}님에게 넘겼다`);
+}
 function smoke(a){
-  if(!G.lunch||a.f!==ROOF||a.smokeCd>0||!a.alive)return false;
+  if(!roofLunch()||a.f!==ROOF||a.smokeCd>0||!a.alive)return false;
   G.smokes.push({f:ROOF,x:a.x,y:a.y,t:0,life:LUNCH.smokeLife,r:LUNCH.smokeR,side:a.side});a.smokeCd=LUNCH.smokeCd;
-  say(a,a.side==='L'?'후우~ (전담)':'후~ (연초)','#5d666e');return true;
+  say(a,a.side==='L'?'후우~ (전담)':a.side==='R'?'후~ (연초)':'후~','#5d666e');return true;
 }
 const inSmoke=o=>G.smokes&&G.smokes.some(s=>s.f===o.f&&Math.hypot(s.x-o.x,s.y-o.y)<s.r);
 const ally=(a,o)=>!!(a&&o&&a.f===ROOF&&o.f===ROOF&&a.side&&a.side===o.side);
+/* ladder: groups of about five, each lane taken by one person; the rungs stay secret until everyone has picked */
+function startLadder(L){
+  const al=alive().sort(()=>Math.random()-.5),k=Math.max(1,Math.round(al.length/LUNCH.lad.size)),gs=[];
+  for(let i=0;i<k;i++)gs.push([]);al.forEach((a,i)=>gs[i%k].push(a));
+  L.groups=gs.map((m,gi)=>{const n=m.length,rungs=[];
+    for(let r=0;r<LUNCH.lad.rows;r++){let i=0;while(i<n-1){if(Math.random()<.5){rungs.push([r,i]);i+=2;}else i++;}}
+    for(const a of m){a.lad=gi;stand(a);a.chan=null;a.wc=null;}
+    return{ids:m.map(a=>a.id),lane:m.map(()=>null),pay:Math.floor(Math.random()*n),rungs,payer:null};});
+}
+/* i<0: any free lane (bots, and whoever hasn't picked when time is up) */
+function pickLane(a,i){
+  const L=G.lunch;if(!L||L.kind!=='ladder'||L.phase!=='pick'||a.lad==null)return false;
+  const g=L.groups[a.lad];if(!g)return false;
+  if(i<0){if(g.lane.includes(a.id))return false;const free=g.lane.map((v,j)=>v==null?j:-1).filter(j=>j>=0);if(!free.length)return false;i=pick(free);}
+  if(!(i>=0&&i<g.lane.length)||g.lane[i]!=null)return false;
+  const old=g.lane.indexOf(a.id);if(old>=0)g.lane[old]=null;g.lane[i]=a.id;return true;
+}
+function ladderEnd(g,i){for(let r=0;r<LUNCH.lad.rows;r++){if(g.rungs.some(([R,c])=>R===r&&c===i))i++;else if(g.rungs.some(([R,c])=>R===r&&c===i-1))i--;}return i;}
 function showCine(t,sub,dur=1.6){UI.cine(t,sub,dur);}
 function arrive(a,f,padKey){
   const p=PADS[padKey];a.f=f;a.x=p.x+rnd(-20,20);a.y=p.y-34-rnd(0,18);a.path=[];a.goal=null;a.mode='idle';a.target=null;a.transit=null;a.inv=1.5;a.vx=a.vy=0;
@@ -231,7 +276,7 @@ function callOptions(a){return[{key:'greet',t:'인사',s:'죄송합니다!'},a.d
 /* What E / the action button does right now for actor me: {label, cls, fn} or null. */
 function contextAction(me){
   if(!me.alive||me.f<0||me.transit||locked(me)||me.chan)return null;
-  if(me.f===ROOF&&G.lunch)return me.smokeCd>0?{label:`담배 ${Math.ceil(me.smokeCd)}초`,cls:'off',fn:()=>{}}:{label:'담배 피우기 (연막)',cls:'go',fn:()=>smoke(me)};
+  if(me.f===ROOF&&roofLunch())return me.smokeCd>0?{label:`담배 ${Math.ceil(me.smokeCd)}초`,cls:'off',fn:()=>{}}:{label:'담배 피우기 (연막)',cls:'go',fn:()=>smoke(me)};
   if(me.wc)return me.wc.res?null:{label:`익절! +${wcGain(wcMult(me.wc.t))}`,cls:'hot',fn:()=>cashWc(me)};
   if(me.contact)return{label:`${bossTitle(me.contact.n)}께 인사!`,cls:'hot',fn:()=>greet(me)};
   if(me.quest)return{label:'신입 질문 답해주기 +2',cls:'hot',fn:()=>answerQuest(me)};
@@ -244,7 +289,7 @@ function contextAction(me){
   const rd=nearDoor(me);
   if(rd&&!me.sit)return{label:rd.open?`${rd.name} 닫기`:`${rd.name} 열기`,cls:rd.open?'':'go',fn:()=>{if(!toggleDoor(me.f,rd,!rd.open))tell(me,'문 앞에 사람이 있어 못 닫습니다');}};
   const pad=padOf(me);
-  if(pad&&!me.sit&&G.lunch&&G.lunch.t>3)return{label:'옥상으로 (점심 난투)',cls:'hot',fn:()=>goRoof(me)};
+  if(pad&&!me.sit&&roofLunch()&&G.lunch.t>3)return{label:'옥상으로 (점심시간)',cls:'hot',fn:()=>goRoof(me)};
   if(pad&&!me.sit){const up=me.f+1,dn=me.f-1;
     if(up<NF&&isOpen(up))return{label:`▲ ${FLOORS[up].short}로`,cls:'go',fn:()=>useFloor(me,1)};
     if(dn>=0&&isOpen(dn))return{label:`▼ ${FLOORS[dn].short}로`,cls:'',fn:()=>useFloor(me,-1)};

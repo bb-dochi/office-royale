@@ -57,8 +57,13 @@
   <div class="dpad touch-only" id="dPad"><button data-k="L" aria-label="왼쪽">◀</button><button data-k="U" aria-label="위">▲</button><button data-k="D" aria-label="아래">▼</button><button data-k="R" aria-label="오른쪽">▶</button><button class="quit" data-k="Q">일어나기</button></div>
 </div>
 <!-- lunch on the roof: the score and what it's for, big, under the status strip -->
-<div id="lunchBoard" hidden><div class="lb"><b class="tl">전담파</b><em id="lbL">0</em><i>:</i><em id="lbR">0</em><b class="tr">연초파</b></div>
-  <p>🔥 라이터를 <u>우리 재떨이</u>에 → <strong>이긴 팀 전원 고과 +8</strong><span class="pc-only"> · E 담배 연막</span></p></div>
+<div id="lunchBoard" hidden><div class="lb" id="lbTeams"><b class="tl">전담파</b><em id="lbL">0</em><i>:</i><em id="lbR">0</em><b class="tr">연초파</b></div>
+  <div class="lbx" id="lbX" hidden></div><p id="lbP"></p></div>
+<!-- coffee ladder lunch: my group's ladder -->
+<div id="ladder" hidden><div class="lad">
+  <h3>☕ 커피 내기 사다리</h3><p class="lt" id="ladT"></p>
+  <div class="ltop" id="ladTop"></div><div class="lsvg" id="ladSvg"></div><div class="lbot" id="ladBot"></div>
+  <p class="lh" id="ladHelp"></p></div></div>
 <!-- 화캉스: the phone in my hand while I'm on the toilet -->
 <div id="phone" hidden><div class="ph">
   <div class="pbar"><span>오피스코인 OFC</span><span id="pTime"></span></div>
@@ -103,6 +108,12 @@
       <p class="subj">로비와 게임에서 쓸 사원명을 정해 주세요.</p>
       <div class="namerow"><input id="homeName" maxlength="10" placeholder="예: 김신입" autocomplete="nickname" aria-label="사원명"><button class="btn" id="nameOk">입사하기</button></div>
     </div>
+    <!-- right after a first-time name: offer the tutorial before anything else -->
+    <div id="tutAsk" hidden>
+      <h1 id="tutAskH">첫 출근이시죠?</h1>
+      <p class="subj">1분짜리 신입 연수(튜토리얼)로 조작부터 익히고 갈까요? 나중에 메뉴의 튜토리얼에서도 할 수 있어요.</p>
+      <div class="btns"><button class="btn" id="tutAskGo">연수 받기 (1분)</button><button class="btn ghost" id="tutAskSkip">바로 일하기</button></div>
+    </div>
     <div id="homeMenu">
       <h1>오피스 로얄</h1>
       <p class="subj title">인사평가 서바이벌</p>
@@ -126,7 +137,7 @@
       </ul></div></div>
       </div>
       <div class="btns"><button class="btn" id="hSolo">혼자 하기</button><button class="btn" id="hMulti">같이 하기</button></div>
-      <p class="foot"><button class="tlink" id="hTut">튜토리얼</button><button class="tlink" id="hDress">옷 갈아입기</button></p>
+      <p class="foot"><button class="tlink" id="hRank">주간 랭킹</button><button class="tlink" id="hTut">튜토리얼</button><button class="tlink" id="hDress">옷 갈아입기</button></p>
     </div>
     <div id="dress" hidden>
       <h1>옷 갈아입기</h1>
@@ -141,6 +152,7 @@
   <button data-go="guide">게임 안내</button>
   <button data-go="solo" class="pri">혼자 하기</button>
   <button data-go="multi" class="pri">같이 하기</button>
+  <button data-go="rank">주간 랭킹</button>
   <button data-go="tut">튜토리얼</button>
   <button data-go="dress">옷 갈아입기</button>
 </nav>
@@ -181,6 +193,17 @@
   </div>
 </section>
 
+<section class="sheet" id="rankSheet" hidden>
+  <div class="memo rankmemo">
+    <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span>인사고과 순위<button class="homeX" id="rankX" aria-label="닫기">✕</button></span></div>
+    <h1>주간 랭킹</h1>
+    <p class="subj">혼자 하기 <b>어려움</b> 점수 · 매주 월요일에 새로 시작해요.</p>
+    <p class="rkweek" id="rankWeek"></p>
+    <div class="rklist" id="rankList"></div>
+    <p class="rkhow">점수 = 순위 + 최종 직급 + 해고 ×40 + 업무 ×10 + 버틴 시간</p>
+  </div>
+</section>
+
 <section class="sheet" id="teamInfo" hidden>
   <div class="memo teammemo">
     <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span>부서 안내<button class="homeX" id="teamInfoX" aria-label="닫기">✕</button></span></div>
@@ -212,6 +235,7 @@
       <dt>최종 직급</dt><dd id="rRank">-</dd>
       <dt>성과 요약</dt><dd id="rPerf">-</dd>
     </dl>
+    <p class="rscore" id="rScoreRow" hidden><span>주간 점수</span><b id="rScore"></b><button class="tlink" id="rankBtn">주간 랭킹</button></p>
     <p class="note" id="rNote"></p>
     <button class="btn mainbtn" id="againBtn">다시 출근</button>
     <p class="foot"><button class="tlink" id="homeBtn">로비로</button><button class="tlink red" id="shareBtn">결과 공유</button><button class="tlink" id="watchBtn">관전하기</button></p>
@@ -239,5 +263,6 @@
 <script defer src="js/client/45-plaza.js"></script>
 <script defer src="js/client/46-tutorial.js"></script>
 <script defer src="js/client/47-share.js"></script>
+<script defer src="js/client/48-rank.js"></script>
 </body>
 </html>

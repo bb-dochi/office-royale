@@ -22,6 +22,7 @@ const ACT={
   branch:k=>NETC.on?netSend({t:'cmd',c:'branch',k}):chooseBranch(G.me,k),
   floor:dir=>NETC.on?netSend({t:'cmd',c:'floor',dir}):useFloor(G.me,dir),
   desk:k=>NETC.on?netSend({t:'cmd',c:'desk',k}):deskKey(G.me,k),
+  lane:i=>NETC.on?netSend({t:'cmd',c:'lane',i}):pickLane(G.me,i),
 };
 /* what the action button would do now: computed by the server online (it sees the whole state) */
 const myAction=()=>NETC.on?NETC.act:contextAction(G.me);
@@ -35,7 +36,7 @@ function netConnect(code,name,onRoom,onFail){
   netClose();
   let ws;try{ws=new WebSocket(netURL(code));}catch(e){onFail('서버 주소가 잘못됐어요');return;}
   NETC.ws=ws;NETC.code=code;let opened=false;
-  ws.onopen=()=>{opened=true;ws.send(JSON.stringify({t:'hello',name,fit:myFit()}));};
+  ws.onopen=()=>{opened=true;ws.send(JSON.stringify({t:'hello',name,fit:myFit(),uid:rankUid()}));};
   ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch{return;}
     if(m.t==='room'){NETC.room=m;NETC.you=m.you;onRoom(m);}
     else if(m.t==='start'){NETC.you=m.you;netBegin();}

@@ -10,6 +10,7 @@ addEventListener('keydown',e=>{
   keys.add(c);if(!running||!G||paused||e.repeat&&c!=='Space')return;const me=G.me;
   if(watching()){if(c==='ArrowLeft'||c==='KeyA')specCycle(-1);else if(c==='ArrowRight'||c==='KeyD')specCycle(1);else if(c==='Escape')specExit();return;}
   if(me.call&&c in CALLKEY){const o=callOptions(me).at(CALLKEY[c]);if(o)ACT.answer(o.key);return;}
+  if(!$('ladder').hidden&&/^(Digit|Numpad)[1-9]$/.test(c)){ACT.lane(Number(c.slice(-1))-1);return;}
   if(!$('branchBox').hidden&&/^(Digit|Numpad)[1-4]$/.test(c)){pickBranch(Object.keys(BRANCH).at(Number(c.slice(-1))-1));return;}
   /* at my desk the movement keys type into the monitor game */
   if(me.desk&&me.alive){const k={KeyW:'U',ArrowUp:'U',KeyS:'D',ArrowDown:'D',KeyA:'L',ArrowLeft:'L',KeyD:'R',ArrowRight:'R'}[c];if(k){e.preventDefault();ACT.desk(k);return;}}

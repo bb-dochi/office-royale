@@ -118,16 +118,21 @@ const pzRO=new ResizeObserver(pzCover);pzRO.observe($('home').querySelector('.ho
 function nameStep(on){$('nameStep').hidden=!on;$('homeMenu').hidden=on;$('home').classList.toggle('naming',on);if(on)$('home').classList.remove('closed');if(on){$('homeName').value=store.get('or-name')||'';setTimeout(()=>$('homeName').focus(),50);}}
 function nameSave(){
   const n=$('homeName').value.replace(/[\u0000-\u001f<>]/g,'').trim().slice(0,10);if(!n){$('homeName').focus();return;}
-  store.set('or-name',n);$('nameIn').value=n;$('myName').textContent=n;nameStep(false);
+  const first=!store.get('or-name');
+  store.set('or-name',n);$('nameIn').value=n;$('myName').textContent=n;nameStep(false);if(first)tutAsk(true,n);
   if(G&&G.plaza&&G.me)G.me.name=n;if(PZ.ws&&PZ.ws.readyState===1)PZ.ws.send(JSON.stringify({t:'pz-name',name:n}));
 }
 $('myName').textContent=store.get('or-name')||'신입';
+/* first visit: once the name is set, ask whether to do the tutorial before showing the menu */
+function tutAsk(on,n){$('tutAsk').hidden=!on;$('homeMenu').hidden=on;$('home').classList.toggle('asking',on);if(on){$('tutAskH').textContent=`${n}님, 첫 출근이시죠?`;setTimeout(()=>$('tutAskGo').focus(),50);}}
+$('tutAskGo').addEventListener('click',()=>{tutAsk(false);tutStart();});
+$('tutAskSkip').addEventListener('click',()=>tutAsk(false));
 $('nameOk').addEventListener('click',nameSave);
 $('homeName').addEventListener('keydown',e=>{if(e.key==='Enter')nameSave();});
 $('nameEdit').addEventListener('click',()=>nameStep(true));
 /* ---------- open card ↔ binder tabs on the right ---------- */
 /* first visit: the card is open (it asks for a name); after that the lobby opens with just the tabs, unless the card was left open */
-function homeClose(c){$('home').classList.toggle('closed',c);pzCover();}
+function homeClose(c){if(c&&!$('tutAsk').hidden)tutAsk(false);$('home').classList.toggle('closed',c);pzCover();}
 homeClose(false); // the guide card greets every page load
 if(!store.get('or-name'))nameStep(true);
 $('homeX').addEventListener('click',()=>homeClose(true));
@@ -137,6 +142,7 @@ $('dock').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)
   if(go==='guide')homeClose(false);
   else if(go==='solo')diffOpen();
   else if(go==='multi'){$('home').hidden=true;showLobby();}
+  else if(go==='rank')rankOpen();
   else if(go==='tut')tutStart();
   else if(go==='dress'){PZ.dressFromDock=true;$('home').classList.remove('closed');dressOpen();}});
 $('hSolo').addEventListener('click',diffOpen);

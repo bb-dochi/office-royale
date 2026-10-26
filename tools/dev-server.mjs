@@ -9,6 +9,8 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { RoomCore } from '../server/src/room.js';
 import { PlazaCore } from '../server/src/plaza.js';
+import { RankCore, apiHTTP } from '../server/src/rank.js';
+import { StatsCore, adminHTML } from '../server/src/stats.js';
 
 const PORT = +(process.argv[2] || process.env.PORT || 8787);
 const PUB = fileURLToPath(new URL('../public/', import.meta.url));
@@ -28,12 +30,25 @@ const rooms = new Map();
 const plaza = new PlazaCore({ send: (p, o) => p.sock.sendText(JSON.stringify(o)) });
 function roomFor(code) {
   let r = rooms.get(code);
-  if (!r) { r = new RoomCore(code, { createSim, send: (p, o) => p.sock.sendText(JSON.stringify(o)), onEmpty: () => rooms.delete(code) }); rooms.set(code, r); }
+  if (!r) { r = new RoomCore(code, { createSim, send: (p, o) => p.sock.sendText(JSON.stringify(o)), onEmpty: () => rooms.delete(code), onGame: recordGame }); rooms.set(code, r); }
   return r;
 }
 
+/* weekly ranking and play stats, kept in memory (gone when the dev server stops); /admin needs no key here */
+const mem = new Map(), memStore = { get: k => mem.get(k), put: (k, v) => mem.set(k, v) };
+const api = { rank: new RankCore(memStore), stats: new StatsCore(memStore) };
+const recordGame = rs => { for (const r of rs) api.stats.record({ ...r, mode: 'multi' }); };
+
 const server = createServer((req, res) => {
-  let path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  const url = new URL(req.url, 'http://x');
+  if (url.pathname === '/admin') { adminHTML(api.stats, url.searchParams).then(h => res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }).end(h)); return; }
+  if (url.pathname.startsWith('/api/')) {
+    let body = ''; req.on('data', d => { if (body.length < 4096) body += d; });
+    req.on('end', async () => { const r = await apiHTTP(api, req.method, url, body);
+      res.writeHead(r.status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }).end(JSON.stringify(r.json)); });
+    return;
+  }
+  let path = decodeURIComponent(url.pathname);
   if (path.endsWith('/')) path += 'index.html';
   const file = normalize(join(PUB, path));
   if (!file.startsWith(PUB.endsWith(sep) ? PUB : PUB + sep)) { res.writeHead(403).end(); return; }
@@ -57,7 +72,7 @@ server.on('upgrade', (req, sock) => {
     let msg; try { msg = JSON.parse(txt); } catch { return; }
     if (!joined) {
       if (msg.t !== 'hello') return;
-      const err = room.join(peer, msg.name, msg.fit);
+      const err = room.join(peer, msg.name, msg.fit, msg.uid);
       if (err) { peer.sock.sendText(JSON.stringify({ t: 'err', m: err })); peer.sock.close(); return; }
       joined = true; return;
     }

@@ -919,8 +919,10 @@ cv.addEventListener('pointermove',e=>{if(e.pointerType==='mouse')mouse={x:e.clie
 const aimAngle=a=>{if(a===G.me&&performance.now()-mouse.t<1500){const w=screenToWorld(mouse.x,mouse.y);return Math.atan2(w.y-a.y,w.x-a.x);}return autoAim(a);};
 
 /* ---------- overlay helpers (screen space, drawn on the 2D canvas above the 3D view) ---------- */
+/* a label whose anchor is on screen is nudged in so it isn't cut off at the edge (phones are narrow) */
+const edgeX=(x,w)=>x<0||x>VW?x:Math.max(w/2+4,Math.min(VW-w/2-4,x));
 function tag(x,y,text,bg,fg,size=12){
-  ctx.font=F(800,size);const w=ctx.measureText(text).width+12*UIS;ctx.fillStyle=bg;rr(x-w/2,y-10*UIS,w,19*UIS,6*UIS);ctx.fill();
+  ctx.font=F(800,size);const w=ctx.measureText(text).width+12*UIS;x=edgeX(x,w);ctx.fillStyle=bg;rr(x-w/2,y-10*UIS,w,19*UIS,6*UIS);ctx.fill();
   ctx.fillStyle=fg;ctx.textAlign='center';ctx.fillText(text,x,y+4*UIS);ctx.textAlign='left';
 }
 /* name tag in a match: a chip in front of the name with the rank. One colour family: grey for 인턴, then a blue that
@@ -930,19 +932,20 @@ const RANK_TIER={인턴:{g:['#a9b0b6','#8a929a']},사원:{g:['#97a8bb','#7a8ea6'
 const rankWord=a=>a.rank||'인턴';
 function nameTag(x,y,name,a,bg,fg){
   const T=RANK_TIER[a.rank]||RANK_TIER.인턴,ch=rankWord(a);
-  ctx.font=F(800,10);const s=UIS,cw=ctx.measureText(ch).width+8*s;ctx.font=F(800,12);const nw=ctx.measureText(name).width,w=nw+cw+14*s,h=19*s,l=x-w/2;
+  ctx.font=F(800,10);const s=UIS,cw=ctx.measureText(ch).width+8*s;ctx.font=F(800,12);const nw=ctx.measureText(name).width,w=nw+cw+14*s,h=19*s;x=edgeX(x,w);const l=x-w/2;
   ctx.fillStyle=bg;rr(l,y-10*s,w,h,6*s);ctx.fill();if(a===G.me){ctx.strokeStyle='#fbfaf6';ctx.lineWidth=1.5*s;ctx.stroke();} // me: a dark tag with a white rim
   const cx=l+2*s,cy=y-8*s,chh=h-4*s,gr=ctx.createLinearGradient(0,cy,0,cy+chh);T.g.forEach((c,i)=>gr.addColorStop(i/(T.g.length-1),c));
   ctx.fillStyle=gr;rr(cx,cy,cw,chh,4*s);ctx.fill();
   ctx.font=F(800,10);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText(ch,cx+cw/2,y+3.5*s);
   ctx.font=F(800,12);ctx.fillStyle=fg;ctx.fillText(name,l+cw+(w-cw)/2,y+4*s);ctx.textAlign='left';
 }
-function outlined(t,x,y,font,color){ctx.font=font;ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='rgba(251,250,246,.95)';ctx.strokeText(t,x,y);ctx.fillStyle=color;ctx.fillText(t,x,y);ctx.textAlign='left';}
+function outlined(t,x,y,font,color){ctx.font=font;x=edgeX(x,ctx.measureText(t).width+6);ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='rgba(251,250,246,.95)';ctx.strokeText(t,x,y);ctx.fillStyle=color;ctx.fillText(t,x,y);ctx.textAlign='left';}
 function bubble(text,x,y,color,alpha){
   ctx.font=F(800,13);const w=Math.min(240*UIS,ctx.measureText(text).width+20),h=26*UIS,c=color&&color!=='#1d2328'?color:'#3d4a54';
+  const ax=x;x=edgeX(x,w); // the tail stays over the speaker
   ctx.globalAlpha=alpha;ctx.fillStyle='rgba(255,255,255,.97)';rr(x-w/2,y-h,w,h,12);ctx.fill();ctx.strokeStyle=c;ctx.lineWidth=2;ctx.stroke();
-  ctx.beginPath();ctx.moveTo(x-7,y-1);ctx.lineTo(x,y+8);ctx.lineTo(x+7,y-1);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.moveTo(x-7,y);ctx.lineTo(x,y+8);ctx.lineTo(x+7,y);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(ax-7,y-1);ctx.lineTo(ax,y+8);ctx.lineTo(ax+7,y-1);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(ax-7,y);ctx.lineTo(ax,y+8);ctx.lineTo(ax+7,y);ctx.stroke();
   ctx.fillStyle='#1d2328';ctx.textAlign='center';ctx.fillText(text,x,y-h/2+5*UIS,w-12);ctx.textAlign='left';ctx.globalAlpha=1;
 }
 function glyph(k,x,y,s){
@@ -1105,6 +1108,7 @@ function render(dt){
     if(!G.plaza){ctx.fillStyle='#1d2328';ctx.fillRect(x-18,y+1,36,5);ctx.fillStyle=a.g<30?'#cf3626':'#2f7d4f';ctx.fillRect(x-17,y+2,34*Math.max(0,a.g)/100,3);}
     if(a.items.length&&a!==me)glyph(a.items[0],x+28,y-12,14);
     if(a.f===ROOF&&a.side)outlined(`${teamOf(a.side)}${a.lighter>0?` · 라이터 ${a.lighter}`:''}`,x,y+20,F(800,11),a.side==='L'?'#2b7fc4':'#c0452a');
+    if(a.f===ROOF&&a.bill)tag(x,y-38,a===me?'🧾 내가 계산서!':'🧾 계산서','#cf3626','#fbfaf6',12);
     if(a.ammo>0&&a===me){const q=scr(a.x,a.y,0);if(q)outlined(`스테이플 ${a.ammo}`,q[0],q[1]+26,F(800,10),'#3f6f99');}
     const st=a.stunT>0?'회식 중':a.lockT>0?a.lockWhy:a.call?'호출당함':a.working?'근무 중 · 못 건드림':'';
     if(st)outlined(st,x,y-30,F(800,12),'#c08a1e');
@@ -1151,10 +1155,10 @@ function render(dt){
     if(p){ctx.fillStyle='#5b8fd6';ctx.strokeStyle='#1d2328';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(p[0]-14,p[1]-20);ctx.lineTo(p[0]+14,p[1]-20);ctx.lineTo(p[0],p[1]);ctx.closePath();ctx.fill();ctx.stroke();
       outlined(e.step?'전달하기':e.go,p[0],p[1]-28,F(800,12),'#2b5a99');}}
   /* leaving now (my floor closing, closed, or lunch): bouncing markers over both pads, edge arrows if they're off screen */
-  if(me.alive&&me.f===f&&f!==ROOF&&!me.transit&&running&&!G.tutorial&&(f<G.closed||warnFloor(f)||G.lunch)){
-    const col=G.lunch?'#e0b52a':'#cf3626';
+  if(me.alive&&me.f===f&&f!==ROOF&&!me.transit&&running&&!G.tutorial&&(f<G.closed||warnFloor(f)||roofLunch())){
+    const col=roofLunch()?'#e0b52a':'#cf3626';
     for(const k in PADS){if(k==='elev'&&G.fire>0)continue;const pd=PADS[k],p=scr(pd.x,pd.y,2.2+Math.sin(G.t*6)*.2);if(!p)continue;
-      const name=G.lunch?(k==='stair'?'계단 → 옥상 왼쪽':'엘리베이터 → 옥상 오른쪽'):(k==='stair'?'▲ 계단':'▲ 엘리베이터');
+      const name=roofLunch()?(k==='stair'?'계단 → 옥상 왼쪽':'엘리베이터 → 옥상 오른쪽'):(k==='stair'?'▲ 계단':'▲ 엘리베이터');
       if(p[0]>20&&p[0]<VW-20&&p[1]>60&&p[1]<VH-60){ctx.fillStyle=col;ctx.strokeStyle='#1d2328';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(p[0]-18,p[1]-24);ctx.lineTo(p[0]+18,p[1]-24);ctx.lineTo(p[0],p[1]);ctx.closePath();ctx.fill();ctx.stroke();
         tag(p[0],p[1]-38,name,col,'#fbfaf6',12);continue;}
       const a=Math.atan2(p[1]-VH/2,p[0]-VW/2),ex=Math.max(30,Math.min(VW-30,p[0])),ey=Math.max(90,Math.min(VH-110,p[1]));
@@ -1176,6 +1180,15 @@ function render(dt){
       else if(p){const an=Math.atan2(p[1]-VH/2,p[0]-VW/2),ex=Math.max(30,Math.min(VW-30,p[0])),ey=Math.max(90,Math.min(VH-110,p[1]));
         ctx.save();ctx.translate(ex,ey);ctx.rotate(an);ctx.fillStyle=col;ctx.strokeStyle='#1d2328';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(18,0);ctx.lineTo(-10,-14);ctx.lineTo(-10,14);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
         tag(ex-Math.cos(an)*50,ey-Math.sin(an)*26,'우리 재떨이',col,'#fbfaf6',11);}}}
+  /* special-meal lunch: the serving counter's ring on the floor, an arrow at the screen edge when it's out of view */
+  if(f===ROOF&&G.lunch&&G.lunch.kind==='meal'&&G.lunch.zone){const z=G.lunch.zone,r=LUNCH.meal.r,mine=me.f===ROOF&&Math.hypot(me.x-z.x,me.y-z.y)<r;
+    ctx.beginPath();for(let i=0;i<=32;i++){const an=i/32*Math.PI*2,q=scr(z.x+Math.cos(an)*r,z.y+Math.sin(an)*r,.04);if(!q)continue;i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);}
+    ctx.fillStyle=`rgba(243,215,122,${.22+.08*Math.sin(G.t*5)})`;ctx.fill();ctx.strokeStyle=mine?'#2f7d4f':'#c08a1e';ctx.lineWidth=4;ctx.setLineDash([10,7]);ctx.stroke();ctx.setLineDash([]);
+    const p=scr(z.x,z.y,1.2);
+    if(p&&p[0]>20&&p[0]<VW-20&&p[1]>60&&p[1]<VH-60)tag(p[0],p[1],`🍱 오늘의 특식${G.lunch.crowd>1?` · ${G.lunch.crowd}명`:''}`,'#c08a1e','#1d2328',13);
+    else if(p&&me.f===ROOF){const an=Math.atan2(p[1]-VH/2,p[0]-VW/2),ex=Math.max(30,Math.min(VW-30,p[0])),ey=Math.max(90,Math.min(VH-110,p[1]));
+      ctx.save();ctx.translate(ex,ey);ctx.rotate(an);ctx.fillStyle='#f3d77a';ctx.strokeStyle='#1d2328';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(18,0);ctx.lineTo(-10,-14);ctx.lineTo(-10,14);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+      tag(ex-Math.cos(an)*50,ey-Math.sin(an)*26,'배식대','#c08a1e','#1d2328',11);}}
   /* the roof during lunch is a haze of smoke */
   if(f===ROOF&&G.lunch){ctx.fillStyle='rgba(225,228,232,.13)';ctx.fillRect(0,0,VW,VH);
     for(let i=0;i<6;i++){const cx=VW*(.15+.14*i)+Math.sin(G.t*.2+i)*60,cy=VH*(.3+.4*((i*37)%10)/10)+Math.cos(G.t*.15+i*2)*40,r=Math.max(VW,VH)*.22;

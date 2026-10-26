@@ -32,6 +32,7 @@ function showResult(win){
   $('rNote').textContent=note;
   Object.assign(RES,{win,title:$('rTitle').textContent,name:me.name==='나'?store.get('or-name')||'신입':me.name,place:$('rPlace').textContent,time:$('rTime').textContent,
     rank:$('rRank').textContent,perf:$('rPerf').textContent,note});
+  $('rScoreRow').hidden=true;if(!NETC.room&&!G.net&&!G.tutorial)rankSubmit(win); // solo: weekly ranking
   $('watchBtn').hidden=win||G.over;
   $('againBtn').textContent=NETC.room?'대기실로':'다시 출근';
   $('result').hidden=false;$('callBox').hidden=true;
@@ -76,7 +77,7 @@ const DIFF_TXT={easy:'봇이 굼뜨고 서류가 잘 빗나가요. 가만히 있
 function diffOpen(){
   const last=store.get('or-diff')||'normal';
   $('diffOpts').innerHTML=Object.entries(DIFF).map(([k,v],i)=>`<button data-d="${k}" class="${k===last?'last':''}">
-    <em aria-hidden="true">${'●'.repeat(i+1)}${'○'.repeat(2-i)}</em><b>${v.n}${k===last?'<i>지난번</i>':''}</b><span>${DIFF_TXT[k]}</span></button>`).join('');
+    <em aria-hidden="true">${'●'.repeat(i+1)}${'○'.repeat(2-i)}</em><b>${v.n}${k===RANKED?'<i class="rk">🏆 주간 랭킹 기록</i>':''}${k===last?'<i>지난번</i>':''}</b><span>${DIFF_TXT[k]}</span></button>`).join('');
   $('diffSheet').hidden=false;
 }
 $('diffOpts').addEventListener('click',e=>{const b=e.target.closest('button');if(b)start(b.dataset.d);});

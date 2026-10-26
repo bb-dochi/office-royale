@@ -9,7 +9,7 @@ const seatRef=s=>s?[s.f,FLOORS[s.f].seats.indexOf(s)]:null;
 const idOf=o=>o?o.id:null;
 const clampN=(v,lo,hi)=>typeof v==='number'&&isFinite(v)?Math.max(lo,Math.min(hi,v)):0;
 /* fields every client needs about every actor (labels, poses, auras), with the value a client assumes when one is left out */
-const PUB_A={id:0,name:'',color:'',isPlayer:false,f:0,x:0,y:0,face:0,g:0,peak:0,rank:'',alive:false,branch:null,flash:0,items:[],ammo:0,cloakT:0,carry:false,inRest:false,stunT:0,lockT:0,lockWhy:'',sprint:false,side:null,speedT:0,rushT:0,shieldN:0,vipT:0,slowT:0,intelT:0,place:0,kills:0,revived:false,tasksDone:0,maxF:0,fit:null,hitBy:0,working:false,lighter:0};
+const PUB_A={id:0,name:'',color:'',isPlayer:false,f:0,x:0,y:0,face:0,g:0,peak:0,rank:'',alive:false,branch:null,flash:0,items:[],ammo:0,cloakT:0,carry:false,inRest:false,stunT:0,lockT:0,lockWhy:'',sprint:false,side:null,speedT:0,rushT:0,shieldN:0,vipT:0,slowT:0,intelT:0,place:0,kills:0,revived:false,tasksDone:0,maxF:0,fit:null,hitBy:0,working:false,lighter:0,bill:false,meal:0};
 /* empty values (0, false, null, '', [], spent timers) are left out of public actor data to keep snapshots small */
 const empty=v=>v===null||v===false||v===''||v===undefined||(typeof v==='number'&&v<=0&&v>-1e-9)||(Array.isArray(v)&&!v.length);
 /* bot brain and bookkeeping that never leaves the server */
@@ -37,6 +37,10 @@ function serA(a,full){
   return o;
 }
 const serN=n=>({id:n.id,kind:n.kind,f:n.f,x:r1(n.x),y:r1(n.y),face:r2(n.face),slot:n.slot,on:n.on,sr:n.senior?1:0,ask:n.ask&&n.job?n.job.r:0});
+/* the ladder's rungs stay on the server until everyone has picked a lane */
+function lunchSnap(){const L=G.lunch;if(!L)return null;
+  return{kind:L.kind,t:r2(L.t),score:L.score,phase:L.phase,dealt:L.dealt,zone:L.zone,crowd:L.crowd,
+    groups:L.groups&&L.groups.map(g=>({ids:g.ids,lane:g.lane,pay:g.pay,payer:g.payer,rungs:L.phase==='pick'?null:g.rungs}))};}
 function pubSnap(){
   if(NET.pubT===G.t&&NET.pub)return NET.pub;
   const open=f=>f===ROOF||f>=G.closed;
@@ -47,7 +51,7 @@ function pubSnap(){
   const seatStr=JSON.stringify(seats),sendSeats=seatStr!==NET.seatStr||Math.floor(G.t)!==Math.floor(NET.pubT);NET.seatStr=seatStr;
   NET.pub={
     t:r2(G.t),closed:G.closed,nextClose:r2(G.nextClose),warn:G.warn,final:G.final,finalT:r2(G.finalT),over:G.over,winner:idOf(G.winner),
-    lunch:G.lunch?{t:r2(G.lunch.t),score:G.lunch.score}:null,SM:(G.smokes||[]).map(s=>({n:nk(s),f:s.f,x:r1(s.x),y:r1(s.y),t:r2(s.t),life:s.life,r:s.r,side:s.side})),fire:r2(G.fire),blackout:G.blackout,audit:G.audit,star:G.star?{a:G.star.a.id,t:G.star.t}:null,cake:G.cake,notice:G.notice,ceo:idOf(G.ceo),
+    lunch:lunchSnap(),SM:(G.smokes||[]).map(s=>({n:nk(s),f:s.f,x:r1(s.x),y:r1(s.y),t:r2(s.t),life:s.life,r:s.r,side:s.side})),fire:r2(G.fire),blackout:G.blackout,audit:G.audit,star:G.star?{a:G.star.a.id,t:G.star.t}:null,cake:G.cake,notice:G.notice,ceo:idOf(G.ceo),
     A:G.actors.map(a=>serA(a,false)),
     N:G.npcs.filter(n=>n.kind==='ceo'||isOpen(n.f)).map(serN),
     T:G.tasks.map(t=>({id:t.id,f:t.f,kind:t.kind,x:t.x,y:t.y,r:t.r,need:t.need,reward:t.reward,name:t.name,prog:r2(t.prog),ready:t.ready,by:idOf(t.by),seat:seatRef(t.seat),zone:t.zone?{x:t.zone.x,y:t.zone.y,w:t.zone.w,h:t.zone.h}:null})),
@@ -100,7 +104,11 @@ NET.cmd=function(key,m){const a=byKey(key);if(!a||!a.isPlayer||G.over)return;
     case 'branch':chooseBranch(a,m.k);break;
     case 'floor':if(m.dir===1||m.dir===-1)useFloor(a,m.dir);break;
     case 'desk':if(typeof m.k==='string')deskKey(a,m.k);break;
+    case 'lane':if(typeof m.i==='number')pickLane(a,m.i|0);break;
   }};
+/* how one player's match went, for the play stats (server/src/stats.js) */
+NET.result=function(key){const a=byKey(key);if(!a)return null;const win=G.winner===a;
+  return{place:win?1:a.place||aliveCount(),rank:win?'CEO':a.rank,kills:a.kills||0,tasks:a.tasksDone||0,time:Math.round(a.alive?G.t:a.outT??G.t),diff:G.diff,lunch:G.lunchKind};};
 /* a player who drops mid-match is handed to the bot brain so the match keeps its numbers */
 NET.leave=function(key){const a=byKey(key);NET.out.delete(key);if(!a||!a.isPlayer)return;a.isPlayer=false;a.input=null;a.call&&(a.call.botAns=a.call.line.ans,a.call.botT=0);
   if(a.alive)feed(`${a.name}님 연결 끊김: 봇이 대신 근무합니다`);};

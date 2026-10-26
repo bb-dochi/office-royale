@@ -10,7 +10,7 @@ function mk(name,isPlayer,type,color,pos){
     path:[],pathAge:0,goal:null,mode:'idle',think:Math.random()*.3,target:null,strafe:Math.random()<.5?1:-1,react:.4,
     speed:isPlayer?175:135+Math.random()*25,flash:0,lastHitBy:null,hitBy:0,lastHitT:-99,cause:null,sx:pos.x,sy:pos.y,stuckT:0,nudge:null,place:0,
     items:[],docs:0,intelT:0,sprint:false,runCd:0,fallCd:0,side:null,lunchGo:false,rapidT:0,slipT:0,ammo:0,lastCd:.6,cloakT:0,skillCd:0,rushT:0,branch:null,revived:false,shieldN:0,speedT:0,stunT:0,vipT:0,slowT:0,lockT:0,lockWhy:'',chan:null,transit:null,inv:0,
-    seats:{},sit:null,sitT:0,sitHeal:0,sitStart:0,sitGoal:0,desk:null,deskCd:0,working:false,wc:null,wcCd:0,jobs:{dev:0,mkt:0,hr:0},lighter:0,smokeCd:0,workT:0,carry:false,lastTaskT:-99,tasksDone:0,coffeeCd:0,coolerCd:0,
+    seats:{},sit:null,sitT:0,sitHeal:0,sitStart:0,sitGoal:0,desk:null,deskCd:0,working:false,wc:null,wcCd:0,jobs:{dev:0,mkt:0,hr:0},lighter:0,bill:false,billFrom:null,billT:-99,meal:0,lad:null,smokeCd:0,workT:0,carry:false,lastTaskT:-99,tasksDone:0,coffeeCd:0,coolerCd:0,
     contact:null,call:null,met:{},stampT:0,stampNpc:null,greetLock:0,cleanCd:0,cleanFriend:false,chatCd:0,restT:0,inRest:false,
     pref:0,padPref:Math.random()<.5?'stair':'elev',greed:rnd(2,10),maxF:0,killer:null};
 }
@@ -67,13 +67,14 @@ function newGame(opts={}){
   const kinds=['ceo','blackout','cake','fire','audit','star'].sort(()=>Math.random()-.5);
   if(kinds.indexOf('ceo')>2){kinds.splice(kinds.indexOf('ceo'),1);kinds.splice(1,0,'ceo');}
   [rnd(28,38),rnd(62,72),rnd(150,165),rnd(195,210)].forEach((at,i)=>G.events.push({at,kind:kinds.at(i),stage:0}));
-  G.events.push({at:rnd(96,104),kind:'lunch',stage:0});
+  G.events.push({at:rnd(96,104),kind:'lunch',stage:0});G.lunchKind=opts.lunch||pick(LUNCH_KINDS);
   G.diff=DIFF[opts.diff]?opts.diff:'normal';for(const b of actors)if(!b.isPlayer){b.speed*=diff().speed;b.hunter=Math.random()<diff().huntP;}
   if(opts.tutorial){G.tutorial=true;G.events=[];G.nextClose=1e9;for(const b of actors)if(!b.isPlayer)b.dummy=true;}
   UI.snapCam(me);
   UI.reset();
 }
-const taskQuota=f=>!isOpen(f)?0:(G.closed>=NF-1?5:f===topOpen()?3:4);
+/* the top open floor has little work early on, so nobody can run ahead and keep a whole floor of tasks to themself */
+const taskQuota=f=>!isOpen(f)?0:(G.closed>=NF-1?5:f===topOpen()?(G.closed<2?1:2):4);
 const itemQuota=f=>!isOpen(f)?0:(G.closed>=NF-1?3:f===G.closed?4:f===topOpen()?2:3);
 /* a handed-in task leaves a gap for a while before another one turns up (the lobby's few desks stay empty longer) */
 const TASK_GAP=f=>f===0?15:0;
@@ -139,9 +140,9 @@ function hit(t,o,n,label,p){
   if(label)label=label.replace(/-\d+/,'-'+Math.round(n));
   if(t.inv>0){pop(t.f,t.x,t.y-26,'도착 보호','#5d666e');return;}
   if(t.desk){pop(t.f,t.x,t.y-26,'근무 중 (못 건드림)','#5d666e');return;}
-  if(t.f===ROOF){n=Math.max(1,Math.round(n*LUNCH.dmg));if(label)label=label.replace(/-\d+/,'-'+n);dropLighters(t);}
+  if(t.f===ROOF){n=Math.max(1,Math.round(n*LUNCH.dmg));if(label)label=label.replace(/-\d+/,'-'+n);dropLighters(t);if(t.meal>0)t.meal=Math.max(0,t.meal-LUNCH.meal.spill);}
   if(t.shieldN>0){t.shieldN--;pop(t.f,t.x,t.y-26,'결재 도장으로 막음','#cf3626');return;}
-  dmg(t,n,'paper');if(o){o.workT=G.t;jobDone(o,'mkt');}t.lastHitBy=o;t.hitBy=o?o.id:0;t.lastHitT=G.t;t.flash=.22;pop(t.f,t.x,t.y-26,label||('-'+Math.round(n)),'#cf3626');
+  dmg(t,n,'paper');if(o){o.workT=G.t;jobDone(o,'mkt');passBill(t,o);}t.lastHitBy=o;t.hitBy=o?o.id:0;t.lastHitT=G.t;t.flash=.22;pop(t.f,t.x,t.y-26,label||('-'+Math.round(n)),'#cf3626');
   UI.shake(.15,t);
   stand(t);
   if(t.chan&&t.chan.pad==='stair'){t.chan=null;pop(t.f,t.x,t.y-44,'계단 오르다 맞음','#cf3626');}

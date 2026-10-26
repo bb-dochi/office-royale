@@ -9,5 +9,5 @@ Read `docs/DESIGN.md` first: the game design, decisions made so far (and why), c
 - All scripts are classic `<script defer>` files sharing one global scope, loaded in filename order from `index.html`. Keep top-level code order-safe. No build step.
 - Game coordinates are 2D pixels (x right, y down, floor 1540×1064). The renderer maps px → world units with `U = 1/36` (X = x·U, Z = y·U).
 - After any rules change run `node tools/headless.mjs 5`: games should end in roughly 4–5 minutes with no errors.
-- Player actions in the client go through `ACT` (`client/05-net.js`) so they work in solo and online. Local server with rooms: `node tools/dev-server.mjs 8080`. `server/src/room.js` is shared by that and the Durable Object.
+- Player actions in the client go through `ACT` (`client/05-net.js`) so they work in solo and online. Local server with rooms: `node tools/dev-server.mjs 8080`. `server/src/room.js` is shared by that and the Durable Object, and so are `rank.js` (weekly 어려움 ranking, `/api/rank`, `/api/game`) and `stats.js` (play stats, `/admin`).
 - UI text is Korean.
