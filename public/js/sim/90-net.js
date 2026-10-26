@@ -10,13 +10,15 @@ const idOf=o=>o?o.id:null;
 const clampN=(v,lo,hi)=>typeof v==='number'&&isFinite(v)?Math.max(lo,Math.min(hi,v)):0;
 /* fields every client needs about every actor (labels, poses, auras), with the value a client assumes when one is left out */
 const PUB_A={id:0,name:'',color:'',isPlayer:false,f:0,x:0,y:0,face:0,g:0,peak:0,rank:'',alive:false,branch:null,flash:0,items:[],ammo:0,cloakT:0,carry:false,inRest:false,stunT:0,lockT:0,lockWhy:'',sprint:false,side:null,speedT:0,rushT:0,shieldN:0,vipT:0,slowT:0,intelT:0,place:0,kills:0,revived:false,tasksDone:0,maxF:0,fit:null,hitBy:0,working:false,lighter:0,bill:false,meal:0};
+/* fixed for the whole match: sent only on the once-a-second full snapshot, and clients keep the last value */
+const FIXED_A=new Set(['name','color','fit']);
 /* empty values (0, false, null, '', [], spent timers) are left out of public actor data to keep snapshots small */
 const empty=v=>v===null||v===false||v===''||v===undefined||(typeof v==='number'&&v<=0&&v>-1e-9)||(Array.isArray(v)&&!v.length);
 /* bot brain and bookkeeping that never leaves the server */
 const SKIP_A=new Set(['path','pathAge','goal','mode','think','target','strafe','react','sx','sy','stuckT','nudge','met','input','aim','pref','padPref','greed','lunchGo','lunchPad','lastHitBy','type','key','_n','sitGoal','desk','wc','jobs']);
-function serA(a,full){
+function serA(a,full,fixed){
   const o={};
-  if(!full){for(const k in PUB_A){let v=a[k];if(typeof v==='number'){v=r1(v);if((k.endsWith('T')||k==='flash')&&v<0)v=0;}if(k==='f'||k==='x'||k==='y'||k==='face'?v!==0:!empty(v))o[k]=v;}}
+  if(!full){for(const k in PUB_A){if(!fixed&&FIXED_A.has(k))continue;let v=a[k];if(typeof v==='number'){v=r1(v);if((k.endsWith('T')||k==='flash')&&v<0)v=0;}if(k==='f'||k==='x'||k==='y'||k==='face'?v!==0:!empty(v))o[k]=v;}}
   else for(const k in a){if(SKIP_A.has(k))continue;const v=a[k];
     if(v===null||typeof v==='string'||typeof v==='boolean')o[k]=v;else if(typeof v==='number')o[k]=r2(v);
     else if(Array.isArray(v)&&v.every(x=>typeof x!=='object'))o[k]=v;}
@@ -48,13 +50,18 @@ function pubSnap(){
   for(let f=G.closed;f<NF;f++){seats[f]=FLOORS[f].seats.map(s=>[idOf(s.owner),idOf(s.occ)]);fdoors[f]=FLOORS[f].doors.map(d=>d.open?1:0).join('');}
   seats[ROOF]=FLOORS[ROOF].seats.map(s=>[null,idOf(s.occ)]);   // rooftop lunch benches
   /* seat owners change rarely: resend them only on change, plus once a second for anyone who missed it */
-  const seatStr=JSON.stringify(seats),sendSeats=seatStr!==NET.seatStr||Math.floor(G.t)!==Math.floor(NET.pubT);NET.seatStr=seatStr;
-  NET.pub={
+  const full=Math.floor(G.t)!==Math.floor(NET.pubT),seatStr=JSON.stringify(seats),sendSeats=full||seatStr!==NET.seatStr;NET.seatStr=seatStr;
+  /* the same beat carries what never changes (names, colors, where each task is); a new task is spelled out for its first second */
+  const seen=NET.tSeen,serT=t=>{if(!seen.has(t.id))seen.set(t.id,G.t);const o={id:t.id,prog:r2(t.prog),ready:t.ready,by:idOf(t.by)};
+    if(full||G.t-seen.get(t.id)<1)Object.assign(o,{f:t.f,kind:t.kind,x:r1(t.x),y:r1(t.y),r:t.r,need:t.need,reward:t.reward,name:t.name,seat:seatRef(t.seat),
+      zone:t.zone?{x:r1(t.zone.x),y:r1(t.zone.y),w:r1(t.zone.w),h:r1(t.zone.h)}:null});
+    return o;};
+  NET.pub={full:full?1:undefined,
     t:r2(G.t),closed:G.closed,nextClose:r2(G.nextClose),warn:G.warn,final:G.final,finalT:r2(G.finalT),over:G.over,winner:idOf(G.winner),
     lunch:lunchSnap(),SM:(G.smokes||[]).map(s=>({n:nk(s),f:s.f,x:r1(s.x),y:r1(s.y),t:r2(s.t),life:s.life,r:s.r,side:s.side})),fire:r2(G.fire),blackout:G.blackout,audit:G.audit,star:G.star?{a:G.star.a.id,t:G.star.t}:null,cake:G.cake,notice:G.notice,ceo:idOf(G.ceo),
-    A:G.actors.map(a=>serA(a,false)),
+    A:G.actors.map(a=>serA(a,false,full)),
     N:G.npcs.filter(n=>n.kind==='ceo'||isOpen(n.f)).map(serN),
-    T:G.tasks.map(t=>({id:t.id,f:t.f,kind:t.kind,x:t.x,y:t.y,r:t.r,need:t.need,reward:t.reward,name:t.name,prog:r2(t.prog),ready:t.ready,by:idOf(t.by),seat:seatRef(t.seat),zone:t.zone?{x:t.zone.x,y:t.zone.y,w:t.zone.w,h:t.zone.h}:null})),
+    T:G.tasks.map(serT),
     I:G.items.filter(i=>open(i.f)).map(i=>({n:nk(i),f:i.f,x:r1(i.x),y:r1(i.y),k:i.k,t:r1(i.t)})),
     P:G.proj.map(p=>({n:nk(p),f:p.f,x:r1(p.x),y:r1(p.y),dx:r2(p.dx),dy:r2(p.dy),d:r1(p.d),sp:p.sp,rng:p.rng,spin:r1(p.spin),staple:p.staple,bundle:!!p.bundle,flyer:!!p.flyer,o:idOf(p.o)})),
     TR:G.traps.map(t=>({n:nk(t),f:t.f,x:r1(t.x),y:r1(t.y),t:r1(t.t),o:idOf(t.o)})),
@@ -72,7 +79,7 @@ function pubSnap(){
 const byKey=k=>G&&G.actors.find(a=>a.key===k);
 function push(a,ev){if(!a||!a.key)return;const q=NET.out.get(a.key);if(q)q.push(ev);}
 NET.start=function(players){
-  NET.out=new Map(players.map(p=>[p.key,[]]));NET.pub=null;NET.pubT=-1;NET.seatStr='';
+  NET.out=new Map(players.map(p=>[p.key,[]]));NET.pub=null;NET.pubT=-1;NET.seatStr='';NET.tSeen=new Map();
   Object.assign(UI,{
     feed:(msg,hot,to)=>{for(const h of humans())if(!to||to===h){const m=typeof msg==='function'?msg(h):msg;if(m)push(h,{k:'feed',m,hot:!!hot});}},
     notice:t=>{for(const h of humans())push(h,{k:'notice',t});},

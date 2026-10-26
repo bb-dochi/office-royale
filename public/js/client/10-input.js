@@ -51,9 +51,10 @@ let ibT=null,ibLong=false;
 $('slots').addEventListener('pointerdown',e=>{const b=e.target.closest('.slot');if(!b)return;e.preventDefault();e.stopPropagation();ibLong=false;});
 $('slots').addEventListener('pointerup',e=>{const b=e.target.closest('.slot');clearTimeout(ibT);if(!b)return;e.preventDefault();if(!ibLong&&running)ACT.item(+b.dataset.i);ibLong=true;});
 $('slots').addEventListener('pointerleave',()=>clearTimeout(ibT));
-press($('skillBtn'),()=>ACT.skill());
-press($('downBtn'),()=>ACT.floor(-1));
 press($('pCash'),()=>doInteract());
+/* phones: the control guide's chips (keybar() in 40-main.js) are buttons */
+$('keybar').addEventListener('pointerdown',e=>{const b=e.target.closest('[data-a]');if(!b||!running)return;e.preventDefault();e.stopPropagation();
+  const a=b.dataset.a;if(a==='down')ACT.floor(-1);else if(a==='skill')ACT.skill();});
 $('mapbox').addEventListener('pointerdown',e=>{if(e.target.closest('.msys button'))return;e.preventDefault();e.stopPropagation();toggleMap();});
 for(const b of document.querySelectorAll('.msys button'))b.addEventListener('pointerdown',e=>e.stopPropagation());
 /* phones: the map folds down to its title bar (remembered) */

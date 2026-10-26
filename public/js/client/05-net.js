@@ -12,6 +12,7 @@ function netJitter(now){
   NJ.last=now;const want=Math.max(.15,Math.min(.4,NJ.avg+NJ.dev*3));
   INTERP+=(want-INTERP)*(want>INTERP?.3:.02); // grow fast, shrink slowly
 }
+const ROOM_MAX=20; // same as MAX_PLAYERS in server/src/room.js
 const NETC={on:false,ws:null,code:'',you:null,room:null,act:null,sentIn:'',sentT:0,snapT:0,off:null,rtt:.12,pingT:0,byA:new Map(),byN:new Map(),byT:new Map(),byE:new Map()};
 const ACT={
   throw:ang=>NETC.on?netSend({t:'cmd',c:'throw',ang}):throwPaper(G.me,ang),
@@ -71,14 +72,14 @@ function netApply(m){
   const meId=m.me?m.me.id:null;
   G.actors=P.A.map(s=>{const a=keep(NETC.byA,s.id,()=>({id:s.id,seats:{},samp:[]}));
     const px=a.x,py=a.y,pf=a.face;
-    for(const k in PUB_A){const v=s[k];a[k]=v===undefined?(Array.isArray(PUB_A[k])?[]:PUB_A[k]):v;}
+    for(const k in PUB_A){const v=s[k];if(v===undefined&&!P.full&&FIXED_A.has(k)&&k in a)continue;a[k]=v===undefined?(Array.isArray(PUB_A[k])?[]:PUB_A[k]):v;}
     a.x=px??a.x;a.y=py??a.y;a.face=pf??a.face; // keep where each one is drawn: others ease toward samples, I am predicted
     if(s.id!==meId)pushSamp(a,P.t,s,a.f!==a.lastF||!!a.transit);
     a.nx=s.x??0;a.ny=s.y??0;a.lastF=a.f;
     a.sit=seatAt(s.sit);a.transit=s.transit||null;a.chan=s.chan||null;a.call=s.call||null;return a;});
   for(const s of P.N){const n=keep(NETC.byN,s.id,()=>({...s,samp:[],path:[]}));const jump=n.f!==s.f;Object.assign(n,{kind:s.kind,f:s.f,slot:s.slot,on:s.on,senior:!!s.sr,ask:s.ask>0,job:s.ask>0?{r:s.ask}:null});pushSamp(n,P.t,s,jump);}
   G.npcs=P.N.map(s=>NETC.byN.get(s.id));G.ceo=npcBy(P.ceo);
-  G.tasks=P.T.map(s=>{const t=keep(NETC.byT,s.id,()=>({react:{}}));Object.assign(t,s);t.seat=seatAt(s.seat);t.by=actorBy(s.by);return t;});
+  G.tasks=P.T.map(s=>{const t=keep(NETC.byT,s.id,()=>({react:{}}));Object.assign(t,s);if('seat' in s)t.seat=seatAt(s.seat);t.by=actorBy(s.by);return t;});
   G.items=listFrom(P.I,'i',(o,s)=>Object.assign(o,s));
   G.proj=listFrom(P.P,'p',(o,s)=>{Object.assign(o,s);o.bx=s.x;o.by=s.y;o.bt=P.t;o.o=actorBy(s.o);});
   G.traps=listFrom(P.TR,'r',(o,s)=>{Object.assign(o,s);o.o=actorBy(s.o);});
@@ -159,12 +160,14 @@ function netFrame(dt){
     me.sprint=me.input.run&&m>.15;
     drive(me,m>.15?vx:0,m>.15?vy:0,dt);
     if((me.cx||me.cy)&&dt>0){const c=Math.min(1,dt*6),ox=me.cx*c,oy=me.cy*c;me.cx-=ox;me.cy-=oy;moveActor(me,ox/dt,oy/dt,dt);}
-    (me.hist||(me.hist=[])).push({t:now,x:me.x+(me.cx||0),y:me.y+(me.cy||0)}); // where I'll be once the pending correction is in, or it gets counted twicewhile(me.hist.length&&now-me.hist[0].t>1.5)me.hist.shift();
+    (me.hist||(me.hist=[])).push({t:now,x:me.x+(me.cx||0),y:me.y+(me.cy||0)}); // where I'll be once the pending correction is in, or it gets counted twice
+    while(me.hist.length&&now-me.hist[0].t>1.5)me.hist.shift();
   }else{me.x+=(me.nx-me.x)*k;me.y+=(me.ny-me.y)*k;me.hist=[];}
 }
 function netSendInput(){
   const me=G&&G.me;if(!me||!me.input)return;
   const i=me.input,msg={t:'in',vx:Math.round(i.vx*100)/100,vy:Math.round(i.vy*100)/100,run:!!i.run,fire:!!i.fire,aim:me.aim==null?null:Math.round(me.aim*100)/100};
   const s=JSON.stringify(msg),now=performance.now();
-  if(s!==NETC.sentIn&&now-NETC.sentT>40||now-NETC.sentT>500){NETC.sentIn=s;NETC.sentT=now;msg.ct=Math.round(now);netSend(msg);}
+  /* at most ~15 a second: the server bills every incoming message, and a 20-person room would otherwise send 500/s */
+  if(s!==NETC.sentIn&&now-NETC.sentT>66||now-NETC.sentT>500){NETC.sentIn=s;NETC.sentT=now;msg.ct=Math.round(now);netSend(msg);}
 }

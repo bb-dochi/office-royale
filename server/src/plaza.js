@@ -41,7 +41,7 @@ export class PlazaCore {
     } else if (m.t === 'pz-room') {
       /* the match room this person is waiting in, shown to the plaza so others can walk up and join */
       const c = typeof m.code === 'string' && /^[A-Z0-9]{4,8}$/.test(m.code) ? m.code : null;
-      const n = Math.max(1, Math.min(8, m.n | 0));
+      const n = Math.max(1, Math.min(20, m.n | 0));
       peer.room = c ? [c, n] : null;
       if (c && typeof m.name === 'string') peer.name = cleanName(m.name, this.peers.filter(p => p !== peer)); // the name picked for the room
     } else if (m.t === 'pz-name') {

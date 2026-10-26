@@ -1,8 +1,8 @@
 // One match room: lobby, host, start, the tick loop and snapshot fan-out.
 // Shared by the local dev server (tools/dev-server.mjs) and the Cloudflare Durable Object (index.js).
-// Transport-agnostic: the host hands in createSim() (a fresh copy of public/js/sim) and send(peer, obj).
+// Transport-agnostic: the host hands in createSim() (a fresh copy of public/js/sim) and send(peer, obj or ready JSON string).
 import { cleanFit } from './outfit.js';
-export const MAX_PLAYERS = 8;
+export const MAX_PLAYERS = 20;
 const TICK = 1 / 30, SEND_EVERY = 3, AFTER_OVER = 8; // 30 steps/s, 10 snapshots/s, back to lobby 8s after the end
 
 export class RoomCore {
@@ -21,7 +21,7 @@ export class RoomCore {
 
   /* returns an error string, or null when the peer joined */
   join(peer, name, fit, uid) {
-    if (this.peers.length >= MAX_PLAYERS) return '방이 꽉 찼어요 (최대 8명)';
+    if (this.peers.length >= MAX_PLAYERS) return '방이 꽉 찼어요 (최대 20명)';
     peer.key = 'p' + (++this.seq); peer.name = cleanName(name, this.peers); peer.inGame = false; peer.fit = cleanFit(fit); peer.uid = typeof uid === 'string' && /^[a-z0-9]{8,32}$/.test(uid) ? uid : null;
     this.peers.push(peer); this.broadcastRoster(); return null;
   }
@@ -64,8 +64,15 @@ export class RoomCore {
   step() {
     const { NET } = this.sim;
     try { NET.step(TICK); } catch (e) { console.error('room', this.code, e); this.stop(); this.broadcastRoster(); return; }
-    if (++this.tick % SEND_EVERY === 0)
-      for (const p of this.peers) if (p.inGame) this.send(p, { t: 's', ...NET.snap(p.key) });
+    /* the shared part (pub) is the same object for everyone: turn it into JSON once, not once per player */
+    if (++this.tick % SEND_EVERY === 0) {
+      let pub = null, pubJSON = '';
+      for (const p of this.peers) if (p.inGame) {
+        const { pub: pb, ...mine } = NET.snap(p.key);
+        if (pb !== pub) { pub = pb; pubJSON = JSON.stringify(pb); }
+        this.send(p, '{"t":"s","pub":' + pubJSON + ',' + JSON.stringify(mine).slice(1));
+      }
+    }
     if (this.sim.over() && this.overT === 0) {
       try { this.onGame(this.started.map(p => ({ uid: p.uid, name: p.name, room: this.code, ...NET.result(p.key) }))); } catch (e) { console.error('stats', e); }
     }

@@ -30,7 +30,7 @@ const rooms = new Map();
 const plaza = new PlazaCore({ send: (p, o) => p.sock.sendText(JSON.stringify(o)) });
 function roomFor(code) {
   let r = rooms.get(code);
-  if (!r) { r = new RoomCore(code, { createSim, send: (p, o) => p.sock.sendText(JSON.stringify(o)), onEmpty: () => rooms.delete(code), onGame: recordGame }); rooms.set(code, r); }
+  if (!r) { r = new RoomCore(code, { createSim, send: (p, o) => p.sock.sendText(typeof o === 'string' ? o : JSON.stringify(o)), onEmpty: () => rooms.delete(code), onGame: recordGame }); rooms.set(code, r); }
   return r;
 }
 

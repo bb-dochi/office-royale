@@ -45,7 +45,7 @@ function tutSteps(){const PC=!isTouch;return[
     tick(){if(TUT.item&&!G.items.includes(TUT.item)){TUT.item=null;TUT.target=TUT.dummy;}},
     done:()=>G.me.ammo>0&&G.me.ammo<15},
   {t:'위층으로',d:`40초마다 아래층부터 폐쇄돼요. 계단이나 엘리베이터 위에서 ${PC?'E':'상호작용'}로 위층으로 올라가세요!
-내려갈 땐 ${PC?'Shift+E':'▼ 버튼'}를 누르면 돼요.`,
+내려갈 땐 ${PC?'Shift+E':'오른쪽 ▼ 내려가기'}를 누르면 돼요.`,
     setup(){TUT.f0=G.me.f;TUT.target={f:G.me.f,x:PADS.stair.x,y:PADS.stair.y};},done:()=>G.me.f>TUT.f0},
   {t:'돌발 이벤트',d:'실전에선 점심시간(옥상 난투전), 소방 훈련, 감사팀, 우수사원 발표 같은 이벤트가 갑자기 터져요. 화면 공지를 잘 보세요!',
     read:true,setup(){TUT.target=null;}},

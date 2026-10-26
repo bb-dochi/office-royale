@@ -228,7 +228,7 @@ function closureCine(f){
 let hudT=0,lastItem='x',lastPills='',lastCall=null,lastTl='',lastFloors='';
 const toggleMap=()=>{$('mapbox').classList.toggle('big');hudT=0;};
 const KB=k=>isTouch?'':`<kbd class="kb in">${k}</kbd>`;
-if(!isTouch){[['greetBtn','E'],['throwBtn','Space'],['skillBtn','Q']].forEach(([id,k])=>$(id).insertAdjacentHTML('beforeend',`<kbd class="kb">${k}</kbd>`));}
+if(!isTouch){[['greetBtn','E'],['throwBtn','Space']].forEach(([id,k])=>$(id).insertAdjacentHTML('beforeend',`<kbd class="kb">${k}</kbd>`));}
 let branchT=0;
 function openBranch(){branchT=BRANCH_PICK;$('branchOpts').innerHTML=Object.entries(BRANCH).map(([k,v],i)=>`<button data-b="${k}" style="--tc:${v.c}">
   <b>${isTouch?'':`<kbd>${i+1}</kbd>`}${v.n.replace('팀장','')}</b><span><em>${isTouch?'':'Q '}${v.sk}</em> ${v.kt}</span><span>${v.pt}</span></button>`).join('');$('branchBox').hidden=false;}
@@ -258,6 +258,9 @@ function fxBar(me){
   if(me.rushT>0)E.push({k:'rush',g:'야',c:C('move'),t:`야근 모드 ${sec(me.rushT)}`,bar:me.rushT/(me.rank==='임원'?8:5)});
   if(me.speedT>0&&!(me.rushT>0))E.push({k:'speed',g:I.ticket.g,c:I.ticket.c,t:`빨라짐 ${sec(me.speedT)}`,bar:me.speedT/8});
   if(me.cloakT>0)E.push({k:'cloak',g:'위',c:C('ctl'),t:`위장 ${sec(me.cloakT)}`,bar:Math.min(1,me.cloakT/4)});
+  /* phones have no item slots: defense shows here (the attack item is on the 서류 투척 button) */
+  if(isTouch&&me.shieldN>0)E.push({k:'shield',g:I.stamp.g,c:C('def'),t:`결재 도장 ×${me.shieldN}`});
+  if(isTouch&&me.vipT>0)E.push({k:'vip',g:I.vip.g,c:C('def'),t:`노캔 이어폰 ${sec(me.vipT)}`});
   if(me.intelT>0)E.push({k:'intel',g:'정',c:C('ctl'),t:`위치 정보 ${sec(me.intelT)}`,bar:me.intelT/8});
   E.splice(3);
   const sig=E.map(e=>e.k+e.t+(e.bar!=null?Math.round(e.bar*40):'')).join('|');if(sig===fxSig)return;fxSig=sig;
@@ -287,12 +290,8 @@ function hud(dt){
   $('mTap').textContent=`${isTouch?'탭해서':'Tab'} 닫기`;
   drawMini();
   tb.style.setProperty('--cd',Math.max(0,me.cd)/me.lastCd);
-  {const dn=me.f-1,show=isTouch&&running&&me.alive&&me.f>=0&&me.f!==ROOF&&!me.sit&&!G.lunch&&!!padOf(me)&&dn>=0&&isOpen(dn),db=$('downBtn');
-    if(db.hidden===show)db.hidden=!show;if(show)$('downLabel').textContent=`▼${FLOORS[dn].short}`;}
-  const sb=$('skillBtn'),B=me.branch&&BRANCH[me.branch];sb.hidden=!(me.alive&&B&&B.cd&&rankAt(me,'팀장'));
-  if(!sb.hidden){sb.style.setProperty('--cd',Math.max(0,me.skillCd)/(B.cd*(me.rank==='임원'?EXEC_CD:1)));$('skillLabel').textContent=me.skillCd>0?Math.ceil(me.skillCd)+'초':B.sk;}
   const held=me.items[0]&&ITEMS[me.items[0]],tl=me.ammo>0?`스테이플<br>${me.ammo}발`:held?held.n.replace(' ','<br>'):'서류<br>투척';
-  if(tl!==lastTl){lastTl=tl;$('throwLabel').innerHTML=tl;tb.classList.toggle('staple',me.ammo>0||!!held);tb.style.setProperty('--ic',held?held.c:'');}
+  if(tl!==lastTl){lastTl=tl;$('throwLabel').innerHTML=tl;tb.classList.toggle('staple',me.ammo>0||!!held);tb.style.setProperty('--ic',held?held.c:ITEMS.stapler.c);}
   tb.disabled=!!(me.sit||locked(me));
   const act=running&&me.alive?myAction():null;
   const ph=act?act.label+'|'+act.cls:'';

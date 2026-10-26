@@ -79,8 +79,6 @@
 <div id="stick" hidden><div id="knob"></div></div>
 <div class="pills" id="pills"></div>
 <button id="greetBtn" class="rbtn" aria-label="상호작용" disabled><span id="actLabel">상호작용</span></button>
-<button id="downBtn" class="rbtn" aria-label="아래층으로" hidden><span id="downLabel">▼</span></button>
-<button id="skillBtn" class="rbtn" aria-label="팀장 스킬" hidden><span id="skillLabel">스킬</span></button>
 <div id="slots" class="slots"></div>
 <button id="throwBtn" class="rbtn" aria-label="서류 던지기"><span id="throwLabel">서류<br>투척</span></button>
 <div id="callBox" hidden>
@@ -111,12 +109,11 @@
     <!-- right after a first-time name: offer the tutorial before anything else -->
     <div id="tutAsk" hidden>
       <h1 id="tutAskH">첫 출근이시죠?</h1>
-      <p class="subj">1분짜리 신입 연수(튜토리얼)로 조작부터 익히고 갈까요? 나중에 메뉴의 튜토리얼에서도 할 수 있어요.</p>
+      <p class="subj">신입 연수(튜토리얼)부터 받고 갈까요?<br>1분이면 끝나요. 나중에 로비에서 다시 해볼 수 있어요.</p>
       <div class="btns"><button class="btn" id="tutAskGo">연수 받기 (1분)</button><button class="btn ghost" id="tutAskSkip">바로 일하기</button></div>
     </div>
     <div id="homeMenu">
-      <h1>오피스 로얄</h1>
-      <p class="subj title">인사평가 서바이벌</p>
+      <h1>오피스 로얄<span class="substamp">인사평가 서바이벌</span></h1>
       <button class="namechip" id="nameEdit" aria-label="사원명 바꾸기">사원명 <b id="myName"></b><svg class="pencil" viewBox="0 0 16 16" aria-hidden="true"><path d="M11.2 2.3l2.5 2.5-8.4 8.4-3.1.6.6-3.1z"/><path d="M9.6 3.9l2.5 2.5"/></svg></button>
       <div id="homeGuide">
       <div class="sec"><ul class="rules">
@@ -163,7 +160,7 @@
     <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span>합동 출근 신청서<button class="homeX" id="backBtn" aria-label="닫기">✕</button></span></div>
     <div class="stampmark">합동</div>
     <h1>같이 하기</h1>
-    <p class="subj">친구와 같은 회사로 출근해요. 최대 8명, 빈자리는 봇이 채워요.</p>
+    <p class="subj">친구와 같은 회사로 출근해요. 최대 20명, 빈자리는 봇이 채워요.</p>
     <!-- the applicant line of the form: the name from the home card, editable in place -->
     <div class="signrow"><span>신청인</span><b id="lobbyName"></b><input id="nameIn" maxlength="10" autocomplete="nickname" placeholder="사원명" aria-label="사원명" hidden>
       <button class="penbtn" id="lobbyNameEdit" aria-label="사원명 바꾸기"><svg class="pencil" viewBox="0 0 16 16" aria-hidden="true"><path d="M11.2 2.3l2.5 2.5-8.4 8.4-3.1.6.6-3.1z"/><path d="M9.6 3.9l2.5 2.5"/></svg></button></div>
@@ -196,11 +193,12 @@
 <section class="sheet" id="rankSheet" hidden>
   <div class="memo rankmemo">
     <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span>인사고과 순위<button class="homeX" id="rankX" aria-label="닫기">✕</button></span></div>
-    <h1>주간 랭킹</h1>
-    <p class="subj">혼자 하기 <b>어려움</b> 점수 · 매주 월요일에 새로 시작해요.</p>
+    <div class="rktop"><h1>주간 랭킹</h1><span class="rkbadge">어려움</span></div>
     <p class="rkweek" id="rankWeek"></p>
+    <div class="rkpod" id="rankPod"></div>
     <div class="rklist" id="rankList"></div>
-    <p class="rkhow">점수 = 순위 + 최종 직급 + 해고 ×40 + 업무 ×10 + 버틴 시간</p>
+    <div class="rkme" id="rankMe"></div>
+    <details class="rkhow"><summary>점수는 어떻게 매기나요?</summary><p>순위 (1위 1,000점부터 50점씩) + 최종 직급 (사원 50 ~ 임원 300, CEO 500) + 해고 ×40 + 업무 ×10 + 버틴 시간 (2초에 1점). 기기마다 이번 주 최고 기록만 남아요.</p></details>
   </div>
 </section>
 
@@ -234,8 +232,8 @@
       <dt>근속 시간</dt><dd id="rTime">-</dd>
       <dt>최종 직급</dt><dd id="rRank">-</dd>
       <dt>성과 요약</dt><dd id="rPerf">-</dd>
+      <dt class="rsc" hidden>주간 점수</dt><dd class="rsc wide" hidden><span id="rScore"></span><button class="tlink" id="rankBtn">랭킹 보기</button></dd>
     </dl>
-    <p class="rscore" id="rScoreRow" hidden><span>주간 점수</span><b id="rScore"></b><button class="tlink" id="rankBtn">주간 랭킹</button></p>
     <p class="note" id="rNote"></p>
     <button class="btn mainbtn" id="againBtn">다시 출근</button>
     <p class="foot"><button class="tlink" id="homeBtn">로비로</button><button class="tlink red" id="shareBtn">결과 공유</button><button class="tlink" id="watchBtn">관전하기</button></p>

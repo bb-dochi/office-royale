@@ -27,7 +27,7 @@ export class Room extends DurableObject {
       const r = await apiHTTP(this.api, request.method, url, request.method === 'POST' ? (await request.text()).slice(0, 4096) : '');
       return Response.json(r.json, { status: r.status, headers: { 'Cache-Control': 'no-store' } });
     }
-    const path = url.pathname, send = (p, o) => { try { p.ws.send(JSON.stringify(o)); } catch {} };
+    const path = url.pathname, send = (p, o) => { try { p.ws.send(typeof o === 'string' ? o : JSON.stringify(o)); } catch {} };
     const stats = () => this.env.ROOM.get(this.env.ROOM.idFromName('__rank'));
     const onGame = rs => this.ctx.waitUntil(stats().fetch('https://stats/internal/games', { method: 'POST', body: JSON.stringify(rs) }).catch(e => console.error('stats', e)));
     this.core ||= path === '/plaza' ? new PlazaCore({ send }) : new RoomCore(path.split('/').pop(), { createSim, send, onGame });

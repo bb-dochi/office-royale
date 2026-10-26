@@ -1104,7 +1104,7 @@ function render(dt){
     const p=scr(a.x,a.y,1.75);if(!p)continue;const x=p[0],y=p[1];
     if(G.plaza)tag(x,y-12,a===me?(store.get('or-name')||a.name):a.name,a===me?'#2b6cb0':a.isPlayer?OTHER_HUMAN:'rgba(251,250,246,.94)',a===me||a.isPlayer?'#fbfaf6':'#1d2328');
     else nameTag(x,y-12,a===me?'나':a.name,a,a===me?'#1d2328':a.isPlayer?OTHER_HUMAN:'rgba(251,250,246,.94)',a===me||a.isPlayer?'#fbfaf6':'#1d2328');
-    if(G.plaza&&a.room){const near=a!==me&&!isTouch&&!NETC.room&&pzNear()===a;tag(x,y-36,`${a===me?'내 방':'같이 하기'} ${a.room[0]} · ${a.room[1]}/8${near?' · E 참가':''}`,'#f3d77a','#1d2328',12);}
+    if(G.plaza&&a.room){const near=a!==me&&!isTouch&&!NETC.room&&pzNear()===a;tag(x,y-36,`${a===me?'내 방':'같이 하기'} ${a.room[0]} · ${a.room[1]}/${ROOM_MAX}${near?' · E 참가':''}`,'#f3d77a','#1d2328',12);}
     if(!G.plaza){ctx.fillStyle='#1d2328';ctx.fillRect(x-18,y+1,36,5);ctx.fillStyle=a.g<30?'#cf3626':'#2f7d4f';ctx.fillRect(x-17,y+2,34*Math.max(0,a.g)/100,3);}
     if(a.items.length&&a!==me)glyph(a.items[0],x+28,y-12,14);
     if(a.f===ROOF&&a.side)outlined(`${teamOf(a.side)}${a.lighter>0?` · 라이터 ${a.lighter}`:''}`,x,y+20,F(800,11),a.side==='L'?'#2b7fc4':'#c0452a');

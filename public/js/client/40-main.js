@@ -32,7 +32,7 @@ function showResult(win){
   $('rNote').textContent=note;
   Object.assign(RES,{win,title:$('rTitle').textContent,name:me.name==='나'?store.get('or-name')||'신입':me.name,place:$('rPlace').textContent,time:$('rTime').textContent,
     rank:$('rRank').textContent,perf:$('rPerf').textContent,note});
-  $('rScoreRow').hidden=true;if(!NETC.room&&!G.net&&!G.tutorial)rankSubmit(win); // solo: weekly ranking
+  for(const el of document.querySelectorAll('#result .rsc'))el.hidden=true;if(!NETC.room&&!G.net&&!G.tutorial)rankSubmit(win); // solo: stats, and the weekly score on 어려움
   $('watchBtn').hidden=win||G.over;
   $('againBtn').textContent=NETC.room?'대기실로':'다시 출근';
   $('result').hidden=false;$('callBox').hidden=true;
@@ -45,18 +45,27 @@ function setInputMode(touch){
 addEventListener('keydown',e=>{if(/^(Key[WASDEQF]|Arrow|Space|Shift|Digit)/.test(e.code))setInputMode(false);},true);
 addEventListener('touchstart',()=>setInputMode(true),{passive:true,capture:true});
 let lastKb='';
+/* the control guide: key chips in the PC dock. On phones the two big buttons are the guide; a chip shows above them
+   only while an extra move applies (▼ the floor below, the team skill), and tapping it does that move */
 function keybar(){
-  if(isTouch){if(!$('keybar').hidden)$('keybar').hidden=true;return;}
-  if(!G||!G.me)return;const me=G.me,kb=$('keybar');kb.hidden=!running||!me.alive;if(kb.hidden)return;
+  if(!G||!G.me)return;const me=G.me,kb=$('keybar');kb.hidden=!running||!me.alive||!!me.desk;if(kb.hidden)return;
   const act=myAction(),B=me.branch&&BRANCH[me.branch];
   const held=me.items[0]&&ITEMS[me.items[0]];
-  /* the item itself is in the slot next to this, so the attack key just says attack / use */
-  const ch=[['E',act?act.label:'상호작용',(act?(act.cls||''):'off')+' wide'],
-    [ 'Space',me.ammo>0||held?'아이템 사용':'던지기',me.ammo>0||held?'atk':'',Math.max(0,me.cd)/me.lastCd,held&&held.c],
-    ...(B&&B.cd&&rankAt(me,'팀장')?[['Q',me.skillCd>0?`${B.sk} ${Math.ceil(me.skillCd)}초`:B.sk,me.skillCd>0?'off':'go']]:[]),
+  const dn=me.f-1,down=me.f>=0&&me.f!==ROOF&&padOf(me)&&!me.sit&&dn>=0&&isOpen(dn)&&!G.lunch;
+  const skill=B&&B.cd&&rankAt(me,'팀장');
+  const skillT=skill&&(me.skillCd>0?`${B.sk} ${Math.ceil(me.skillCd)}초`:B.sk),skillCd=skill?Math.max(0,me.skillCd)/(B.cd*(me.rank==='임원'?EXEC_CD:1)):0;
+  /* [key, label, class, cooldown 0..1, colour, what a tap does on phones] */
+  const ch=isTouch?[
+    ...(down&&!(act&&act.label.startsWith('▼'))?[['▼',`${FLOORS[dn].short}로 내려가기`,'go','',null,'down']]:[]), // unless 상호작용 already goes down
+    ...(skill?[['스킬',skillT,me.skillCd>0?'off':'go',skillCd,null,'skill']]:[])]
+  :[['E',act?act.label:'상호작용',(act?(act.cls||''):'off')+' wide'],
+    /* the item itself is in the slot next to this, so the attack key just says attack / use */
+    ['Space',me.ammo>0||held?'아이템 사용':'던지기',me.ammo>0||held?'atk':'',Math.max(0,me.cd)/me.lastCd,held&&held.c],
+    ...(skill?[['Q',skillT,me.skillCd>0?'off':'go']]:[]),
     ['Shift',me.sprint?'달리는 중':'달리기','']];
-  {const dn=me.f-1;if(me.f>=0&&me.f!==ROOF&&padOf(me)&&!me.sit&&dn>=0&&isOpen(dn)&&!G.lunch)ch.splice(1,0,['Shift+E',`▼ ${FLOORS[dn].short}로`,'wide']);}
-  const h=ch.map(([k,t,c,cd,col])=>`<div class="kc ${c||''}"${col?` style="border-color:${col};box-shadow:0 0 12px ${col}"`:''}><kbd>${k}</kbd><span>${t}</span>${cd>0?`<i class="cd" style="width:${cd*100}%"></i>`:''}</div>`).join('');
+  if(!isTouch&&down)ch.splice(1,0,['Shift+E',`▼ ${FLOORS[dn].short}로`,'wide']);
+  const h=ch.map(([k,t,c,cd,col,a])=>{const tag=a?'button':'div';
+    return `<${tag} class="kc ${c||''}"${a?` data-a="${a}"`:''}${col?` style="border-color:${col};box-shadow:0 0 12px ${col}"`:''}><kbd>${k}</kbd><span>${t}</span>${cd>0?`<i class="cd" style="width:${cd*100}%"></i>`:''}</${tag}>`;}).join('');
   if(h!==lastKb){lastKb=h;kb.innerHTML=h;}
 }
 function startScreens(){paused=false;$('pause').hidden=true;plazaStop();if(typeof TUT!=='undefined')tutStop();$('home').hidden=true;$('countdown').hidden=true;lastCd='';$('branchBox').hidden=true;branchT=0;$('cineTower').hidden=false;running=true;lastItem='x';lastPills='x';lastCall=null;
@@ -103,8 +112,8 @@ function showLobby(){
   $('copyBtn').textContent=isTouch&&navigator.share?'초대 링크 보내기':'초대 링크 복사';
   $('roomCode').textContent=r.code;
   /* every seat of the room, numbered like a roster; empty ones get a bot */
-  $('players').innerHTML=Array.from({length:r.max||8},(_,i)=>{const p=r.players[i];
-    return p?`<li class="${p.key===r.you?'me':''}"><span>${esc(p.name)}${p.key===r.you?' (나)':''}</span><small>${p.host?'방장':''}${p.inGame?' · 게임 중':''}</small></li>`
+  $('players').innerHTML=Array.from({length:r.max||ROOM_MAX},(_,i)=>{const p=r.players[i];
+    return p?`<li class="${p.key===r.you?'me':''}"><span>${esc(p.name)}</span><small>${[p.key===r.you&&'나',p.host&&'방장',p.inGame&&'게임 중'].filter(Boolean).join(' · ')}</small></li>`
       :`<li class="empty"><span>빈자리</span><small>봇</small></li>`;}).join('');
   const host=r.players[0]&&r.players[0].key===r.you;
   $('goBtn').hidden=!host;$('goBtn').disabled=r.state!=='lobby';

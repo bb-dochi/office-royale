@@ -63,7 +63,7 @@ function pzRoomSend(){
 }
 function pzJoin(code){if(NETC.room)return;$('nameIn').value=$('nameIn').value||store.get('or-name')||'';dressClose();joinRoom(code);}
 /* the nearest person with an open room, close enough to walk up and press E */
-const pzNear=()=>{const me=G.me;let best=null,bd=110;for(const a of PZ.others.values())if(a.room&&a.room[1]<8){const d=Math.hypot(a.x-me.x,a.y-me.y);if(d<bd){bd=d;best=a;}}return best;};
+const pzNear=()=>{const me=G.me;let best=null,bd=110;for(const a of PZ.others.values())if(a.room&&a.room[1]<ROOM_MAX){const d=Math.hypot(a.x-me.x,a.y-me.y);if(d<bd){bd=d;best=a;}}return best;};
 /* chips at the top for every open room in the plaza (one per room, named after whoever is in it), refreshed a few times a second */
 PZ.roomsT=0;PZ.roomsKey='';
 function pzRooms(dt){
@@ -72,7 +72,7 @@ function pzRooms(dt){
   if(!mine&&!PZ.dress)for(const a of PZ.others.values())if(a.room&&!rooms.has(a.room[0]))rooms.set(a.room[0],{code:a.room[0],n:a.room[1],who:a.name});
   const list=[...rooms.values()].slice(0,3),key=JSON.stringify(list);if(key===PZ.roomsKey)return;PZ.roomsKey=key;
   const el=$('pzRooms');el.hidden=!list.length;
-  el.innerHTML=list.map(r=>`<button data-code="${r.code}"${r.n>=8?' disabled':''}><span>${esc(r.who)}님 방 · ${r.n}/8</span><b>${r.n>=8?'꽉 참':'참가'}</b></button>`).join('');
+  el.innerHTML=list.map(r=>`<button data-code="${r.code}"${r.n>=ROOM_MAX?' disabled':''}><span>${esc(r.who)}님 방 · ${r.n}/${ROOM_MAX}</span><b>${r.n>=ROOM_MAX?'꽉 참':'참가'}</b></button>`).join('');
 }
 $('pzRooms').addEventListener('click',e=>{const b=e.target.closest('button');if(b&&!b.disabled)pzJoin(b.dataset.code);});
 function plazaSay(i){if(!PZ.on||!G||!G.me)return;if(PZ.ws&&PZ.ws.readyState===1)PZ.ws.send(JSON.stringify({t:'pz-say',i}));else say(G.me,EMOTES[i]);}

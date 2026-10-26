@@ -22,9 +22,17 @@ function sees(n,a){
 const bossTitle=n=>n.kind==='ceo'?'대표님':n.senior?'전무님':'부장님';
 const immune=(a,n)=>(n.kind==='boss'&&!n.senior&&!n.tut&&a.rank==='임원')||a.cloakT>0||a.vipT>0||(a.stampT>G.t&&a.stampNpc===n)||a.inRest;
 function watchers(a){return G.npcs.filter(n=>(n.kind==='boss'||n.kind==='ceo')&&n.f===a.f&&npcActive(n));}
+/* what the boss says when they catch someone throwing: right in front of them (act), or after turning round to a noise (turn) */
+const CAUGHT_LINES={
+  act:['지금 뭐 하는 건가?','회사가 놀이터야?','내 앞에서 서류를 던져?','자네, 잠깐 나 좀 보지','이건 인사고과에 반영하겠네'],
+  turn:['방금 뭐 던졌어?','내가 못 본 줄 알았나?','등 뒤에서도 다 들려','거기 서! 방금 그거 뭐야?'],
+  senior:['전무실로 따라오게','이게 우리 회사 수준인가?','자네 팀장 누구야?'],
+  ceo:['자네, 우리 회사 사람 맞나?','인사팀장 좀 불러오게','이런 건 처음 보는군']};
 function caught(a,n,why){
-  if(n.kind==='ceo'){const l=Math.ceil(a.g/2);dmg(a,l,'boss');pop(a.f,a.x,a.y-34,`대표님께 적발 -${l}`,'#cf3626');tell(a,`대표님 앞에서 사내정치 적발: 고과 반토막`,true);UI.shake(.25,a);}
-  else{const l=n.senior?15:10,t=bossTitle(n);dmg(a,l,'boss');pop(a.f,a.x,a.y-34,`현장 적발 -${l}`,'#cf3626');tell(a,why==='turn'?`${t}이 고개를 돌렸다: 현장 적발 -${l}`:`${t} 앞에서 던졌다가 현장 적발 -${l}`,true);UI.shake(.2,a);}
+  const t=bossTitle(n),line=pick(n.kind==='ceo'?CAUGHT_LINES.ceo:n.senior&&Math.random()<.6?CAUGHT_LINES.senior:CAUGHT_LINES[why==='turn'?'turn':'act']);
+  say(n,line,'#cf3626');
+  if(n.kind==='ceo'){const l=Math.ceil(a.g/2);dmg(a,l,'boss');pop(a.f,a.x,a.y-34,`대표님께 적발 -${l}`,'#cf3626');tell(a,`대표님: "${line}" 현장 적발: 고과 반토막`,true);UI.shake(.25,a);}
+  else{const l=n.senior?15:10;dmg(a,l,'boss');pop(a.f,a.x,a.y-34,`현장 적발 -${l}`,'#cf3626');tell(a,`${t}: "${line}" 현장 적발 -${l}`,true);UI.shake(.2,a);}
   a.flash=.3;a.hitBy=0;
 }
 /* ---------- seat workers' favours: fetch something on the same floor and bring it back ---------- */

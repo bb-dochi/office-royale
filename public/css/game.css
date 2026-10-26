@@ -32,7 +32,6 @@ body.pc .rbtn{display:none!important}
 #countdown span{font-size:18px;font-weight:900}
 #countdown b{font-size:92px;font-weight:900;line-height:1}
 #countdown.mine b{color:#ffd2cc}
-#skillBtn{width:58px;height:58px;right:calc(max(16px,env(safe-area-inset-right,0px)) + 18px);bottom:calc(env(safe-area-inset-bottom,0px) + 128px);background:conic-gradient(rgba(29,35,40,.4) calc(var(--cd,0)*360deg),#f3d77a 0);font-size:12.5px}
 #branchBox{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 300px);width:min(92vw,400px);background:var(--paper);border:3px solid var(--ink);border-radius:10px;padding:10px;z-index:4;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 #branchBox .who{font-weight:900;font-size:15px;margin-bottom:6px}
 /* team choice as an HR memo: paper, a colour tab per team, 상시 / Q lines */
@@ -111,12 +110,14 @@ body{background:var(--void);color:var(--ink);font-family:var(--body);overflow:hi
 .fi.hot{color:var(--stamp)}
 .fi.out{opacity:0}
 
-.rbtn{position:fixed;border-radius:50%;border:2.5px solid var(--ink);color:var(--ink);box-shadow:0 4px 0 var(--ink),0 6px 16px rgba(0,0,0,.25);touch-action:none;cursor:pointer;font-family:var(--display);line-height:1.1;padding:0;transition:transform .08s,opacity .15s}
-.rbtn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink),0 2px 6px rgba(0,0,0,.25)}
-.rbtn:disabled{opacity:.55;box-shadow:0 2px 0 rgba(29,35,40,.4);border-style:dashed}
-#throwBtn{width:88px;height:88px;right:calc(max(16px,env(safe-area-inset-right,0px)) + 4px);bottom:calc(env(safe-area-inset-bottom,0px) + 22px);font-size:17px;
-  background:radial-gradient(circle,var(--paper) 62%,transparent 63%),conic-gradient(var(--ink) calc((1 - var(--cd,0))*360deg),rgba(29,35,40,.18) 0)}
-#throwBtn.staple{background:radial-gradient(circle,#ffeceb 62%,transparent 63%),conic-gradient(#e5483a calc((1 - var(--cd,0))*360deg),rgba(229,72,58,.2) 0);border-color:#e5483a;color:#c0392b;box-shadow:0 4px 0 #c0392b,0 0 18px rgba(229,72,58,.45);font-size:15px}
+/* phone action buttons: dark glass like the ID card and map, white type, a soft shadow; pressing shrinks them a touch */
+.rbtn{position:fixed;border-radius:50%;border:2px solid rgba(251,250,246,.45);background:rgba(36,43,49,.92);color:var(--paper);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 6px 18px rgba(0,0,0,.35);touch-action:none;cursor:pointer;font-family:var(--display);line-height:1.1;padding:0;transition:transform .08s,opacity .15s,background .15s,color .15s}
+.rbtn:active{transform:scale(.94)}
+.rbtn:disabled{opacity:.45}
+/* 서류 투척: the ring around it fills back up while the throw recharges; with an item in hand the ring and glow take its colour */
+#throwBtn{width:86px;height:86px;right:calc(max(16px,env(safe-area-inset-right,0px)) + 4px);bottom:calc(env(safe-area-inset-bottom,0px) + 22px);font-size:17px;border:0;--ring:var(--paper);
+  background:radial-gradient(circle closest-side,#262d33 0 85%,transparent 86%),conic-gradient(var(--ring) calc((1 - var(--cd,0))*360deg),rgba(255,255,255,.12) 0)}
+#throwBtn.staple{--ring:var(--ic,#e5483a);font-size:15px;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 6px 18px rgba(0,0,0,.35),0 0 20px color-mix(in srgb,var(--ring) 55%,transparent)}
 #slots{position:fixed;right:calc(max(16px,env(safe-area-inset-right,0px)) + 108px);bottom:calc(env(safe-area-inset-bottom,0px) + 92px);display:grid;grid-template-columns:52px;gap:6px}
 #slots{display:none} /* attack items fire from the throw button now; kept for future usable items */
 .slot{position:relative;width:46px;height:46px;border-radius:12px;border:2.5px solid var(--ink);background:var(--paper);box-shadow:0 3px 0 var(--ink);display:grid;place-items:center;padding:0;touch-action:none;cursor:pointer}
@@ -128,10 +129,13 @@ body{background:var(--void);color:var(--ink);font-family:var(--body);overflow:hi
 #itemBtn{width:62px;height:62px;border-radius:16px;right:calc(max(16px,env(safe-area-inset-right,0px)) + 112px);bottom:calc(env(safe-area-inset-bottom,0px) + 96px);background:var(--paper);font-size:18px;display:grid;place-items:center}
 #itemBtn small{display:block;font-family:var(--body);font-size:9px;font-weight:700;margin-top:2px;max-width:58px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .gl{display:grid;place-items:center;width:30px;height:30px;border-radius:8px;color:var(--paper);font-size:14px;margin:0 auto;font-style:normal}
-#greetBtn{min-width:108px;max-width:170px;height:54px;border-radius:27px;padding:0 16px;right:calc(max(16px,env(safe-area-inset-right,0px)) + 104px);bottom:calc(env(safe-area-inset-bottom,0px) + 28px);background:var(--paper);font-size:14px;line-height:1.15}
-#greetBtn.go{background:var(--lit)}
-#greetBtn.ready{background:#bfe3c9}
-#greetBtn.hot{background:var(--lit);animation:pulse .5s ease-in-out infinite alternate}
+/* 상호작용: a dark pill like the HUD panels; yellow when there is something to do, green when it is ready to hand in,
+   faded when there is nothing (no dashed outline) */
+#greetBtn{min-width:108px;max-width:170px;height:54px;border-radius:27px;padding:0 18px;right:calc(max(16px,env(safe-area-inset-right,0px)) + 104px);bottom:calc(env(safe-area-inset-bottom,0px) + 28px);font-size:14px;line-height:1.15}
+#greetBtn:disabled{opacity:1;color:rgba(251,250,246,.42);background:rgba(29,35,40,.55);border-color:rgba(255,255,255,.08);box-shadow:none}
+#greetBtn.go{background:var(--lit);color:var(--ink);border-color:#e0c23d;box-shadow:0 0 0 3px rgba(243,215,122,.25),0 6px 18px rgba(0,0,0,.3)}
+#greetBtn.ready{background:#2f9e57;color:#fff;border-color:#3fbf6a;box-shadow:0 0 0 3px rgba(63,191,106,.25),0 6px 18px rgba(0,0,0,.3)}
+#greetBtn.hot{background:var(--lit);color:var(--ink);border-color:#e0c23d;animation:pulse .5s ease-in-out infinite alternate}
 @keyframes pulse{to{transform:scale(1.12)}}
 .pills{position:fixed;right:calc(max(16px,env(safe-area-inset-right,0px)) + 86px);bottom:calc(env(safe-area-inset-bottom,0px) + 104px);display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .pill{font-family:var(--display);font-size:15px;padding:8px 12px;border-radius:8px;border:2.5px solid var(--ink);background:var(--paper);color:var(--ink);box-shadow:0 3px 0 var(--ink);cursor:pointer;touch-action:none;white-space:nowrap}
@@ -158,7 +162,7 @@ button:focus-visible{outline:3px solid var(--stamp);outline-offset:3px}
 #spec .who b{font:900 16px var(--display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
 body.pc #spec .who small::after{content:' · ←/→ · Esc'}
 /* start screen: walk around the shared lobby with a small menu card */
-body.plaza .hud,body.plaza #keybar,body.plaza #throwBtn,body.plaza #greetBtn,body.plaza #skillBtn,body.plaza #pills,body.plaza #countdown{display:none!important}
+body.plaza .hud,body.plaza #keybar,body.plaza #throwBtn,body.plaza #greetBtn,body.plaza #pills,body.plaza #countdown{display:none!important}
 /* touch screens: a small speech button in the top right of the lobby opens the four greetings */
 #emoteBtn{display:none;position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:calc(env(safe-area-inset-right,0px) + 14px);z-index:4;width:46px;height:46px;border-radius:50%;
   border:2px solid var(--ink);background:var(--paper);font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.3)}
@@ -447,7 +451,6 @@ body.band .hud{padding-top:calc(env(safe-area-inset-top,0px) + 44px)}
 @media (max-width:560px){.mapbox{width:auto;flex:1;min-width:0;max-width:210px;padding:6px;border-radius:10px}.mapbox.big{max-width:none}.mapbox .tower{width:28px}.fc{font-size:8px;padding:0 3px}.idcard{width:150px}}
 
 
-#downBtn{width:58px;height:46px;border-radius:23px;right:calc(max(16px,env(safe-area-inset-right,0px)) + 104px);bottom:calc(env(safe-area-inset-bottom,0px) + 92px);background:var(--paper);font-size:14px}
 
 #desk{position:fixed;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;pointer-events:none;padding:16px}
 #desk .mon{pointer-events:auto;width:min(100%,540px);background:#1f2226;border-radius:14px;padding:12px 12px 20px;box-shadow:0 24px 60px rgba(0,0,0,.55);position:relative}
@@ -531,8 +534,7 @@ body:not(.pc) #pdock .idcard .who{font-size:13px}
 body:not(.pc) .gline b{font-size:18px;min-width:24px}
 body:not(.pc) .gline span{display:none}
 body:not(.pc) #pdock .promo span{display:none}
-body:not(.pc) .gear{position:fixed;z-index:2;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 22px);pointer-events:none}
-body:not(.pc) .gs{background:rgba(29,35,40,.82);width:54px;height:54px}
+body:not(.pc) .gear{display:none!important} /* phones: the attack item is on the 서류 투척 button, defense is in the effects strip */
 body:not(.pc) #pdock #fx{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 168px);width:min(420px,calc(100vw - 32px))}
 body:not(.pc) .fx:nth-child(n+3){display:none}
 body:not(.pc) .fx{font-size:12px;padding:3px 10px 3px 3px}
@@ -632,7 +634,7 @@ body.desking .quests,body.phoning .quests{display:none!important}
 .hud{padding-right:max(16px,env(safe-area-inset-right,0px),3.5vw)}
 
 /* team choice: centred again, four compact cards (name, skill, passive) */
-#branchBox{top:50%;bottom:auto;transform:translate(-50%,-50%);width:min(92vw,440px);max-height:none;padding:12px 14px 14px;z-index:6}
+#branchBox{top:50%;bottom:auto;transform:translate(-50%,-50%);width:min(92vw,440px);box-sizing:border-box;max-height:calc(100dvh - 24px);overflow:auto;padding:12px 14px 14px;z-index:6}
 #branchBox .who{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
 #branchBox .who small{display:inline;margin:0;font:800 12px var(--body);color:var(--stamp)}
 .bopts button{display:flex;flex-direction:column;gap:3px;padding:10px 12px}
@@ -644,6 +646,8 @@ body.desking .quests,body.phoning .quests{display:none!important}
 /* phones: a smaller map without the floor column (the floor is in its title), and it can fold to the title bar */
 .mfold{pointer-events:auto;width:20px;height:18px;border:0;border-radius:5px;background:rgba(255,255,255,.08);color:#dfe3e6;font-size:10px;padding:0;display:grid;place-items:center;cursor:pointer}
 body:not(.pc) .rcol{max-width:min(150px,calc(100vw - 200px))}
+body:not(.pc) .rcol .mapbox:not(.big){width:100%;max-width:100%;box-sizing:border-box}body:not(.pc) .quests{width:100%}body:not(.pc) .quests p{white-space:normal}
+@media (orientation:landscape) and (max-height:500px){body:not(.pc) .rcol{max-width:190px}} /* phones held sideways are wider than 560px but get the same narrow column */
 body:not(.pc) .mapbox .tower{display:none}
 body:not(.pc) .mapbox .mhead{margin-bottom:4px}
 body:not(.pc) .mapbox .mhead>b{font-size:11.5px}
@@ -753,29 +757,52 @@ body.desking #lunchBoard,body.phoning #lunchBoard{display:none!important}
   #home.dressing .homecard{width:min(420px,38vw)}}
 #tut .perks i.gap{margin-top:8px}
 /* the game's subtitle under the name on the guide card: a second title, not a caption */
-.homecard .subj.title{font:900 19px var(--display);color:#3d6cc4;margin:2px 0 10px}
-@media (max-width:700px){.homecard .subj.title{font-size:16px}}
+/* the subtitle as a red rubber stamp pressed next to the title; it takes the place of the 결재 stamp on the menu */
+#homeMenu h1{display:flex;align-items:center;gap:14px;white-space:nowrap}
+#homeMenu .substamp{display:inline-block;transform:rotate(-6deg);border:2.5px double #cf3626;border-radius:4px;padding:3px 9px;font:900 15px var(--display);letter-spacing:.08em;color:#cf3626;opacity:.88}
+#home:not(.naming):not(.asking) .homecard .stampmark{display:none}
+@media (max-width:700px){#homeMenu h1{gap:10px}#homeMenu .substamp{font-size:13px;padding:2px 7px}}
 
 /* weekly ranking: result line + the ranking sheet */
-#result .rscore{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 0;padding:8px 10px;border:1.5px dashed rgba(29,35,40,.35);border-radius:8px;font-size:14px}
-#result .rscore span{font-weight:700;color:#5d666e}#result .rscore b{font:900 16px var(--display);flex:1;min-width:0}
-.rankmemo{width:min(94vw,460px)}
-.rkweek{margin:4px 0;font-size:12.5px;color:#5d666e;min-height:16px}
-.rklist{max-height:min(46vh,420px);overflow:auto;border-top:1.5px solid var(--ink)}
+#result .result-meta dd.wide{grid-column:span 3;display:flex;align-items:center;gap:10px;flex-wrap:wrap}#result .result-meta dd.wide .tlink{font-weight:700}
+@media (max-width:420px){#result .result-meta dd.wide{grid-column:auto}}
+#result .result-meta [hidden]{display:none}
+.rankmemo{width:min(94vw,480px)}
+.rktop{display:flex;align-items:center;gap:10px}.rktop h1{margin-bottom:0}
+.rkbadge{font:900 12px var(--display);color:#fff;background:#c0392b;border-radius:4px;padding:3px 8px;transform:rotate(-3deg)}
+.rkweek{margin:4px 0 12px;font-size:12.5px;color:var(--muted);min-height:16px}
+.rkpod{margin-bottom:12px}.rkpod:empty{display:none}
+.rkcap{margin:0 0 4px;font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--muted)}
+.rkpod ol{list-style:none;margin:0;padding:0;border-top:3px double var(--ink);border-bottom:1.5px solid var(--ink)}
+.rkpod li{display:grid;grid-template-columns:44px minmax(0,1fr) auto auto auto;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px dashed rgba(29,35,40,.3)}
+.rkpod li:last-child{border-bottom:0}
+.rkpod li b{font:900 22px var(--display);text-align:center}.rkpod li b small{font-size:12px;margin-left:1px}
+.rkpod li:first-child b{font-size:26px}
+.rkpod .nm{min-width:0;font:900 16px var(--display);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rkpod li:first-child .nm{font-size:18px}
+.rkpod .nm small{display:block;font:500 11.5px var(--body);color:var(--muted)}
+.rkpod em{font:900 17px var(--display);font-style:normal;font-variant-numeric:tabular-nums;min-width:56px;text-align:right}.rkpod li:first-child em{font-size:20px}
+.rkpod li.mine{background:rgba(43,108,176,.1)}
+.rkstamp{width:38px;height:38px;border:2.5px solid #cf3626;border-radius:50%;display:grid;place-items:center;transform:rotate(-12deg);font:900 12px var(--display);font-style:normal;color:#cf3626;opacity:.85}
+.rkchip{font:800 10.5px/1 var(--body);font-style:normal;color:#fff;border-radius:4px;padding:3px 6px;white-space:nowrap}
+.rklist{max-height:min(26vh,210px);overflow:auto;border-top:1.5px solid var(--ink)}
 .rklist ol{list-style:none;margin:0;padding:0}
-.rklist li{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid rgba(29,35,40,.15)}
-.rklist li b{font:900 16px var(--display);text-align:center}.rklist li:nth-child(-n+3) b{color:#c08a1e}
-.rklist .nm{min-width:0;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rklist .nm small{display:block;font-weight:600;font-size:11.5px;color:#5d666e;overflow:hidden;text-overflow:ellipsis}
-.rklist em{font:900 16px var(--display);font-style:normal;font-variant-numeric:tabular-nums}
-.rklist li.mine{background:rgba(43,108,176,.12)}.rklist li.gap{display:block;text-align:center;color:#8a949c;padding:2px}
-.rkmsg{padding:18px 4px;text-align:center;color:#5d666e;font-size:14px}
-.rkhow{margin:8px 0 0;font-size:11.5px;color:#8a949c}
+.rklist li{display:grid;grid-template-columns:30px minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:5px 4px;border-bottom:1px solid rgba(29,35,40,.12)}
+.rklist li:nth-child(even){background:rgba(29,35,40,.03)}
+.rklist li b{font:900 15px var(--display);text-align:center;color:var(--muted)}
+.rklist .nm{min-width:0;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rklist .nm small{display:block;font-weight:500;font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.rklist em{font:900 15px var(--display);font-style:normal;font-variant-numeric:tabular-nums;min-width:52px;text-align:right}
+.rklist li.mine{background:rgba(43,108,176,.12)}
+.rkmsg{padding:18px 4px;text-align:center;color:var(--muted);font-size:14px;line-height:1.6}
+.rkme{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--ink);color:#fbfaf6;font-size:13px}
+.rkme:empty{display:none}.rkme>span:first-child{color:#aab3bb;font-weight:700}.rkme b{font:900 18px var(--display)}
+.rkme .nm{flex:1;min-width:0;color:#dfe3e6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rkme em{font:900 17px var(--display);font-style:normal;color:#f3d77a}
+.rkme .btn{margin-left:auto;background:#f3d77a;color:var(--ink);border-color:#f3d77a;padding:6px 12px;font-size:13px}
+.rkhow{margin:10px 0 0;font-size:12px;color:var(--muted)}.rkhow summary{cursor:pointer;font-weight:700}.rkhow p{margin:6px 0 0;line-height:1.55}
+@media (max-width:420px){.rkpod li .rkchip{display:none}.rklist li{grid-template-columns:26px minmax(0,1fr) auto}.rklist li .rkchip{display:none}}
 #rankSheet{z-index:8}
-/* narrow phones: the two item slots stack on the left so the action button (long labels like "담배 피우기 (연막)")
-   gets the bottom row between them and the throw button, wrapping to two lines instead of sliding under the slots */
+/* narrow phones: the action button (long labels like "담배 피우기 (연막)")
+   gets the bottom row next to the throw button, wrapping to two lines */
 @media (max-width:480px){
-  body:not(.pc) .gear{flex-direction:column}
-  body:not(.pc) .hint{bottom:calc(env(safe-area-inset-bottom,0px) + 150px)}
   body:not(.pc) #greetBtn{min-width:96px;max-width:calc(100vw - 196px);padding:0 12px;font-size:13px;white-space:normal;word-break:keep-all}
 }
 /* Korean text wraps between words, not mid-word */
@@ -783,4 +810,47 @@ body{word-break:keep-all;overflow-wrap:anywhere}
 .diffopts i.rk{background:#c08a1e;margin:0 4px}
 #tutAsk h1{font-size:32px}@media (max-width:700px){#tutAsk h1{font-size:24px}}
 #tutAsk .btns{margin-top:16px}
+#tutAsk .subj{font-weight:500;line-height:1.6}
 #home.asking .homecard .stampmark{display:none}
+.rkpod .nm .me,.rklist .nm .me{font-weight:600;color:#2b6cb0}
+/* top three: medal-coloured rank numbers and a highlighter stroke under the names (gold, silver, bronze) */
+.rkpod li:nth-child(1) b{color:#b7841a}.rkpod li:nth-child(2) b{color:#7d878f}.rkpod li:nth-child(3) b{color:#a0643c}
+.rkpod li .nm>.hl{background:linear-gradient(transparent 58%,var(--hl) 58%,var(--hl) 92%,transparent 92%);padding:0 2px}
+.rkpod li:nth-child(1){--hl:rgba(243,205,90,.75)}.rkpod li:nth-child(2){--hl:rgba(180,190,198,.55)}.rkpod li:nth-child(3){--hl:rgba(214,160,120,.45)}
+.rkpod li:nth-child(1){background:rgba(243,215,122,.14)}
+@media (max-width:360px){#homeMenu h1{font-size:25px;gap:7px}#homeMenu .substamp{font-size:11.5px;padding:2px 5px;letter-spacing:.02em}}
+/* very narrow phones (320–360px): a slimmer ID card leaves the map and the 부서 발령 panel enough width; panel lines wrap instead of cutting off */
+@media (max-width:360px){
+  body:not(.pc) #pdock .idcard{width:122px}
+  body:not(.pc) .rcol{max-width:calc(100vw - 158px)}
+  body:not(.pc) .quests p{white-space:normal}
+  body:not(.pc) .msys{gap:2px}
+  body:not(.pc) .mapbox:not(.folded) .msys button{width:17px}
+}
+/* the weekly ranking on 320–360px phones: tighter rows, a smaller 우수 stamp, sub lines that wrap instead of cutting off */
+@media (max-width:360px){
+  .rkpod li{grid-template-columns:34px minmax(0,1fr) auto auto;gap:6px}
+  .rkpod li b{font-size:19px}.rkpod li:first-child b{font-size:22px}
+  .rkpod .rkstamp{width:30px;height:30px;font-size:10px;border-width:2px}
+  .rkpod em{min-width:0}.rkpod li:first-child em{font-size:18px}
+  .rkpod .nm small,.rklist .nm small,.rkme .nm{white-space:normal}
+  .rkme{gap:8px;padding:9px 10px}
+}
+/* phones: the control guide (#keybar, same chips as the PC dock) stacks on the right above the 상호작용 / 서류 투척 buttons, only while one applies;
+   each chip is a button (▼ floor below, team skill). Effects move to the left so the two never meet */
+body:not(.pc) #pdock #keybar{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 122px);
+  display:flex;flex-direction:column;align-items:flex-end;gap:6px;max-width:none;pointer-events:auto;z-index:3}
+body:not(.pc) #keybar .kc{font:800 13px var(--body);min-height:40px;padding:4px 12px 4px 5px;border-radius:10px;cursor:pointer;touch-action:none;
+  background:rgba(29,35,40,.9);color:var(--paper);border:2px solid transparent;box-shadow:0 3px 10px rgba(0,0,0,.25)}
+body:not(.pc) #keybar .kc kbd{min-width:24px;padding:5px 6px;font-size:12px}
+body:not(.pc) #keybar .kc:active{transform:translateY(2px)}
+body:not(.pc) #keybar .kc.go{border-color:#e0c23d}
+body:not(.pc) #keybar .kc.ready{border-color:#3fbf6a;background:rgba(31,74,46,.92)}
+body:not(.pc) #keybar .kc.off{opacity:.6}
+body:not(.pc) #pdock #keybar:empty{display:none}
+body:not(.pc) #pdock #fx{left:max(16px,env(safe-area-inset-left,0px));transform:none;justify-content:flex-start;width:auto;max-width:calc(100vw - 190px);bottom:calc(env(safe-area-inset-bottom,0px) + 140px)}
+/* sideways phones are short: one row above the two big buttons instead of a column */
+@media (orientation:landscape) and (max-height:500px){
+  body:not(.pc) .rcol .quests{position:fixed;left:max(12px,env(safe-area-inset-left,0px));top:calc(env(safe-area-inset-top,0px) + 86px);width:170px} /* the 부서 발령 panel moves under the ID card */
+  body.band:not(.pc) .rcol .quests{top:calc(env(safe-area-inset-top,0px) + 116px)}
+  body:not(.pc) #pdock #keybar{flex-direction:row;bottom:calc(env(safe-area-inset-bottom,0px) + 118px);gap:5px}body:not(.pc) #keybar .kc{min-height:36px}}
