@@ -50,7 +50,9 @@ export class RoomCore {
     this.sim = this.createSim(); this.state = 'playing'; this.tick = 0; this.overT = 0;
     for (const p of this.peers) p.inGame = true;
     this.started = this.peers.map(p => ({ key: p.key, uid: p.uid, name: p.name }));
-    this.sim.NET.start(this.peers.map(p => ({ key: p.key, name: p.name, fit: p.fit })));
+    /* lunch events are dealt from a shuffled deck per room, so a group sees all four before any repeats */
+    if (!this.lunchBag || !this.lunchBag.length) this.lunchBag = [...this.sim.NET.lunchKinds].sort(() => Math.random() - .5);
+    this.sim.NET.start(this.peers.map(p => ({ key: p.key, name: p.name, fit: p.fit })), { lunch: this.lunchBag.shift() });
     this.broadcastRoster();
     for (const p of this.peers) this.send(p, { t: 'start', you: p.key });
     this.last = Date.now(); this.acc = 0;

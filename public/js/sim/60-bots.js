@@ -41,8 +41,7 @@ function think(b){
     if(it){setGoal(b,it,'loot');return;}
     if(b.mode!=='wander'||!b.goal||dist(b,b.goal)<20)setGoal(b,randFree(ROOF),'wander');return;
   }
-  if(roofLunch()&&G.lunch.t>4&&b.lunchGo){stand(b);const pk=b.lunchPad||'elev';
-    if(dist(b,PADS[pk])<34){goRoof(b);return;}setGoal(b,PADS[pk],'roof');return;}
+  if(roofLunch()&&G.lunch.t>4&&b.lunchGo){goRoof(b);return;} // like people, bots head up from wherever they are
   if(b.branch==='mkt'&&b.skillCd<=0&&G.actors.filter(o=>visibleTo(b,o)&&dist(o,b)<200).length>=2&&!watchers(b).some(n=>!immune(b,n)&&sees(n,b)))useSkill(b);
   if(b.branch==='design'&&b.skillCd<=0&&b.g<35&&G.t-b.lastHitT<2)useSkill(b);
   if(b.branch==='hr'&&b.skillCd<=0&&G.t-b.lastHitT<3&&G.actors.some(o=>o!==b&&visibleTo(b,o)&&dist(o,b)<150))useSkill(b);
@@ -106,6 +105,18 @@ function follow(b){
   if(d<6){b.path.shift();return b.path.length?follow(b):[0,0];}
   return[dx/d,dy/d];
 }
+/* a paper coming straight at me: step sideways out of its line. One roll per paper; the chance grows with difficulty,
+   and a bot hit in the last few seconds is on guard (+30%) */
+function dodgeCheck(b){
+  for(const p of G.proj){
+    if(p.f!==b.f||p.o===b||b.dodged===p)continue;
+    const rx=b.x-p.x,ry=b.y-p.y,ahead=rx*p.dx+ry*p.dy,side=ry*p.dx-rx*p.dy;
+    if(ahead<=0||ahead>p.sp*.4||ahead>p.rng-p.d||Math.abs(side)>R+10)continue;
+    b.dodged=p;
+    if(Math.random()>diff().dodge+(G.t-(b.lastHitT??-9)<4?.3:0))continue;
+    const s=side>=0?1:-1;b.dodge={x:-p.dy*s,y:p.dx*s,t:.3};return;
+  }
+}
 function updBot(b,dt){
   b.think-=dt;if(b.think<=0){b.think=.22+Math.random()*.12;think(b);}
   b.pathAge-=dt;b.react-=dt;
@@ -116,7 +127,9 @@ function updBot(b,dt){
   if(b.mode==='coffee'&&dist(b,fl.spots.coffee)<34&&b.coffeeCd<=0){b.mode='idle';}
   for(const d of fl.doors)if(!d.open&&Math.hypot(b.x-(d.x+d.w/2),b.y-(d.y+d.h/2))<46)toggleDoor(b.f,d,true);
   let vx=0,vy=0;
-  if(b.nudge&&b.nudge.t>0){b.nudge.t-=dt;vx=b.nudge.x;vy=b.nudge.y;}
+  if(!(b.dodge&&b.dodge.t>0))dodgeCheck(b);
+  if(b.dodge&&b.dodge.t>0){b.dodge.t-=dt;vx=b.dodge.x;vy=b.dodge.y;}
+  else if(b.nudge&&b.nudge.t>0){b.nudge.t-=dt;vx=b.nudge.x;vy=b.nudge.y;}
   else if(b.mode==='fight'&&b.target&&visibleTo(b,b.target)){
     const t=b.target,d=dist(b,t),see=shotLos(b.f,b.x,b.y,t.x,t.y);
     if(d>230||!see){if(b.pathAge<=0){b.path=findPath(b.f,b.x,b.y,t.x,t.y);b.pathAge=.6;}[vx,vy]=follow(b);}

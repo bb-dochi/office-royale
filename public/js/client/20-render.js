@@ -1155,10 +1155,10 @@ function render(dt){
     if(p){ctx.fillStyle='#5b8fd6';ctx.strokeStyle='#1d2328';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(p[0]-14,p[1]-20);ctx.lineTo(p[0]+14,p[1]-20);ctx.lineTo(p[0],p[1]);ctx.closePath();ctx.fill();ctx.stroke();
       outlined(e.step?'전달하기':e.go,p[0],p[1]-28,F(800,12),'#2b5a99');}}
   /* leaving now (my floor closing, closed, or lunch): bouncing markers over both pads, edge arrows if they're off screen */
-  if(me.alive&&me.f===f&&f!==ROOF&&!me.transit&&running&&!G.tutorial&&(f<G.closed||warnFloor(f)||roofLunch())){
-    const col=roofLunch()?'#e0b52a':'#cf3626';
+  if(me.alive&&me.f===f&&f!==ROOF&&!me.transit&&running&&!G.tutorial&&(f<G.closed||warnFloor(f))){ // (lunch needs no pad: 상호작용 goes up from anywhere)
+    const col='#cf3626';
     for(const k in PADS){if(k==='elev'&&G.fire>0)continue;const pd=PADS[k],p=scr(pd.x,pd.y,2.2+Math.sin(G.t*6)*.2);if(!p)continue;
-      const name=roofLunch()?(k==='stair'?'계단 → 옥상 왼쪽':'엘리베이터 → 옥상 오른쪽'):(k==='stair'?'▲ 계단':'▲ 엘리베이터');
+      const name=k==='stair'?'▲ 계단':'▲ 엘리베이터';
       if(p[0]>20&&p[0]<VW-20&&p[1]>60&&p[1]<VH-60){ctx.fillStyle=col;ctx.strokeStyle='#1d2328';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(p[0]-18,p[1]-24);ctx.lineTo(p[0]+18,p[1]-24);ctx.lineTo(p[0],p[1]);ctx.closePath();ctx.fill();ctx.stroke();
         tag(p[0],p[1]-38,name,col,'#fbfaf6',12);continue;}
       const a=Math.atan2(p[1]-VH/2,p[0]-VW/2),ex=Math.max(30,Math.min(VW-30,p[0])),ey=Math.max(90,Math.min(VH-110,p[1]));

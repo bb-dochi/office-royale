@@ -31,8 +31,8 @@ function assignSeats(f){
    keeps out of trouble slowly gets 고과 back. Online rooms always play 'normal'. */
 /* hunt: how close a person has to be before a bot goes for them unprovoked (0 = bots only hit back);
    huntP: the share of bots that do that at all; huntMax: how many may go after the same person at once */
-const DIFF={easy:{n:'쉬움',aim:1.8,react:.35,cd:1.35,speed:.9,regen:false,idle:false,hunt:0,huntP:0,huntMax:0},normal:{n:'보통',aim:1,react:0,cd:1,speed:1,regen:false,idle:true,hunt:130,huntP:.2,huntMax:1},
-  hard:{n:'어려움',aim:.55,react:-.08,cd:.8,speed:1.07,regen:false,idle:true,hunt:180,huntP:.3,huntMax:2}};
+const DIFF={easy:{n:'쉬움',aim:1.8,react:.35,cd:1.35,speed:.9,regen:false,idle:false,hunt:0,huntP:0,huntMax:0,dodge:.1},normal:{n:'보통',aim:1,react:0,cd:1,speed:1,regen:false,idle:true,hunt:130,huntP:.2,huntMax:1,dodge:.3},
+  hard:{n:'어려움',aim:.55,react:-.08,cd:.8,speed:1.07,regen:false,idle:true,hunt:180,huntP:.3,huntMax:2,dodge:.5}};
 const diff=()=>DIFF[G&&G.diff]||DIFF.normal;
 function newGame(opts={}){
   NID=0;

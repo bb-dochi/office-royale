@@ -86,7 +86,7 @@ function statusLine(me){
   if(me.f>=0&&me.f<G.closed&&me.f!==ROOF)return{c:'danger',i:'⚠',t:'폐쇄된 층! 고과가 깎이는 중 · 계단·엘리베이터로 올라가세요',m:'폐쇄된 층! 바로 위층으로'};
   if(G.lunch&&G.lunch.kind==='ladder'){const L=G.lunch,pk=L.phase==='pick';
     return{c:'lunch',i:'☕',t:pk?'점심 커피 내기 · 사다리 번호를 고르세요':'점심 커피 내기 · 두구두구',m:pk?'커피 내기 · 번호 고르기':'커피 내기 · 결과 발표',n:pk?s(L.t-LUNCH.lad.show-2):null};}
-  if(G.lunch&&!onRoof)return{c:'lunch',i:'🍱',t:`점심시간! 계단·엘리베이터에서 ${isTouch?'상호작용':'E'} → 옥상 ${LUNCH_INFO[G.lunch.kind].n}`,m:'점심시간! 계단·엘베 → 옥상',n:s(G.lunch.t)};
+  if(G.lunch&&!onRoof)return{c:'lunch',i:'🍱',t:`점심시간! 어디서든 ${isTouch?'상호작용':'E'} → 옥상 ${LUNCH_INFO[G.lunch.kind].n}`,m:`점심시간! ${isTouch?'상호작용':'E'} → 옥상`,n:s(G.lunch.t)};
   if(G.lunch){const k=G.lunch.kind;
     if(k==='bill')return me.bill?{c:'danger',i:'🧾',t:'계산서를 들고 있다! 서류로 맞혀서 넘기세요',m:'계산서! 맞혀서 넘기기',n:s(G.lunch.t)}:{c:'',i:'🧾',t:'계산서 폭탄 · 계산서 든 사람을 피하세요',m:'계산서 든 사람 피하기',n:s(G.lunch.t)};
     if(k==='meal')return{c:'',i:'🍱',t:'오늘의 특식 · 배식대 원 안에 버티기',m:'특식 · 배식대 차지',n:s(G.lunch.t)};

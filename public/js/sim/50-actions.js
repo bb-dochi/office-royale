@@ -289,7 +289,8 @@ function contextAction(me){
   const rd=nearDoor(me);
   if(rd&&!me.sit)return{label:rd.open?`${rd.name} 닫기`:`${rd.name} 열기`,cls:rd.open?'':'go',fn:()=>{if(!toggleDoor(me.f,rd,!rd.open))tell(me,'문 앞에 사람이 있어 못 닫습니다');}};
   const pad=padOf(me);
-  if(pad&&!me.sit&&roofLunch()&&G.lunch.t>3)return{label:'옥상으로 (점심시간)',cls:'hot',fn:()=>goRoof(me)};
+  /* lunch on the roof: one press from anywhere in the building takes you up (no walking to the stairs first) */
+  if(!me.sit&&!me.desk&&me.f>=0&&me.f!==ROOF&&roofLunch()&&G.lunch.t>3)return{label:'옥상으로 (점심시간)',cls:'hot',fn:()=>goRoof(me)};
   if(pad&&!me.sit){const up=me.f+1,dn=me.f-1;
     if(up<NF&&isOpen(up))return{label:`▲ ${FLOORS[up].short}로`,cls:'go',fn:()=>useFloor(me,1)};
     if(dn>=0&&isOpen(dn))return{label:`▼ ${FLOORS[dn].short}로`,cls:'',fn:()=>useFloor(me,-1)};

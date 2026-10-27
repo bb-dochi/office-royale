@@ -764,7 +764,7 @@ body.desking #lunchBoard,body.phoning #lunchBoard{display:none!important}
 @media (max-width:700px){#homeMenu h1{gap:10px}#homeMenu .substamp{font-size:13px;padding:2px 7px}}
 
 /* weekly ranking: result line + the ranking sheet */
-#result .result-meta dd.wide{grid-column:span 3;display:flex;align-items:center;gap:10px;flex-wrap:wrap}#result .result-meta dd.wide .tlink{font-weight:700}
+#result .result-meta dd.wide{grid-column:span 3;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}#result .result-meta dd.wide .tlink{font-weight:700;padding:0 2px;line-height:inherit} /* no padding, or the row grows and the label sits higher than the score */
 @media (max-width:420px){#result .result-meta dd.wide{grid-column:auto}}
 #result .result-meta [hidden]{display:none}
 .rankmemo{width:min(94vw,480px)}

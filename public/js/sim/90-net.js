@@ -15,7 +15,7 @@ const FIXED_A=new Set(['name','color','fit']);
 /* empty values (0, false, null, '', [], spent timers) are left out of public actor data to keep snapshots small */
 const empty=v=>v===null||v===false||v===''||v===undefined||(typeof v==='number'&&v<=0&&v>-1e-9)||(Array.isArray(v)&&!v.length);
 /* bot brain and bookkeeping that never leaves the server */
-const SKIP_A=new Set(['path','pathAge','goal','mode','think','target','strafe','react','sx','sy','stuckT','nudge','met','input','aim','pref','padPref','greed','lunchGo','lunchPad','lastHitBy','type','key','_n','sitGoal','desk','wc','jobs']);
+const SKIP_A=new Set(['path','pathAge','goal','mode','think','target','strafe','react','sx','sy','stuckT','nudge','met','input','aim','pref','padPref','greed','lunchGo','lastHitBy','type','key','_n','sitGoal','desk','wc','jobs']);
 function serA(a,full,fixed){
   const o={};
   if(!full){for(const k in PUB_A){if(!fixed&&FIXED_A.has(k))continue;let v=a[k];if(typeof v==='number'){v=r1(v);if((k.endsWith('T')||k==='flash')&&v<0)v=0;}if(k==='f'||k==='x'||k==='y'||k==='face'?v!==0:!empty(v))o[k]=v;}}
@@ -78,7 +78,9 @@ function pubSnap(){
 }
 const byKey=k=>G&&G.actors.find(a=>a.key===k);
 function push(a,ev){if(!a||!a.key)return;const q=NET.out.get(a.key);if(q)q.push(ev);}
-NET.start=function(players){
+/* opts.lunch: which lunch event this match gets (the room deals them from a shuffled deck, see server/src/room.js) */
+NET.lunchKinds=LUNCH_KINDS;
+NET.start=function(players,opts={}){
   NET.out=new Map(players.map(p=>[p.key,[]]));NET.pub=null;NET.pubT=-1;NET.seatStr='';NET.tSeen=new Map();
   Object.assign(UI,{
     feed:(msg,hot,to)=>{for(const h of humans())if(!to||to===h){const m=typeof msg==='function'?msg(h):msg;if(m)push(h,{k:'feed',m,hot:!!hot});}},
@@ -93,7 +95,7 @@ NET.start=function(players){
     snapCam:a=>push(a,{k:'snapCam'}),
     reset:()=>{},
   });
-  newGame({humans:players.map(p=>({key:p.key,name:String(p.name).slice(0,10),fit:p.fit||null}))});
+  newGame({humans:players.map(p=>({key:p.key,name:String(p.name).slice(0,10),fit:p.fit||null})),lunch:LUNCH_KINDS.includes(opts.lunch)?opts.lunch:undefined});
   G.nid=0;
 };
 NET.step=dt=>step(dt);

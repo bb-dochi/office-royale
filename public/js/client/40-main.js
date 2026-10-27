@@ -81,7 +81,10 @@ $('pRestart').addEventListener('click',()=>{pauseOpen(false);start();});
 $('pHome').addEventListener('click',()=>{pauseOpen(false);running=false;plazaStart();});
 /* solo: d is the difficulty picked on the 난이도 sheet; restarts (다시 출근, pause) reuse the last one */
 function start(d){netClose();if(DIFF[d])store.set('or-diff',d);$('diffSheet').hidden=true;
-  newGame({humans:[{key:'me',name:'나',fit:myFit()}],diff:store.get('or-diff')||'normal'});startScreens();}
+  newGame({humans:[{key:'me',name:'나',fit:myFit()}],diff:store.get('or-diff')||'normal',lunch:nextLunch()});startScreens();}
+/* lunch events come from a shuffled deck kept in this browser, so all four turn up before any repeats */
+function nextLunch(){let bag=[];try{bag=JSON.parse(store.get('or-lunch')||'[]');}catch{}bag=Array.isArray(bag)?bag.filter(k=>LUNCH_KINDS.includes(k)):[];
+  if(!bag.length)bag=[...LUNCH_KINDS].sort(()=>Math.random()-.5);const k=bag.shift();store.set('or-lunch',JSON.stringify(bag));return k;}
 const DIFF_TXT={easy:'봇이 굼뜨고 서류가 잘 빗나가요. 가만히 있어도 고과가 안 깎여요.',normal:'기본 난이도. 할 일을 안 하면 고과가 깎여요.',hard:'봇이 빠르고 정확하게 던져요. 놀면 고과가 깎여요.'};
 function diffOpen(){
   const last=store.get('or-diff')||'normal';

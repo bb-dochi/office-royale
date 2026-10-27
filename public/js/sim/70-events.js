@@ -51,7 +51,7 @@ function startLunch(){
     showCine('점심시간!',I.s,1.6);feed('점심 커피 내기: 사다리 번호를 고르세요',true);return;}
   G.lunch={kind,t:30,dropT:.5,score:{L:0,R:0}};
   if(kind==='meal'){G.lunch.spot=0;G.lunch.zone={...LUNCH.meal.spots[0]};G.lunch.crowd=0;}
-  G.airdrops=[];G.smokes=[];for(const b of G.actors)if(!b.isPlayer){b.lunchGo=Math.random()<(kind==='lighter'?.7:.75);b.lunchPad=Math.random()<.5?'stair':'elev';}
+  G.airdrops=[];G.smokes=[];for(const b of G.actors)if(!b.isPlayer){b.lunchGo=Math.random()<(kind==='lighter'?.7:.75);}
   showCine('점심시간!',I.s,2);feed('점심시간: 부장님 부재 · 업무·구조조정 일시정지',true);
 }
 const roofTell=(msg,hot)=>{for(const h of humans())if(h.alive&&h.f===ROOF)tell(h,msg,hot);};
