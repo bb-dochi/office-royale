@@ -11,7 +11,7 @@ function step(dt){
       if(nf<NF){assignSeats(nf);fillTasks(nf);for(let i=0;i<itemQuota(nf);i++)spawnItem(nf);msg=`${FLOORS[nf].name} 개방`;for(const h of hs){const s=h.seats[nf];if(h.alive)tell(h,`인사 발령: ${FLOORS[nf].name} ${s?s.name:'자리 없음'}`);}}
       for(const b of G.actors)if(!b.isPlayer)b.pref=Math.min(topOpen(),G.closed+(Math.random()<.3?1:0));
       feed(`${f===0?'로비':(f+1)+'층'} 폐쇄!`,true);
-      if(G.closed===NF-1){G.final=true;}
+      if(G.closed===NF-1){G.final=true;for(const b of G.actors)if(!b.isPlayer)b.seeker=Math.random()<diff().seek;}
       UI.closure(f,nf<NF?nf:-1,msg);
     }
   }else if(G.final){G.finalT+=dt;if(G.finalT>30&&G.finalT-dt<=30)feed('야근 모드: 전원 고과가 계속 줄어듭니다',true);}

@@ -70,6 +70,10 @@ function think(b){
   if(!aggro&&b.hunter&&!G.lunch&&diff().hunt&&!b.carry){
     const h=G.actors.find(o=>o.isPlayer&&visibleTo(b,o)&&dist(o,b)<diff().hunt&&shotLos(f,b.x,b.y,o.x,o.y)&&G.actors.filter(x=>x!==b&&x.mode==='fight'&&x.target===o).length<diff().huntMax);
     if(h){best=h;aggro=true;}}
+  /* last floor: seekers go after the nearest person, walking to them when they're out of sight */
+  if(b.seeker&&G.final&&G.finalT>diff().seekAfter&&!b.carry&&!provoked){
+    const h=humans().filter(o=>o.alive&&o.f===f).sort((p,q)=>dist(b,p)-dist(b,q))[0];
+    if(h){if(visibleTo(b,h)&&dist(b,h)<300&&shotLos(f,b.x,b.y,h.x,h.y)){best=h;aggro=true;}else{setGoal(b,h,'seek');return;}}}
   if(aggro&&best&&!(b.carry&&!provoked)){b.mode='fight';b.target=best;b.goal=null;return;}
   if(b.carry){setGoal(b,fl.spots.box,'deliver');return;}
   const dr=G.drops.find(d=>d.f===f&&Math.hypot(d.x-b.x,d.y-b.y)<320);

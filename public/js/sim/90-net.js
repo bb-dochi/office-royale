@@ -15,7 +15,7 @@ const FIXED_A=new Set(['name','color','fit']);
 /* empty values (0, false, null, '', [], spent timers) are left out of public actor data to keep snapshots small */
 const empty=v=>v===null||v===false||v===''||v===undefined||(typeof v==='number'&&v<=0&&v>-1e-9)||(Array.isArray(v)&&!v.length);
 /* bot brain and bookkeeping that never leaves the server */
-const SKIP_A=new Set(['path','pathAge','goal','mode','think','target','strafe','react','sx','sy','stuckT','nudge','met','input','aim','pref','padPref','greed','lunchGo','lastHitBy','type','key','_n','sitGoal','desk','wc','jobs']);
+const SKIP_A=new Set(['path','pathAge','goal','mode','think','target','strafe','react','sx','sy','stuckT','nudge','met','input','aim','pref','padPref','greed','lunchGo','seeker','lastHitBy','type','key','_n','sitGoal','desk','wc','jobs']);
 function serA(a,full,fixed){
   const o={};
   if(!full){for(const k in PUB_A){if(!fixed&&FIXED_A.has(k))continue;let v=a[k];if(typeof v==='number'){v=r1(v);if((k.endsWith('T')||k==='flash')&&v<0)v=0;}if(k==='f'||k==='x'||k==='y'||k==='face'?v!==0:!empty(v))o[k]=v;}}
