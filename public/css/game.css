@@ -714,7 +714,8 @@ body.desking #lunchBoard,body.phoning #lunchBoard{display:none!important}
 #ladder .ltop button.taken{background:#e3e6e8;color:#5d666e;border-color:#c3c9cd}#ladder .ltop button.me{background:#2b6cb0;color:#fff;border-color:#2b6cb0}
 #ladder .ltop button:disabled{cursor:default}
 #ladder .lsvg svg{display:block;width:100%;height:min(230px,36vh);margin:6px 0}
-#ladder .rail{stroke:#1d2328;stroke-width:3;stroke-linecap:round}#ladder .trace{fill:none;stroke-width:5;stroke-linejoin:round;stroke-linecap:round;opacity:.85}#ladder .trace.me{stroke-width:8;opacity:1}
+#ladder .rail{stroke:#1d2328;stroke-width:3;stroke-linecap:round}#ladder .trace{fill:none;stroke-width:5;stroke-linejoin:round;stroke-linecap:round;opacity:.85;stroke-dashoffset:1;animation:ladDraw linear forwards}
+@keyframes ladDraw{to{stroke-dashoffset:0}}#ladder .trace.me{stroke-width:8;opacity:1}
 #ladder .cover{fill:#c3c9cd}#ladder .q{font:900 40px var(--display);fill:#fbfaf6;text-anchor:middle}
 #ladder .lbot b{font:800 12.5px var(--display);padding:6px 2px;border-radius:8px;background:#eef0f1;white-space:nowrap;overflow:hidden}#ladder .lbot b.pay{background:#7a4b2a;color:#fff}
 #ladder .lh{margin:8px 0 0;font-size:13px;color:#5d666e;min-height:18px}

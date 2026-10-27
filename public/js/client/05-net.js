@@ -12,7 +12,7 @@ function netJitter(now){
   NJ.last=now;const want=Math.max(.15,Math.min(.4,NJ.avg+NJ.dev*3));
   INTERP+=(want-INTERP)*(want>INTERP?.3:.02); // grow fast, shrink slowly
 }
-const ROOM_MAX=20; // same as MAX_PLAYERS in server/src/room.js
+const ROOM_MAX=10; // same as MAX_PLAYERS in server/src/room.js
 const NETC={on:false,ws:null,code:'',you:null,room:null,act:null,sentIn:'',sentT:0,snapT:0,off:null,rtt:.12,pingT:0,byA:new Map(),byN:new Map(),byT:new Map(),byE:new Map()};
 const ACT={
   throw:ang=>NETC.on?netSend({t:'cmd',c:'throw',ang}):throwPaper(G.me,ang),

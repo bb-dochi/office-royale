@@ -118,6 +118,8 @@ NET.cmd=function(key,m){const a=byKey(key);if(!a||!a.isPlayer||G.over)return;
 /* how one player's match went, for the play stats (server/src/stats.js) */
 NET.result=function(key){const a=byKey(key);if(!a)return null;const win=G.winner===a;
   return{place:win?1:a.place||aliveCount(),rank:win?'CEO':a.rank,kills:a.kills||0,tasks:a.tasksDone||0,time:Math.round(a.alive?G.t:a.outT??G.t),diff:G.diff,lunch:G.lunchKind};};
+/* every person in the match is out (or gone): the room doesn't wait for the bots to finish it */
+NET.humansOut=()=>!!G&&!humans().some(a=>a.alive);
 /* a player who drops mid-match is handed to the bot brain so the match keeps its numbers */
 NET.leave=function(key){const a=byKey(key);NET.out.delete(key);if(!a||!a.isPlayer)return;a.isPlayer=false;a.input=null;a.call&&(a.call.botAns=a.call.line.ans,a.call.botT=0);
   if(a.alive)feed(`${a.name}님 연결 끊김: 봇이 대신 근무합니다`);};

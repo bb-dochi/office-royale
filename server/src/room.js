@@ -2,7 +2,7 @@
 // Shared by the local dev server (tools/dev-server.mjs) and the Cloudflare Durable Object (index.js).
 // Transport-agnostic: the host hands in createSim() (a fresh copy of public/js/sim) and send(peer, obj or ready JSON string).
 import { cleanFit } from './outfit.js';
-export const MAX_PLAYERS = 20;
+export const MAX_PLAYERS = 10;
 const TICK = 1 / 30, SEND_EVERY = 3, AFTER_OVER = 8; // 30 steps/s, 10 snapshots/s, back to lobby 8s after the end
 
 export class RoomCore {
@@ -21,7 +21,7 @@ export class RoomCore {
 
   /* returns an error string, or null when the peer joined */
   join(peer, name, fit, uid) {
-    if (this.peers.length >= MAX_PLAYERS) return '방이 꽉 찼어요 (최대 20명)';
+    if (this.peers.length >= MAX_PLAYERS) return '방이 꽉 찼어요 (최대 10명)';
     peer.key = 'p' + (++this.seq); peer.name = cleanName(name, this.peers); peer.inGame = false; peer.fit = cleanFit(fit); peer.uid = typeof uid === 'string' && /^[a-z0-9]{8,32}$/.test(uid) ? uid : null;
     this.peers.push(peer); this.broadcastRoster(); return null;
   }
@@ -75,10 +75,12 @@ export class RoomCore {
         this.send(p, '{"t":"s","pub":' + pubJSON + ',' + JSON.stringify(mine).slice(1));
       }
     }
-    if (this.sim.over() && this.overT === 0) {
+    /* decided: someone won, or every person is out and only bots are left (no point making the room watch them) */
+    const done = this.sim.over() || NET.humansOut();
+    if (done && this.overT === 0) {
       try { this.onGame(this.started.map(p => ({ uid: p.uid, name: p.name, room: this.code, ...NET.result(p.key) }))); } catch (e) { console.error('stats', e); }
     }
-    if (this.sim.over()) { this.overT += TICK; if (this.overT > AFTER_OVER) { this.stop(); this.broadcastRoster(); } }
+    if (done) { this.overT += TICK; if (this.overT > AFTER_OVER) { this.stop(); this.broadcastRoster(); } }
   }
   stop() {
     if (this.timer) clearInterval(this.timer);

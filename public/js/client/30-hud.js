@@ -137,33 +137,47 @@ function lunchBoard(me){
     $('lbP').innerHTML=`🍱 배식대 원 안: 혼자면 2배, 맞으면 흘림 → <strong>1~3등 +${LUNCH.meal.prize.join('/+')}</strong>`;}
 }
 /* coffee ladder: my group's ladder over the whole screen. Pick a lane (tap, or number keys), then every line is traced
-   down at once and the one that lands on the cup buys */
-let lastLad='';
+   down at once and the one that lands on the cup buys. The HUD only ticks every 80ms (and online G.lunch.t only every
+   snapshot), so the lines are drawn by a CSS animation from a local clock, and my own pick shows before the server echoes it */
+let lastLad='',lastLadSvg='',ladT0=0,ladWant=null;
 function ladderGroup(me){const L=G&&G.lunch;return L&&L.kind==='ladder'&&L.groups?L.groups.find(g=>g.ids.includes(me.id)):null;}
+function ladderTap(i){const me=G&&G.me,g=me&&ladderGroup(me);if(!g||G.lunch.phase!=='pick'||!(i>=0&&i<g.lane.length))return;
+  const id=g.lane[i];if(id!=null&&id!==me.id)return;
+  ladWant={i,until:performance.now()+800};ACT.lane(i);lastLad='';ladderBox(me);}
+/* lanes as the server has them, with my unconfirmed pick laid over */
+function ladderLanes(g,me){
+  if(ladWant&&(performance.now()>ladWant.until||G.lunch.phase!=='pick'||g.lane[ladWant.i]===me.id||g.lane[ladWant.i]!=null))ladWant=null;
+  if(!ladWant)return g.lane;return g.lane.map((id,j)=>j===ladWant.i?me.id:id===me.id?null:id);}
 function ladderPath(g,i,X,Y,H){const pts=[[X(i),0]];const has=(r,c)=>g.rungs.some(([R,C])=>R===r&&C===c);
   for(let r=0;r<LUNCH.lad.rows;r++){const y=Y(r);if(has(r,i)){pts.push([X(i),y],[X(i+1),y]);i++;}else if(has(r,i-1)){pts.push([X(i),y],[X(i-1),y]);i--;}}
   pts.push([X(i),H]);return pts.map(p=>p.join(',')).join(' ');}
 function ladderBox(me){
   const el=$('ladder'),g=running&&me&&me.alive?ladderGroup(me):null;
-  if(!g){if(!el.hidden){el.hidden=true;lastLad='';}return;}
-  const L=G.lunch,S=LUNCH.lad,n=g.ids.length,W=n*64,H=230,X=i=>32+i*64,Y=r=>14+(r+.5)*(H-28)/S.rows;
-  const prog=L.phase==='pick'?0:Math.max(0,Math.min(1,(S.show+2-L.t)/(S.show-.6)));
-  const key=[L.phase,g.lane.join(),Math.round(prog*40),g.payer,Math.ceil(L.t)].join('|');if(key===lastLad)return;lastLad=key;
-  el.hidden=false;const who=id=>G.actors.find(a=>a.id===id),mine=g.lane.indexOf(me.id),pk=L.phase==='pick';
+  if(!g){if(!el.hidden){el.hidden=true;lastLad=lastLadSvg='';}ladT0=0;ladWant=null;return;}
+  const L=G.lunch,S=LUNCH.lad,n=g.ids.length,W=n*64,H=230,X=i=>32+i*64,Y=r=>14+(r+.5)*(H-28)/S.rows,pk=L.phase==='pick';
+  /* local clock for the reveal, re-anchored if it drifts from the game's (pause, a late snapshot) */
+  if(pk)ladT0=0;else if(L.phase==='show'||!ladT0){const t0=performance.now()-Math.max(0,S.show+2-L.t)*1000;
+    if(!ladT0||Math.abs(t0-ladT0)>400){ladT0=t0;lastLad=lastLadSvg='';}}
+  const lane=ladderLanes(g,me);
+  const key=[L.phase,lane.join(),g.payer,Math.ceil(L.t)].join('|');if(key===lastLad)return;lastLad=key;
+  el.hidden=false;const who=id=>G.actors.find(a=>a.id===id),mine=lane.indexOf(me.id);
   $('ladT').textContent=pk?`번호를 고르세요 · ${Math.max(0,Math.ceil(L.t-S.show-2))}초`:L.phase==='show'?'두구두구…':g.payer===me.id?'☕ 내가 커피 쏜다!':`☕ ${who(g.payer)?.name||'?'}님이 쏩니다`;
   $('ladTop').style.gridTemplateColumns=$('ladBot').style.gridTemplateColumns=`repeat(${n},1fr)`;
-  $('ladTop').innerHTML=g.lane.map((id,i)=>{const a=id!=null&&who(id);return`<button data-i="${i}" class="${id===me.id?'me':a?'taken':''}" ${!pk||(a&&id!==me.id)?'disabled':''}>${a?(id===me.id?'나':a.name):i+1}</button>`;}).join('');
-  $('ladBot').innerHTML=g.lane.map((_,i)=>i===g.pay?'<b class="pay">☕ 쏘기</b>':'<b>얻어먹기</b>').join('');
+  $('ladTop').innerHTML=lane.map((id,i)=>{const a=id!=null&&who(id);return`<button data-i="${i}" class="${id===me.id?'me':a?'taken':''}" ${!pk||(a&&id!==me.id)?'disabled':''}>${a?(id===me.id?'나':a.name):i+1}</button>`;}).join('');
+  $('ladBot').innerHTML=lane.map((_,i)=>i===g.pay?'<b class="pay">☕ 쏘기</b>':'<b>얻어먹기</b>').join('');
+  $('ladHelp').textContent=pk?(mine<0?(isTouch?'위 번호를 눌러 고르세요':`위 번호를 누르거나 1~${n} 키`):'다른 번호로 바꿀 수 있어요'):'';
+  /* the svg is rebuilt only when the picture changes, so the draw animation runs on untouched */
+  const reveal=!pk&&!!g.rungs,skey=reveal?['r',n,lane.join(),JSON.stringify(g.rungs)].join('|'):'c'+n;if(skey===lastLadSvg)return;lastLadSvg=skey;
   let svg=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">`;
   for(let i=0;i<n;i++)svg+=`<line x1="${X(i)}" y1="0" x2="${X(i)}" y2="${H}" class="rail"/>`;
-  if(g.rungs&&L.phase!=='pick'){for(const[r,c]of g.rungs)svg+=`<line x1="${X(c)}" y1="${Y(r)}" x2="${X(c+1)}" y2="${Y(r)}" class="rail"/>`;
-    g.lane.forEach((id,i)=>{if(id==null)return;const a=who(id),me2=id===me.id;
-      svg+=`<polyline points="${ladderPath(g,i,X,Y,H)}" pathLength="1" stroke-dasharray="1" stroke-dashoffset="${1-prog}" class="trace${me2?' me':''}" style="stroke:${me2?'#2b6cb0':a?a.color:'#888'}"/>`;});}
+  if(reveal){const dur=S.show-.6,late=(performance.now()-ladT0)/1000;
+    for(const[r,c]of g.rungs)svg+=`<line x1="${X(c)}" y1="${Y(r)}" x2="${X(c+1)}" y2="${Y(r)}" class="rail"/>`;
+    lane.forEach((id,i)=>{if(id==null)return;const a=who(id),me2=id===me.id;
+      svg+=`<polyline points="${ladderPath(g,i,X,Y,H)}" pathLength="1" stroke-dasharray="1" class="trace${me2?' me':''}" style="stroke:${me2?'#2b6cb0':a?a.color:'#888'};animation-duration:${dur}s;animation-delay:${-late.toFixed(3)}s"/>`;});}
   else svg+=`<rect x="8" y="${H*.18}" width="${W-16}" height="${H*.64}" rx="10" class="cover"/><text x="${W/2}" y="${H/2+14}" class="q">?</text>`;
   $('ladSvg').innerHTML=svg+'</svg>';
-  $('ladHelp').textContent=pk?(mine<0?(isTouch?'위 번호를 눌러 고르세요':`위 번호를 누르거나 1~${n} 키`):'다른 번호로 바꿀 수 있어요'):'';
 }
-$('ladTop').addEventListener('click',e=>{const b=e.target.closest('button');if(b&&!b.disabled)ACT.lane(+b.dataset.i);});
+$('ladTop').addEventListener('click',e=>{const b=e.target.closest('button');if(b&&!b.disabled)ladderTap(+b.dataset.i);});
 /* quest list under the map: the favour I accepted and the task I'm doing */
 let lastQ='';
 function questList(me){
