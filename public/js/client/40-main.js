@@ -33,7 +33,7 @@ function showResult(win){
   Object.assign(RES,{win,title:$('rTitle').textContent,name:me.name==='나'?store.get('or-name')||'신입':me.name,place:$('rPlace').textContent,time:$('rTime').textContent,
     rank:$('rRank').textContent,perf:$('rPerf').textContent,note});
   for(const el of document.querySelectorAll('#result .rsc'))el.hidden=true;if(!NETC.room&&!G.net&&!G.tutorial)rankSubmit(win); // solo: stats, and the weekly score on 어려움
-  $('watchBtn').hidden=win||G.over;
+  $('watchBtn').hidden=win||G.over||!running; // nothing left to watch once the room has gone back to its lobby
   $('againBtn').textContent=NETC.room?'대기실로':'다시 출근';
   $('result').hidden=false;$('callBox').hidden=true;
 }
@@ -106,7 +106,9 @@ function lobbyNote(t,err){const n=$('lobbyNote');n.textContent=t||'';n.classList
 /* no room yet: a sheet to create or join (an invite link narrows it to one join button).
    In a room: the sheet docks at the bottom and the shared lobby keeps running behind it, showing the room to passers-by */
 function showLobby(){
-  running=false;$('result').hidden=true;$('home').hidden=true;
+  /* leaving the match screen before the room is done (대기실로 on the result, 나가기 while watching): stop taking its
+     snapshots, or they keep writing the match into the lobby world behind this sheet */
+  NETC.on=false;running=false;$('result').hidden=true;$('home').hidden=true;
   const r=NETC.room;if(r&&!PZ.on)plazaStart(true);
   $('lobby').hidden=false;$('lobby').classList.toggle('dock',!!r);
   $('lobbyJoin').hidden=!!r;$('lobbyRoom').hidden=!r;$('backBtn').hidden=!!r;pzRoomSend();
@@ -127,7 +129,7 @@ function joinRoom(code){
   const name=store.get('or-name')||$('nameIn').value.trim()||'신입';store.set('or-name',name);
   lobbyNote('연결 중…');
   netConnect(code,name,r=>{
-    if(r.state==='lobby'&&NETC.on){NETC.on=false;running=false;} // match over: keep the last frame, result sheet stays up
+    if(r.state==='lobby'&&NETC.on){NETC.on=false;running=false;$('watchBtn').hidden=true;} // match over: keep the last frame, result sheet stays up
     history.replaceState(null,'',`${location.pathname}?room=${r.code}${new URLSearchParams(location.search).get('server')?'&server='+new URLSearchParams(location.search).get('server'):''}`);
     if(!running&&$('result').hidden)showLobby();else if(!$('lobby').hidden)showLobby();
   },err=>{NETC.room=null;running=false;showLobby();lobbyNote(err,true);});
@@ -174,7 +176,13 @@ function specHud(){
   const a=specTarget(),t=a?`${a.name} ${rankName(a)}|${a.f>=0?FLOORS[a.f].short:''}`:'';
   if(t!==lastSpec){lastSpec=t;const[n,f]=t.split('|');$('specName').textContent=n||'-';$('specFloor').textContent=f||'';}
 }
-$('watchBtn').addEventListener('click',()=>{$('result').hidden=true;specId=null;specTarget();});
+$('watchBtn').addEventListener('click',()=>{if(!running)return specExit();$('result').hidden=true;specId=null;specTarget();});
+/* safety net: a finished match with no sheet over it (result closed, lobby not shown) would just sit there frozen */
+let stuckT=0;
+function unstick(dt){
+  const stuck=!running&&G&&!G.plaza&&!G.tutorial&&!PZ.on&&$('result').hidden&&$('lobby').hidden&&$('home').hidden&&$('diffSheet').hidden;
+  stuckT=stuck?stuckT+dt:0;if(stuckT>.6){stuckT=0;specExit();}
+}
 $('specPrev').addEventListener('click',()=>specCycle(-1));
 $('specNext').addEventListener('click',()=>specCycle(1));
 $('specExit').addEventListener('click',specExit);
@@ -189,7 +197,7 @@ function frame(now){
   else if(PZ.on){readInput();plazaFrame(dt);}
   if(TUT.on)tutFrame(dt);
   juiceFrame(dt);
-  render(dt);hud(dt);keybar();countdown();specHud();
+  render(dt);hud(dt);keybar();countdown();specHud();unstick(dt);
   {const pb=$('pauseBtn'),h=!canPause();if(pb.hidden!==h)pb.hidden=h;}
   requestAnimationFrame(frame);
 }

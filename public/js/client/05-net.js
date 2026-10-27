@@ -41,7 +41,7 @@ function netConnect(code,name,onRoom,onFail){
   ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch{return;}
     if(m.t==='room'){NETC.room=m;NETC.you=m.you;onRoom(m);}
     else if(m.t==='start'){NETC.you=m.you;netBegin();}
-    else if(m.t==='s'){if(NETC.on)netApply(m);}
+    else if(m.t==='s'){if(NETC.on&&G&&G.net)netApply(m);} // never into the lobby world
     else if(m.t==='pong'){const r=(performance.now()-m.ct)/1000;if(r>=0&&r<3)NETC.rtt=NETC.rtt*.7+r*.3;}
     else if(m.t==='err'){onFail(m.m);}};
   ws.onclose=()=>{if(NETC.ws!==ws)return;NETC.ws=null;const was=NETC.on;NETC.on=false;
