@@ -855,3 +855,23 @@ body:not(.pc) #pdock #fx{left:max(16px,env(safe-area-inset-left,0px));transform:
   body:not(.pc) .rcol .quests{position:fixed;left:max(12px,env(safe-area-inset-left,0px));top:calc(env(safe-area-inset-top,0px) + 86px);width:170px} /* the 부서 발령 panel moves under the ID card */
   body.band:not(.pc) .rcol .quests{top:calc(env(safe-area-inset-top,0px) + 116px)}
   body:not(.pc) #pdock #keybar{flex-direction:row;bottom:calc(env(safe-area-inset-bottom,0px) + 118px);gap:5px}body:not(.pc) #keybar .kc{min-height:36px}}
+
+/* lunch: a second line in the top band (the reward), and the rule card that sits under the lunch board for 4 s */
+.stx{display:flex;flex-direction:column;align-items:center;min-width:0}
+#sSub{font-size:12px;font-weight:700;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+body{--b2:16px}
+body.band2 .hud,body.band2 #lunchBoard,body.band2:not(.pc) #pdock .idcard{translate:0 var(--b2)}
+@media (max-width:560px){#sSub{font-size:11px}body{--b2:14px}}
+@media (min-width:1600px) and (min-height:820px){#sSub{font-size:14px}body{--b2:19px}}
+@media (min-width:2200px) and (min-height:1150px){#sSub{font-size:17px}body{--b2:23px}}
+#lunchCard{position:fixed;left:50%;transform:translateX(-50%);top:150px;z-index:4;pointer-events:none;width:min(calc(100% - 32px),400px);
+  background:var(--paper);color:var(--ink);border:2px solid var(--ink);border-radius:14px;padding:10px 14px 11px;box-shadow:0 14px 30px rgba(0,0,0,.35);
+  animation:lcard 4s ease both}
+#lunchCard h4{margin:0 0 6px;font:900 17px var(--display);text-align:center}
+#lunchCard dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:13.5px;line-height:1.35}
+#lunchCard dt{font-weight:900;color:#5d666e;white-space:nowrap}#lunchCard dd{margin:0;font-weight:700}
+#lunchCard dd strong{color:#2b6cb0}#lunchCard dd u{color:var(--stamp);text-decoration:none;font-weight:900}
+@keyframes lcard{0%{opacity:0;translate:0 -8px}6%,90%{opacity:1;translate:0 0}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){#lunchCard{animation:none}}
+@media (min-width:1600px) and (min-height:820px){#lunchCard{zoom:1.2}}
+#ladder .lr{margin:4px 0 0;font-size:13px;font-weight:700;color:#5d666e}#ladder .lr strong{color:#2b6cb0}#ladder .lr u{color:var(--stamp);text-decoration:none;font-weight:900}

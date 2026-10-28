@@ -85,23 +85,28 @@ function statusLine(me){
   const onRoof=me.f===ROOF||(me.transit&&me.transit.to===ROOF);
   if(me.f>=0&&me.f<G.closed&&me.f!==ROOF)return{c:'danger',i:'⚠',t:'폐쇄된 층! 고과가 깎이는 중 · 계단·엘리베이터로 올라가세요',m:'폐쇄된 층! 바로 위층으로'};
   if(G.lunch&&G.lunch.kind==='ladder'){const L=G.lunch,pk=L.phase==='pick';
-    return{c:'lunch',i:'☕',t:pk?'점심 커피 내기 · 사다리 번호를 고르세요':'점심 커피 내기 · 두구두구',m:pk?'커피 내기 · 번호 고르기':'커피 내기 · 결과 발표',n:pk?s(L.t-LUNCH.lad.show-2):null};}
-  if(G.lunch&&!onRoof)return{c:'lunch',i:'🍱',t:`점심시간! 어디서든 ${isTouch?'상호작용':'E'} → 옥상 ${LUNCH_INFO[G.lunch.kind].n}`,m:`점심시간! ${isTouch?'상호작용':'E'} → 옥상`,n:s(G.lunch.t)};
+    return{c:'lunch',i:'☕',t:pk?'점심 커피 내기 · 사다리 번호를 고르세요':'점심 커피 내기 · 두구두구',m:pk?'커피 내기 · 번호 고르기':'커피 내기 · 결과 발표',s:lunchSub('ladder'),n:pk?s(L.t-LUNCH.lad.show-2):null};}
+  if(G.lunch&&!onRoof)return{c:'lunch',i:'🍱',t:`점심시간! 어디서든 ${isTouch?'상호작용':'E'} → 옥상 ${LUNCH_INFO[G.lunch.kind].n}`,m:`점심시간! ${isTouch?'상호작용':'E'} → 옥상`,s:lunchSub(G.lunch.kind),n:s(G.lunch.t)};
   if(G.lunch){const k=G.lunch.kind;
-    if(k==='bill')return me.bill?{c:'danger',i:'🧾',t:'계산서를 들고 있다! 서류로 맞혀서 넘기세요',m:'계산서! 맞혀서 넘기기',n:s(G.lunch.t)}:{c:'',i:'🧾',t:'계산서 폭탄 · 계산서 든 사람을 피하세요',m:'계산서 든 사람 피하기',n:s(G.lunch.t)};
-    if(k==='meal')return{c:'',i:'🍱',t:'오늘의 특식 · 배식대 원 안에 버티기',m:'특식 · 배식대 차지',n:s(G.lunch.t)};
+    if(k==='bill')return me.bill?{c:'danger',i:'🧾',t:'계산서를 들고 있다! 서류로 맞혀서 넘기세요',m:'계산서! 맞혀서 넘기기',s:`끝날 때 들고 있으면 -${LUNCH.bill.pay} · 넘긴 사람한테 ${LUNCH.bill.safe}초간은 못 돌려줌`,n:s(G.lunch.t)}
+      :{c:'',i:'🧾',t:'계산서 폭탄 · 계산서 든 사람을 피하세요',m:'계산서 든 사람 피하기',s:lunchSub(k),n:s(G.lunch.t)};
+    if(k==='meal')return{c:'',i:'🍱',t:'오늘의 특식 · 배식대 원 안에 버티기',m:'특식 · 배식대 차지',s:lunchSub(k),n:s(G.lunch.t)};
     const mine=me.side?teamOf(me.side):'';
-    return{c:'',i:'🚬',t:`점심 난투 · 나는 ${mine}`,m:`점심 난투 · ${mine}`,n:s(G.lunch.t)};}
+    return{c:'',i:'🚬',t:`라이터 쟁탈전 · 나는 ${mine}`,m:`라이터 쟁탈전 · ${mine}`,s:lunchSub(k),n:s(G.lunch.t)};}
   if(warnFloor(me.f))return{c:'danger',i:'⚠',t:`${fn(me.f)} 곧 폐쇄! 위층으로 · 지금 업무는 보상 x2`,m:`${fn(me.f)} 곧 폐쇄! 위층으로`,n:s(G.nextClose)};
   if(G.final)return G.finalT>30?{c:'danger',i:'⏰',t:'야근 모드: 모두의 고과가 줄어듭니다 · 최후의 1인까지',m:'야근 모드: 고과 감소 중'}:{c:'',i:'🏁',t:'인사 시즌: 6F만 남았다 · 최후의 1인이 CEO실로',m:'인사 시즌 · 최후의 1인',n:s(30-G.finalT)};
   const ev=G.ceo&&G.ceo.f===me.f?' · 대표님 이 층 방문 중':G.audit&&G.audit.f===me.f?' · 감사 중: 아이템 금지':G.blackout&&G.blackout.f===me.f?' · 정전':G.fire>0?' · 엘리베이터 정지':'';
   return{c:'',i:'📋',t:`다음 폐쇄: ${fn(G.closed)}${ev}`,m:`다음 폐쇄 ${fn(G.closed)}${ev?' ·'+ev.split('·')[1]:''}`,n:s(G.nextClose)};
 }
+/* lunch: what you're after and what it pays, the second line of the band */
+const lunchSub=k=>({lighter:`라이터를 우리 재떨이에 → 이긴 팀 전원 +${LUNCH.win}`,bill:`끝날 때 계산서 들고 있으면 -${LUNCH.bill.pay} · 나머지 +${LUNCH.bill.treat}`,
+  meal:`배식대 원 안에 서 있기 · 혼자면 2배 · 1~3등 +${LUNCH.meal.prize.join('/+')}`,ladder:`☕에 닿은 사람이 커피 쏘기 -${LUNCH.lad.pay} · 나머지 +${LUNCH.lad.treat}`})[k]||'';
 function statusBar(me){
-  const st=statusLine(me),el=$('status'),txt=st?(isTouch&&st.m)||st.t:'',n=aliveCount(),key=st?st.c+st.i+txt+'|'+(st.n??'')+'|'+n:'';
+  const st=statusLine(me),el=$('status'),txt=st?(isTouch&&st.m)||st.t:'',sub=st&&st.s||'',n=aliveCount(),key=st?st.c+st.i+txt+'|'+sub+'|'+(st.n??'')+'|'+n:'';
   if(key===lastStatus)return;lastStatus=key;
-  el.hidden=!st;document.body.classList.toggle('band',!!st);if(!st)return;
+  el.hidden=!st;document.body.classList.toggle('band',!!st);document.body.classList.toggle('band2',!!sub);if(!st)return;
   el.className=st.c;$('sAlive').innerHTML=`생존 <b>${n}</b>`;$('sIco').textContent=st.i;$('sText').textContent=txt;$('sTime').textContent=st.n!=null?st.n+'초':'';$('sTime').hidden=st.n==null;
+  $('sSub').textContent=sub;$('sSub').hidden=!sub;
 }
 /* attack / defence slots under the ID card: icon + a couple of words */
 let lastGear='';
@@ -136,6 +141,23 @@ function lunchBoard(me){
     $('lbX').innerHTML=(top.length?top.map((a,i)=>`<span class="${a===me?'me':''}">${i+1}등 ${a===me?'나':a.name} <em>${plate(a)}</em></span>`).join(''):'<span>아직 아무도 못 먹음</span>')+(top.includes(me)?'':`<span class="me">내 식판 <em>${plate(me)}</em></span>`);
     $('lbP').innerHTML=`🍱 배식대 원 안: 혼자면 2배, 맞으면 흘림 → <strong>1~3등 +${LUNCH.meal.prize.join('/+')}</strong>`;}
 }
+/* rule card: the first time I reach the roof in a lunch, goal / how / reward under the lunch board for 4 s (the CSS fades it).
+   It waits for the arrival banner ("연초파") to clear, so they are not on top of each other */
+let lcFor=null,lcEnd=0;
+function lunchCard(me){
+  const L=G&&G.lunch,el=$('lunchCard'),on=running&&me&&me.alive&&L&&L.kind!=='ladder'&&me.f===ROOF&&!G.tutorial;
+  if(!L)lcFor=null;
+  if(on&&lcFor!==L.kind&&$('cine').hidden){lcFor=L.kind;lcEnd=performance.now()+4000;const k=L.kind,E=isTouch?'상호작용':'E';
+    const R={lighter:{t:`🚬 라이터 쟁탈전 · 나는 ${me.side?teamOf(me.side):''}`,g:'떨어지는 라이터를 주워 우리 팀 재떨이에 넣기',
+        h:`한 번에 ${LUNCH.carry}개까지 · 맞으면 떨어뜨려요 · ${E}로 담배 연막`,r:`라이터를 더 많이 넣은 팀 전원 <strong>+${LUNCH.win}</strong>`},
+      bill:{t:'🧾 계산서 폭탄 돌리기',g:'끝날 때 계산서를 안 들고 있기',
+        h:`계산서를 들고 있으면 서류로 맞혀서 넘기기 · 넘긴 사람한테 ${LUNCH.bill.safe}초간은 못 돌려줌`,r:`들고 있으면 <u>-${LUNCH.bill.pay}</u> · 나머지 전원 <strong>+${LUNCH.bill.treat}</strong>`},
+      meal:{t:'🍱 오늘의 특식',g:'배식대 원 안에 서서 식판 채우기',
+        h:'혼자면 2배 빨리, 여럿이면 느리게 · 맞으면 흘려요 · 중간에 배식대가 옮겨가요',r:`식판 1~3등 <strong>+${LUNCH.meal.prize.join(' / +')}</strong>`}}[k];
+    if(R){$('lcT').textContent=R.t;$('lcL').innerHTML=`<dt>목표</dt><dd>${R.g}</dd><dt>방법</dt><dd>${R.h}</dd><dt>보상</dt><dd>${R.r}</dd>`;
+      const lb=$('lunchBoard');el.style.top=(lb.hidden?60:lb.getBoundingClientRect().bottom+10)+'px';el.hidden=false;}}
+  if(!el.hidden&&(!on||performance.now()>lcEnd))el.hidden=true;
+}
 /* coffee ladder: my group's ladder over the whole screen. Pick a lane (tap, or number keys), then every line is traced
    down at once and the one that lands on the cup buys. The HUD only ticks every 80ms (and online G.lunch.t only every
    snapshot), so the lines are drawn by a CSS animation from a local clock, and my own pick shows before the server echoes it */
@@ -162,6 +184,7 @@ function ladderBox(me){
   const key=[L.phase,lane.join(),g.payer,Math.ceil(L.t)].join('|');if(key===lastLad)return;lastLad=key;
   el.hidden=false;const who=id=>G.actors.find(a=>a.id===id),mine=lane.indexOf(me.id);
   $('ladT').textContent=pk?`번호를 고르세요 · ${Math.max(0,Math.ceil(L.t-S.show-2))}초`:L.phase==='show'?'두구두구…':g.payer===me.id?'☕ 내가 커피 쏜다!':`☕ ${who(g.payer)?.name||'?'}님이 쏩니다`;
+  $('ladRule').innerHTML=`번호를 고르면 줄을 따라 내려가요 · <b>☕ 쏘기</b>에 닿으면 고과 <u>-${S.pay}</u> · 나머지 <strong>+${S.treat}</strong>`;
   $('ladTop').style.gridTemplateColumns=$('ladBot').style.gridTemplateColumns=`repeat(${n},1fr)`;
   $('ladTop').innerHTML=lane.map((id,i)=>{const a=id!=null&&who(id);return`<button data-i="${i}" class="${id===me.id?'me':a?'taken':''}" ${!pk||(a&&id!==me.id)?'disabled':''}>${a?(id===me.id?'나':a.name):i+1}</button>`;}).join('');
   $('ladBot').innerHTML=lane.map((_,i)=>i===g.pay?'<b class="pay">☕ 쏘기</b>':'<b>얻어먹기</b>').join('');
@@ -296,9 +319,10 @@ function hud(dt){
   hudT-=dt;if(hudT>0)return;hudT=.08;
   $('gval').textContent=Math.ceil(Math.max(0,me.g));$('gbar').style.width=Math.max(0,me.g)+'%';
   $('gbarWrap').classList.toggle('low',me.g<30);$('grade').textContent=gradeOf(me.g);$('pname').textContent='나 · '+rankName(me);
-  {const nx=RANKS.find(([t])=>t>me.peak);if(nx){const pv=[...RANKS].reverse().find(([t])=>t<=me.peak)[0],base=Math.max(pv,50);$('promoT').textContent=`${nx[1]}까지 ${Math.ceil(nx[0]-me.peak)}`;$('promoB').style.width=Math.max(0,Math.min(100,(me.peak-base)/(nx[0]-base)*100))+'%';}else{$('promoT').textContent='최고 직급';$('promoB').style.width='100%';}}
+  {const nx=RANKS.find(([t])=>t>me.peak);if(nx){const pv=[...RANKS].reverse().find(([t])=>t<=me.peak)[0],base=Math.max(pv,50);/* in 고과 from work: win back what was lost since the best, then the rest at this rank's PROMO_K rate */
+    const need=Math.max(0,me.peak-me.g)+(nx[0]-me.peak)/(PROMO_K[me.rank]??1);$('promoT').textContent=`${nx[1]}까지 실적 +${Math.ceil(need)}`;$('promoB').style.width=Math.max(0,Math.min(100,(me.peak-base)/(nx[0]-base)*100))+'%';}else{$('promoT').textContent='최고 직급';$('promoB').style.width='100%';}}
   fxBar(me);
-  statusBar(me);gearSlots(me);deskHud(me);questList(me);lunchBoard(me);ladderBox(me);
+  statusBar(me);gearSlots(me);deskHud(me);questList(me);lunchBoard(me);lunchCard(me);ladderBox(me);
   $('mFloor').textContent=viewF>=0?(viewF===ROOF?'옥상':`${FLOORS[viewF].short} ${FLOORS[viewF].name.replace(/^\d층 /,'')}`):'';
   {const fh=floorsHTML();if(fh!==lastFloors){lastFloors=fh;$('tower').innerHTML=fh;}}
   $('mTap').textContent=`${isTouch?'탭해서':'Tab'} 닫기`;

@@ -96,7 +96,7 @@ NET.start=function(players,opts={}){
     reset:()=>{},
   });
   newGame({humans:players.map(p=>({key:p.key,name:String(p.name).slice(0,10),fit:p.fit||null})),lunch:LUNCH_KINDS.includes(opts.lunch)?opts.lunch:undefined});
-  G.nid=0;
+  G.nid=0;G.online=true;
 };
 NET.step=dt=>step(dt);
 NET.input=function(key,m){const a=byKey(key);if(!a||!a.isPlayer)return;
@@ -123,6 +123,10 @@ NET.humansOut=()=>!!G&&!humans().some(a=>a.alive);
 /* a player who drops mid-match is handed to the bot brain so the match keeps its numbers */
 NET.leave=function(key){const a=byKey(key);NET.out.delete(key);if(!a||!a.isPlayer)return;a.isPlayer=false;a.input=null;a.call&&(a.call.botAns=a.call.line.ans,a.call.botT=0);
   if(a.alive)feed(`${a.name}님 연결 끊김: 봇이 대신 근무합니다`);};
+/* the same player back on a new socket (server/src/room.js checks the resume token): hand the actor back.
+   Events sent while away are gone, so one who was knocked out meanwhile gets their result again */
+NET.rejoin=function(key){const a=byKey(key);if(!a||a.isPlayer)return;a.isPlayer=true;a.input=null;a.aim=null;a.mode='idle';a.target=null;NET.out.set(key,[]);
+  if(a.alive)feed(`${a.name}님 다시 접속`);else push(a,{k:'result',win:G.winner===a,ms:800});};
 NET.snap=function(key){const a=byKey(key);const ev=NET.out.get(key)||[];NET.out.set(key,[]);
   const act=a&&a.isPlayer?contextAction(a):null;
   /* ack: the sender's own clock (ms) that this snapshot's state lines up with, so its prediction compares like with like */

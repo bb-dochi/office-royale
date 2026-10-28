@@ -12,25 +12,40 @@ export class RoomCore {
     this.peers = []; // {key, name, inGame}
     this.state = 'lobby'; this.sim = null; this.timer = null; this.tick = 0; this.overT = 0; this.seq = 0;
   }
-  host() { return this.peers[0] || null; }
+  /* away: dropped out of a running match. They keep their seat (a bot plays for them) until the match ends, so the same
+     browser can come back into it with its resume token */
+  live() { return this.peers.filter(p => !p.away); }
+  host() { return this.live()[0] || null; }
   roster() {
+    const host = this.host();
     return { t: 'room', code: this.code, state: this.state, max: MAX_PLAYERS,
-      players: this.peers.map((p, i) => ({ key: p.key, name: p.name, host: i === 0, inGame: !!p.inGame })) };
+      players: this.peers.map(p => ({ key: p.key, name: p.name, host: p === host, inGame: !!p.inGame, away: !!p.away })) };
   }
-  broadcastRoster() { const r = this.roster(); for (const p of this.peers) this.send(p, { ...r, you: p.key }); }
+  broadcastRoster() { const r = this.roster(); for (const p of this.live()) this.send(p, { ...r, you: p.key, token: p.token }); }
 
-  /* returns an error string, or null when the peer joined */
-  join(peer, name, fit, uid) {
+  /* returns an error string, or null when the peer joined. resume: the token a peer got in its roster; a match takes
+     the new socket in place of the old one (which may not even have noticed it's dead yet) */
+  join(peer, name, fit, uid, resume) {
+    const old = typeof resume === 'string' && resume && this.peers.find(p => p.token === resume);
+    if (old) {
+      Object.assign(peer, { key: old.key, name: old.name, inGame: old.inGame, fit: old.fit, uid: old.uid, token: old.token, away: false });
+      this.peers[this.peers.indexOf(old)] = peer; // the old socket's messages and close are ignored from now on
+      if (old.away && this.sim && peer.inGame) this.sim.NET.rejoin(peer.key);
+      this.broadcastRoster();
+      if (this.state === 'playing' && peer.inGame) this.send(peer, { t: 'start', you: peer.key, resume: true });
+      return null;
+    }
     if (this.peers.length >= MAX_PLAYERS) return '방이 꽉 찼어요 (최대 10명)';
     peer.key = 'p' + (++this.seq); peer.name = cleanName(name, this.peers); peer.inGame = false; peer.fit = cleanFit(fit); peer.uid = typeof uid === 'string' && /^[a-z0-9]{8,32}$/.test(uid) ? uid : null;
+    peer.token = crypto.randomUUID(); peer.away = false;
     this.peers.push(peer); this.broadcastRoster(); return null;
   }
   leave(peer) {
-    const i = this.peers.indexOf(peer); if (i < 0) return;
-    this.peers.splice(i, 1);
-    if (this.sim && peer.inGame) this.sim.NET.leave(peer.key);
-    if (!this.peers.length) { this.stop(); this.onEmpty(); return; }
-    if (this.state === 'playing' && !this.peers.some(p => p.inGame)) this.stop(); // nobody left playing
+    const i = this.peers.indexOf(peer); if (i < 0 || peer.away) return;
+    if (this.sim && peer.inGame) { this.sim.NET.leave(peer.key); peer.away = true; }
+    else this.peers.splice(i, 1);
+    if (!this.live().length) { this.stop(); this.peers = []; this.onEmpty(); return; }
+    if (this.state === 'playing' && !this.live().some(p => p.inGame)) this.stop(); // nobody left playing
     this.broadcastRoster();
   }
   message(peer, m) {
@@ -69,7 +84,7 @@ export class RoomCore {
     /* the shared part (pub) is the same object for everyone: turn it into JSON once, not once per player */
     if (++this.tick % SEND_EVERY === 0) {
       let pub = null, pubJSON = '';
-      for (const p of this.peers) if (p.inGame) {
+      for (const p of this.peers) if (p.inGame && !p.away) {
         const { pub: pb, ...mine } = NET.snap(p.key);
         if (pb !== pub) { pub = pb; pubJSON = JSON.stringify(pb); }
         this.send(p, '{"t":"s","pub":' + pubJSON + ',' + JSON.stringify(mine).slice(1));
@@ -85,6 +100,7 @@ export class RoomCore {
   stop() {
     if (this.timer) clearInterval(this.timer);
     this.timer = null; this.sim = null; this.state = 'lobby';
+    this.peers = this.live(); // the match they could come back to is over
     for (const p of this.peers) p.inGame = false;
   }
 }

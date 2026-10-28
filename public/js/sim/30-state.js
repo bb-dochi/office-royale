@@ -36,6 +36,7 @@ function assignSeats(f){
 const DIFF={easy:{n:'쉬움',aim:1.8,react:.35,cd:1.35,speed:.9,regen:false,idle:false,hunt:0,huntP:0,huntMax:0,dodge:.1,seek:.2,seekAfter:25},normal:{n:'보통',aim:1,react:0,cd:1,speed:1,regen:false,idle:true,hunt:130,huntP:.2,huntMax:1,dodge:.3,seek:.55,seekAfter:10},
   hard:{n:'어려움',aim:.55,react:-.08,cd:.8,speed:1.07,regen:false,idle:true,hunt:180,huntP:.3,huntMax:2,dodge:.5,seek:.8,seekAfter:4}};
 const diff=()=>DIFF[G&&G.diff]||DIFF.normal;
+const NET_SEEK=.4;   // online rooms (G.online): fewer last-floor seekers than solo 보통's .55
 function newGame(opts={}){
   NID=0;
   const actors=[],spots=[];
@@ -82,7 +83,7 @@ const itemQuota=f=>!isOpen(f)?0:(G.closed>=NF-1?3:f===G.closed?4:f===topOpen()?2
 const TASK_GAP=f=>f===0?15:0;
 /* promotion progress (peak) only takes part of the 고과 you gain above it once you're 대리 or 팀장, so the top ranks
    take real work (고과 itself is not affected) */
-const PROMO_K={사원:.5,대리:.3,팀장:.7};
+const PROMO_K={사원:.5,대리:.17,팀장:.14};
 const IDLE=45,IDLE_DRAIN=.35; // seconds without doing anything before 고과 leaks, and how fast
 function fillTasks(f){let n=0;const gaps=G.respawn.filter(r=>r.f===f&&r.at>G.t).length;while(G.tasks.filter(t=>t.f===f).length+gaps<taskQuota(f)&&n++<10)spawnTask(f);}
 function spawnTask(f){
@@ -124,10 +125,11 @@ function pop(f,x,y,text,color){G.pops.push({f,x,y,text,color,t:0});}
 function say(o,text,color){if(!o||o.f<0)return;const by=o.id??null;if(by!=null)G.pops=G.pops.filter(p=>!(p.say&&p.by===by));G.pops.push({f:o.f,x:o.x,y:o.y,text,color:color||'#1d2328',t:0,say:true,by});}
 function burst(p){for(const a of G.actors){if(a===p.o||!a.alive||a.f!==p.f||a.inRest||ally(p.o,a))continue;if(Math.hypot(a.x-p.x,a.y-p.y)<95)hit(a,p.o,7,'서류 폭탄 -7',p);}G.bursts.push({f:p.f,x:p.x,y:p.y,t:0});}
 function dmg(a,n,cause){if(!a.alive)return;a.g-=n;a.cause=cause;}
-/* drink=true: coffee and the like top 고과 up but don't count toward promotion */
+/* drink=true: coffee and the like top 고과 up but don't count toward promotion.
+   Promotion counts the gain before the 100 cap, so work done at full 고과 still moves you toward the next rank */
 function gain(a,n,drink){
-  if(!a.alive)return;const was=a.g;a.g=Math.min(100,a.g+n);
-  if(!drink&&a.g>a.peak){a.peak+=(a.g-Math.max(was,a.peak))*(PROMO_K[a.rank]??1);const r=rankOf(a.peak);if(r!==a.rank){a.rank=r;if(a.isPlayer)pop(a.f,a.x,a.y-40,'승진! '+r,'#2f7d4f'); // the promotion slip (client) says the rest
+  if(!a.alive)return;const was=a.g,raw=a.g+n;a.g=Math.min(100,raw);
+  if(!drink&&raw>a.peak){a.peak=Math.min(100,a.peak+(raw-Math.max(was,a.peak))*(PROMO_K[a.rank]??1));const r=rankOf(a.peak);if(r!==a.rank){a.rank=r;if(a.isPlayer)pop(a.f,a.x,a.y-40,'승진! '+r,'#2f7d4f'); // the promotion slip (client) says the rest
     if(rankAt(a,'사원')&&!a.branch)assignTeam(a);}} // 사원 promotion: 발령 to the team of what you did most as an intern
 }
 const locked=a=>!!a.call||a.lockT>0||a.stunT>0;

@@ -105,7 +105,16 @@ function greet(a){
     return;}
   a.greetLock=2;if(a.isPlayer)say(a,'안녕하… 세요?','#5d666e');
 }
-function answerQuest(a){if(!a.quest)return;jobDone(a,'hr');const n=a.quest.n;a.quest=null;a.questCd=G.t+15;n.att=null;n.cool=G.t+10;n.path=[];gain(a,2);pop(a.f,a.x,a.y-36,'멘토링 +2','#2f7d4f');tell(a,'신입에게 친절하게 알려줬다 +2');}
+function answerQuest(a){if(!a.quest)return;jobDone(a,'hr');const n=a.quest.n;a.quest=null;a.questCd=G.t+15;n.att=null;n.cool=G.t+10;n.path=[];gain(a,2);pop(a.f,a.x,a.y-36,'멘토링 +2','#2f7d4f');tell(a,'신입에게 친절하게 알려줬다 +2');
+  if(isHawawa(n))say(n,pick(HAWAWA.thanks)(hwCall(a)),'#3f8f5f');}
+/* 하와와: the 6F newbie, who drawls. Calls people "민지 선배" (a three-syllable name loses the surname), just "선배" when the name is long */
+const isHawawa=n=>n.kind==='newbie'&&n.f===5;
+const hwCall=a=>{const s=String(a.name);return s.length>4?'선배':(/^[가-힣]{3}$/.test(s)?s.slice(1):s)+' 선배';};
+const HAWAWA={
+  ask:[c=>`${c}니임~ 이거 좀 도와주세요오~`,c=>`${c}니임~ 엑셀이 또 멈췄어요오…`,c=>`${c}니임~ 회의실 예약 어떻게 해요오~?`,c=>`하와와… ${c}님 잠깐만요오~`,c=>`${c}니임~ 이거 제가 다 날린 거 아니죠오…?`,c=>`${c}니임~ 프린터가 저 싫어해요오~`],
+  thanks:[c=>`와아~ ${c}니임 최고예요오~!`,()=>'감사합니다아~ 역시 선배니임~'],
+  sulk:[()=>'히잉… 바쁘시구나아…',()=>'하와와… 혼자 해볼게요오…'],
+};
 function updNpcs(dt){
   for(const n of G.npcs){if(n.kind!=='courier')continue;
     if(!n.on){n.cd-=dt;if(n.cd<=0&&isOpen(n.f)&&!G.lunch){n.on=true;n.left=24;n.dropT=3;n.x=PADS.elev.x;n.y=PADS.elev.y-20;n.path=[];say(n,'택배 왔습니다!','#b5651d');for(const h of humans())if(h.alive&&h.f===n.f)tell(h,'택배 기사 등장: 따라다니면 아이템 상자가 떨어져요');}}
@@ -134,7 +143,7 @@ function updNpcs(dt){
           else{const dx=a.x-n.x,dy=a.y-n.y,d=Math.hypot(dx,dy);if(d>30){const sp=Math.min(d-28,120*dt);n.x+=dx/d*sp;n.y+=dy/d*sp;}n.face=Math.atan2(dy,dx);continue;}}
         else if(G.t>(n.cool||0)){let best=null,bd=230;
           for(const a of G.actors){if(!a.alive||a.f!==n.f||a.inRest||a.transit||a.desk||a.quest||(a.questCd||0)>G.t)continue;const d=dist(a,n);if(d<bd&&sightLos(n.f,n.x,n.y,a.x,a.y)){bd=d;best=a;}}
-          if(best){if(bd<36){n.att=best;best.quest={n,t:5,max:5,botT:rnd(.8,1.8)};say(n,pick(['저 이거 어떻게 해요?','선배님 질문 있어요!','엑셀 함수 뭐 써요?','회의실 예약 어떻게 해요?']),'#3f8f5f');
+          if(best){if(bd<36){n.att=best;best.quest={n,t:5,max:5,botT:rnd(.8,1.8)};say(n,isHawawa(n)?pick(HAWAWA.ask)(hwCall(best)):pick(['저 이거 어떻게 해요?','선배님 질문 있어요!','엑셀 함수 뭐 써요?','회의실 예약 어떻게 해요?']),'#3f8f5f');
               tell(best,'신입 인턴의 질문 공세: 느려짐 · E로 답해주면 +2',true);continue;}
             if(!n.rp||G.t>n.rp){n.path=findPath(n.f,n.x,n.y,best.x,best.y);n.rp=G.t+.8;n.pause=0;}}}
       }
@@ -150,11 +159,13 @@ function updNpcs(dt){
     }
   }
   for(const n of G.npcs){if(n.kind!=='cart'||!npcActive(n))continue;
-    for(const a of G.actors)if(a.alive&&a.f===n.f&&!a.transit&&a.g<70&&dist(a,n)<75)gain(a,1.3*dt,true);}
+    /* near the cart: 2.5/s up to 70, shown as "회복 +5" every 5 points so it's clear it's working */
+    for(const a of G.actors)if(a.alive&&a.f===n.f&&!a.transit&&a.g<70&&dist(a,n)<95){gain(a,2.5*dt,true);a.cartAcc=(a.cartAcc||0)+2.5*dt;
+      if(a.cartAcc>=5){a.cartAcc=0;pop(a.f,a.x,a.y-30,'회복 +5','#7a4b2a');}}}
   // contact & chats
   for(const a of alive()){
     if(a.f<0||a.transit)continue;
-    if(a.quest){a.quest.t-=dt;a.slowT=Math.max(a.slowT,.1);if(!a.isPlayer&&a.quest.max-a.quest.t>=a.quest.botT)answerQuest(a);else if(a.quest&&a.quest.t<=0){a.quest.n.att=null;a.quest.n.cool=G.t+10;a.quest=null;a.questCd=G.t+12;}}
+    if(a.quest){a.quest.t-=dt;a.slowT=Math.max(a.slowT,.1);if(!a.isPlayer&&a.quest.max-a.quest.t>=a.quest.botT)answerQuest(a);else if(a.quest&&a.quest.t<=0){if(isHawawa(a.quest.n))say(a.quest.n,pick(HAWAWA.sulk)(),'#3f8f5f');a.quest.n.att=null;a.quest.n.cool=G.t+10;a.quest=null;a.questCd=G.t+12;}}
     if(a.errand)errandStep(a,dt);
     if(a.contact){
       a.contact.t-=dt;

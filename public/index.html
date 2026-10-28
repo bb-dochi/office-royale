@@ -28,7 +28,7 @@
   </div>
 </div>
 <!-- the round, in one line: alive count, what's next, how long. A full-width coloured band while it is urgent -->
-<div id="status" hidden><span class="salive" id="sAlive"></span><i id="sIco"></i><span id="sText"></span><b id="sTime"></b></div>
+<div id="status" hidden><span class="salive" id="sAlive"></span><i id="sIco"></i><span class="stx"><span id="sText"></span><small id="sSub" hidden></small></span><b id="sTime"></b></div>
 <!-- everything about me in one place. PC: a dock at the bottom centre (effects above it).
      Phones: the dock dissolves (display:contents) and its parts sit in their own corners -->
 <div id="pdock">
@@ -59,9 +59,11 @@
 <!-- lunch on the roof: the score and what it's for, big, under the status strip -->
 <div id="lunchBoard" hidden><div class="lb" id="lbTeams"><b class="tl">전담파</b><em id="lbL">0</em><i>:</i><em id="lbR">0</em><b class="tr">연초파</b></div>
   <div class="lbx" id="lbX" hidden></div><p id="lbP"></p></div>
+<!-- lunch rules: a card under the lunch board for 4 s when I reach the roof -->
+<div id="lunchCard" hidden><h4 id="lcT"></h4><dl id="lcL"></dl></div>
 <!-- coffee ladder lunch: my group's ladder -->
 <div id="ladder" hidden><div class="lad">
-  <h3>☕ 커피 내기 사다리</h3><p class="lt" id="ladT"></p>
+  <h3>☕ 커피 내기 사다리</h3><p class="lr" id="ladRule"></p><p class="lt" id="ladT"></p>
   <div class="ltop" id="ladTop"></div><div class="lsvg" id="ladSvg"></div><div class="lbot" id="ladBot"></div>
   <p class="lh" id="ladHelp"></p></div></div>
 <!-- 화캉스: the phone in my hand while I'm on the toilet -->
@@ -185,7 +187,7 @@
   <div class="memo diffmemo">
     <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span>혼자 하기<button class="homeX" id="diffX" aria-label="닫기">✕</button></span></div>
     <h1>난이도</h1>
-    <p class="subj">봇 동료들이 얼마나 독한지 골라 주세요.</p>
+    <p class="subj">동료들이 얼마나 독한지 골라 주세요.</p>
     <div class="diffopts" id="diffOpts"></div>
   </div>
 </section>

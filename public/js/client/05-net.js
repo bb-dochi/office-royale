@@ -33,21 +33,34 @@ function netURL(code){
   const host=q||location.host,secure=q?!/^(localhost|127\.|192\.168\.|10\.)/.test(q):location.protocol==='https:';
   return `${secure?'wss':'ws'}://${host}/room/${code}`;
 }
-function netConnect(code,name,onRoom,onFail){
-  netClose();
+/* the room hands each browser a token; sending it back on a new socket (after a drop, or a reload of the invite link)
+   puts it back into the same match */
+const RESUME_TRIES=8;
+function resumeFor(code){try{const r=JSON.parse(store.get('or-resume')||'null');return r&&r.code===code?r.token:null;}catch{return null;}}
+function netConnect(code,name,onRoom,onFail,tries=0){
+  if(!tries)netClose();
   let ws;try{ws=new WebSocket(netURL(code));}catch(e){onFail('서버 주소가 잘못됐어요');return;}
   NETC.ws=ws;NETC.code=code;let opened=false;
-  ws.onopen=()=>{opened=true;ws.send(JSON.stringify({t:'hello',name,fit:myFit(),uid:rankUid()}));};
-  ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch{return;}
-    if(m.t==='room'){NETC.room=m;NETC.you=m.you;onRoom(m);}
-    else if(m.t==='start'){NETC.you=m.you;netBegin();}
+  ws.onopen=()=>{opened=true;NETC.snapT=performance.now()/1000;ws.send(JSON.stringify({t:'hello',name,fit:myFit(),uid:rankUid(),resume:resumeFor(code)||undefined}));};
+  ws.onmessage=e=>{if(NETC.ws!==ws)return;let m;try{m=JSON.parse(e.data);}catch{return;}
+    if(m.t==='room'){if(m.token)store.set('or-resume',JSON.stringify({code:m.code,token:m.token}));
+      if(tries&&m.state!=='playing')tries=0;NETC.room=m;NETC.you=m.you;onRoom(m);}
+    else if(m.t==='start'){NETC.you=m.you;tries=0;netBegin();if(m.resume)feedDOM('다시 연결됐어요');}
     else if(m.t==='s'){if(NETC.on&&G&&G.net)netApply(m);} // never into the lobby world
     else if(m.t==='pong'){const r=(performance.now()-m.ct)/1000;if(r>=0&&r<3)NETC.rtt=NETC.rtt*.7+r*.3;}
     else if(m.t==='err'){onFail(m.m);}};
-  ws.onclose=()=>{if(NETC.ws!==ws)return;NETC.ws=null;const was=NETC.on;NETC.on=false;
-    onFail(opened?(was?'서버와 연결이 끊겼어요':'연결이 끊겼어요'):'서버에 연결하지 못했어요. 멀티는 node tools/dev-server.mjs 로 띄운 주소에서 열어 주세요.');};
+  ws.onclose=()=>{if(NETC.ws!==ws)return;NETC.ws=null;
+    /* dropped mid-match (phone locked, Wi-Fi ↔ LTE): keep the match on screen and dial back in with the token */
+    if(NETC.on&&tries<RESUME_TRIES){if(!tries)feedDOM('연결이 끊겼어요 · 다시 연결하는 중…',true);
+      NETC.retryT=setTimeout(()=>netConnect(code,name,onRoom,onFail,tries+1),600+tries*400);return;}
+    const was=NETC.on||tries>0;NETC.on=false;
+    onFail(opened||tries?(was?'서버와 연결이 끊겼어요':'연결이 끊겼어요'):'서버에 연결하지 못했어요. 멀티는 node tools/dev-server.mjs 로 띄운 주소에서 열어 주세요.');};
 }
-function netClose(){const ws=NETC.ws;NETC.ws=null;NETC.on=false;NETC.room=null;if(ws)try{ws.close();}catch{}}
+/* a socket can look open long after the network under it is gone (mobile tabs coming back from the background):
+   no snapshot for a few seconds mid-match counts as a drop */
+function netWatchdog(now){const ws=NETC.ws;if(!NETC.on||!ws||ws.readyState!==1||now-NETC.snapT<4)return;
+  const f=ws.onclose;ws.onclose=null;ws.onmessage=null;try{ws.close();}catch{}f&&f();}
+function netClose(){clearTimeout(NETC.retryT);const ws=NETC.ws;NETC.ws=null;NETC.on=false;NETC.room=null;if(ws)try{ws.close();}catch{}}
 
 /* ---------- snapshot → local G ---------- */
 const seatAt=r=>r?FLOORS[r[0]].seats[r[1]]||null:null;
@@ -58,7 +71,7 @@ function netBegin(){
   for(const fl of FLOORS){for(const s of fl.seats){s.owner=null;s.occ=null;}let ch=false;for(const d of fl.doors)if(d.open){d.open=false;ch=true;}if(ch)refreshObs(fl);}
   G={t:0,actors:[],me:null,proj:[],items:[],traps:[],tasks:[],drops:[],wet:[],pops:[],dings:[],bursts:[],closed:0,nextClose:INTERVAL,warn:false,final:false,finalT:0,over:false,winner:null,
      npcs:[],doors:[],events:[],notice:null,ceo:null,blackout:null,cake:null,fire:0,star:null,audit:null,lunch:null,airdrops:[],smokes:[],net:true};
-  NETC.on=true;startScreens();
+  NETC.on=true;NETC.snapT=performance.now()/1000;startScreens();
 }
 /* reuse one object per server id so renderer caches (keyed by object) stay valid */
 function keep(map,key,make){let o=map.get(key);if(!o){o=make();map.set(key,o);}return o;}
@@ -146,6 +159,7 @@ function netFrame(dt){
   const now=performance.now()/1000,rt=now+(NETC.off??0)-INTERP;
   G.t=Math.max(G.t,rt);
   if(now-NETC.pingT>1){NETC.pingT=now;netSend({t:'ping',ct:performance.now()});}
+  netWatchdog(now);
   const me=G.me;
   for(const a of G.actors)if(a!==me)sampleAt(a,rt);
   for(const n of G.npcs)sampleAt(n,rt);

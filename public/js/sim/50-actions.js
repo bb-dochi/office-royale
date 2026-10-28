@@ -1,7 +1,10 @@
 const aimOf=a=>a.isPlayer&&a.aim!=null?a.aim:autoAim(a);
+/* nobody can hit you in the restroom, so you can't attack from it either (papers, attack items, 마케팅/인사 skills) */
+function restNo(a){if(a.isPlayer&&G.t-(a.restNoT??-9)>2){a.restNoT=G.t;tell(a,'화장실 안에서는 공격할 수 없어요');}}
 /* ================= actions ================= */
 function throwPaper(a,ang){
   if(a.cd>0||!a.alive||a.f<0||locked(a)||a.sit||a.chan)return false;
+  if(a.inRest){restNo(a);return false;}
   const base=a.isPlayer?(G.final?.38:.6):(G.final?.8:1.5)*diff().cd,staple=a.ammo>0;
   /* a human holding an attack item fires it with the attack button (bots decide in botItems) */
   if(a.isPlayer&&a.items.length&&!staple){a.face=ang;a.cd=a.lastCd=base;useItem(a,0,ang);return true;}
@@ -32,6 +35,7 @@ const STORE=new Set(['stapler','bundle','spill','card']);
 const canTake=(a,k)=>!STORE.has(k)||(a.items.length<1&&a.ammo<=0);
 function useItem(a,i=0,ang){
   const k=a.items[i];if(!k||!a.alive||a.f<0||locked(a))return false;
+  if(a.inRest&&STORE.has(k)){restNo(a);return false;}
   a.items.splice(i,1);
   if(G.audit&&G.audit.f===a.f){dmg(a,5,'audit');pop(a.f,a.x,a.y-44,'감사팀: 압수 -5','#cf3626');tell(a,'감사팀에 아이템 압수 -5',true);return true;}
   return applyItem(a,k,ang);
@@ -54,6 +58,7 @@ function applyItem(a,k,aim){
 function useSkill(a){
   if(!a.alive||a.f<0||locked(a)||a.sit||a.chan||!a.branch||!rankAt(a,'팀장')||a.skillCd>0)return false; // the Q skill opens at 팀장
   const B=BRANCH[a.branch];if(!B.cd)return false;const ex=a.rank==='임원';
+  if(a.inRest&&(a.branch==='mkt'||a.branch==='hr')){restNo(a);return false;}
   if(a.branch==='mkt'){const n=ex?14:10;for(let i=0;i<n;i++){const ang=i/n*Math.PI*2;G.proj.push({f:a.f,x:a.x+Math.cos(ang)*(R+4),y:a.y+Math.sin(ang)*(R+4),ox:a.x,oy:a.y,dx:Math.cos(ang),dy:Math.sin(ang),d:0,o:a,spin:Math.random()*6,flyer:true,sp:480,rng:ex?300:230});}
     pop(a.f,a.x,a.y-44,ex?'전사 전단지 살포!':'전단지 살포!','#c08a1e');a.cloakT=0;for(const n of watchers(a))if(!immune(a,n)&&sees(n,a)){caught(a,n,'act');break;}}
   else if(a.branch==='design'){const t=ex?6:4;a.cloakT=t;pop(a.f,a.x,a.y-44,'위장','#8e5c8a');tell(a,`위장: ${t}초간 아무도 못 봄 (던지면 풀림)`);}

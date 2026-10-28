@@ -11,7 +11,7 @@ function step(dt){
       if(nf<NF){assignSeats(nf);fillTasks(nf);for(let i=0;i<itemQuota(nf);i++)spawnItem(nf);msg=`${FLOORS[nf].name} 개방`;for(const h of hs){const s=h.seats[nf];if(h.alive)tell(h,`인사 발령: ${FLOORS[nf].name} ${s?s.name:'자리 없음'}`);}}
       for(const b of G.actors)if(!b.isPlayer)b.pref=Math.min(topOpen(),G.closed+(Math.random()<.3?1:0));
       feed(`${f===0?'로비':(f+1)+'층'} 폐쇄!`,true);
-      if(G.closed===NF-1){G.final=true;for(const b of G.actors)if(!b.isPlayer)b.seeker=Math.random()<diff().seek;}
+      if(G.closed===NF-1){G.final=true;for(const b of G.actors)if(!b.isPlayer)b.seeker=Math.random()<(G.online?NET_SEEK:diff().seek);}
       UI.closure(f,nf<NF?nf:-1,msg);
     }
   }else if(G.final){G.finalT+=dt;if(G.finalT>30&&G.finalT-dt<=30)feed('야근 모드: 전원 고과가 계속 줄어듭니다',true);}
@@ -121,6 +121,8 @@ function step(dt){
     let on=al.filter(a=>inTaskRange(a,t)&&!locked(a)&&!a.chan);
     /* a task belongs to whoever started it: only they fill it and hand it in. If they stay away for 2.5 s
        (or drop out) it goes back on the board from zero, so nobody can walk in and take a finished one */
+    /* a finished one is handed in for its owner when they step off it or get called away (boss call, stun) instead of being lost */
+    if(t.by&&t.ready&&t.by.alive&&!on.includes(t.by)){submitTask(t.by,t);continue;}
     if(t.by){if(on.includes(t.by))t.awayT=0;else if((t.awayT+=dt)>2.5||!t.by.alive){t.by=null;t.awayT=0;t.prog=0;t.ready=false;t.react={};}}
     if(!t.by&&on.length&&!t.ready){t.by=on.slice().sort((p,q)=>Math.hypot(p.x-t.x,p.y-t.y)-Math.hypot(q.x-t.x,q.y-t.y))[0];}
     for(const h of on)if(h.isPlayer&&t.by&&h!==t.by&&G.t>(h.busyT||0)){h.busyT=G.t+6;tell(h,`${t.by.name}님이 하고 있는 업무예요`);}

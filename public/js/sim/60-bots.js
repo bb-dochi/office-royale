@@ -70,10 +70,13 @@ function think(b){
   if(!aggro&&b.hunter&&!G.lunch&&diff().hunt&&!b.carry){
     const h=G.actors.find(o=>o.isPlayer&&visibleTo(b,o)&&dist(o,b)<diff().hunt&&shotLos(f,b.x,b.y,o.x,o.y)&&G.actors.filter(x=>x!==b&&x.mode==='fight'&&x.target===o).length<diff().huntMax);
     if(h){best=h;aggro=true;}}
-  /* last floor: seekers go after the nearest person, walking to them when they're out of sight */
+  /* last floor: seekers go after the nearest person, walking to them when they're out of sight. They search in spells
+     (12–20 s on, 5–9 s off, doing whatever they'd normally do) and pick a fight with anyone close on the way, bots included */
   if(b.seeker&&G.final&&G.finalT>diff().seekAfter&&!b.carry&&!provoked){
+    if(!b.seekPh||G.t>b.seekPh.end)b.seekPh=b.seekPh&&b.seekPh.on?{on:false,end:G.t+rnd(5,9)}:{on:true,end:G.t+rnd(12,20)};
     const h=humans().filter(o=>o.alive&&o.f===f).sort((p,q)=>dist(b,p)-dist(b,q))[0];
-    if(h){if(visibleTo(b,h)&&dist(b,h)<300&&shotLos(f,b.x,b.y,h.x,h.y)){best=h;aggro=true;}else{setGoal(b,h,'seek');return;}}}
+    if(enemy&&ed<170){best=enemy;aggro=true;}
+    else if(h&&b.seekPh.on){if(visibleTo(b,h)&&dist(b,h)<300&&shotLos(f,b.x,b.y,h.x,h.y)){best=h;aggro=true;}else{setGoal(b,h,'seek');return;}}}
   if(aggro&&best&&!(b.carry&&!provoked)){b.mode='fight';b.target=best;b.goal=null;return;}
   if(b.carry){setGoal(b,fl.spots.box,'deliver');return;}
   const dr=G.drops.find(d=>d.f===f&&Math.hypot(d.x-b.x,d.y-b.y)<320);

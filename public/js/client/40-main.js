@@ -118,7 +118,7 @@ function showLobby(){
   $('roomCode').textContent=r.code;
   /* every seat of the room, numbered like a roster; empty ones get a bot */
   $('players').innerHTML=Array.from({length:r.max||ROOM_MAX},(_,i)=>{const p=r.players[i];
-    return p?`<li class="${p.key===r.you?'me':''}"><span>${esc(p.name)}</span><small>${[p.key===r.you&&'나',p.host&&'방장',p.inGame&&'게임 중'].filter(Boolean).join(' · ')}</small></li>`
+    return p?`<li class="${p.key===r.you?'me':''}"><span>${esc(p.name)}</span><small>${[p.key===r.you&&'나',p.host&&'방장',p.away?'연결 끊김':p.inGame&&'게임 중'].filter(Boolean).join(' · ')}</small></li>`
       :`<li class="empty"><span>빈자리</span><small>봇</small></li>`;}).join('');
   const host=r.players[0]&&r.players[0].key===r.you;
   $('goBtn').hidden=!host;$('goBtn').disabled=r.state!=='lobby';
