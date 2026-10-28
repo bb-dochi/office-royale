@@ -15,6 +15,8 @@
 </head>
 <body>
 <canvas id="game" aria-label="오피스 로얄 게임 화면"></canvas>
+<!-- shown when the 3D view could not start (three.js did not load, or the browser refused WebGL) -->
+<div id="glFail" hidden><p>게임 화면을 띄우지 못했어요.<br><small>잠시 후 새로고침해 주세요. 계속 이러면 브라우저의 하드웨어 가속을 켜 주세요.</small></p><button class="btn" onclick="location.reload()">새로고침</button></div>
 
 <div class="hud">
   <div class="rcol">
@@ -60,7 +62,6 @@
 <div id="lunchBoard" hidden><div class="lb" id="lbTeams"><b class="tl">전담파</b><em id="lbL">0</em><i>:</i><em id="lbR">0</em><b class="tr">연초파</b></div>
   <div class="lbx" id="lbX" hidden></div><p id="lbP"></p></div>
 <!-- lunch rules: a card under the lunch board for 4 s when I reach the roof -->
-<div id="lunchCard" hidden><h4 id="lcT"></h4><dl id="lcL"></dl></div>
 <!-- coffee ladder lunch: my group's ladder -->
 <div id="ladder" hidden><div class="lad">
   <h3>☕ 커피 내기 사다리</h3><p class="lr" id="ladRule"></p><p class="lt" id="ladT"></p>
@@ -136,7 +137,7 @@
       </ul></div></div>
       </div>
       <div class="btns"><button class="btn" id="hSolo">혼자 하기</button><button class="btn" id="hMulti">같이 하기</button></div>
-      <p class="foot"><button class="tlink" id="hRank">주간 랭킹</button><button class="tlink" id="hTut">튜토리얼</button><button class="tlink" id="hDress">옷 갈아입기</button></p>
+      <p class="foot"><button class="tlink" id="hRank">주간 랭킹</button><button class="tlink" id="hTut">튜토리얼</button><button class="tlink" id="hDress">옷 갈아입기</button><button class="tlink" id="hBoard">사내 게시판<i class="newmark" hidden>NEW!</i></button></p>
     </div>
     <div id="dress" hidden>
       <h1>옷 갈아입기</h1>
@@ -149,6 +150,7 @@
 <nav id="dock" aria-label="메뉴">
   <span id="dockCount"></span>
   <button data-go="guide">게임 안내</button>
+  <button data-go="board">사내 게시판<i class="newmark" hidden>NEW!</i></button>
   <button data-go="solo" class="pri">혼자 하기</button>
   <button data-go="multi" class="pri">같이 하기</button>
   <button data-go="rank">주간 랭킹</button>
@@ -204,6 +206,15 @@
   </div>
 </section>
 
+<section class="sheet" id="boardSheet" hidden>
+  <div class="memo boardmemo">
+    <div class="memo-head"><span>(주)오피스로얄 경영지원팀</span><span>사내 게시판<button class="homeX" id="boardX" aria-label="닫기">✕</button></span></div>
+    <h1>사내 게시판</h1>
+    <p class="subj">회사에 바뀐 점을 알려 드려요.</p>
+    <div class="boardlist" id="boardList"></div>
+  </div>
+</section>
+
 <section class="sheet" id="teamInfo" hidden>
   <div class="memo teammemo">
     <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span>부서 안내<button class="homeX" id="teamInfoX" aria-label="닫기">✕</button></span></div>
@@ -242,7 +253,7 @@
   </div>
 </section>
 
-<script defer src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+<script defer src="vendor/three-0.158.0.min.js"></script>
 <script defer src="js/sim/00-core.js"></script>
 <script defer src="js/sim/10-building.js"></script>
 <script defer src="js/sim/20-geometry.js"></script>
@@ -264,5 +275,6 @@
 <script defer src="js/client/46-tutorial.js"></script>
 <script defer src="js/client/47-share.js"></script>
 <script defer src="js/client/48-rank.js"></script>
+<script defer src="js/client/49-board.js"></script>
 </body>
 </html>

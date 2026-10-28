@@ -112,17 +112,32 @@ function follow(b){
   if(d<6){b.path.shift();return b.path.length?follow(b):[0,0];}
   return[dx/d,dy/d];
 }
+/* how well this bot moves in a fight (0..1), rolled once from the difficulty's tiers ([share up to, low, high]):
+   a 고수 strafes at full speed and switches sides often, a 허당 strafes slowly, keeps one way longer, stops now and then and dodges less */
+function moveSk(b){if(b.moveSk==null){const r=Math.random(),t=diff().move.find(t=>r<t[0])||diff().move.at(-1);b.moveSk=rnd(t[1],t[2]);}return b.moveSk;}
 /* a paper coming straight at me: step sideways out of its line. One roll per paper; the chance grows with difficulty,
-   and a bot hit in the last few seconds is on guard (+30%) */
+   and a bot hit in the last few seconds is on guard (diff().guard). Like a person it needs a moment to see the paper (it must
+   have flown diff().see seconds, so a close throw can't be dodged) and to get its feet back after a sidestep (diff().dodgeCd: shorter on harder levels), so it can't
+   weave out of every paper in a volley */
 function dodgeCheck(b){
+  if(G.t<(b.dodgeCd||0))return;
   for(const p of G.proj){
-    if(p.f!==b.f||p.o===b||b.dodged===p)continue;
+    if(p.f!==b.f||p.o===b||b.dodged===p||p.d<p.sp*diff().see)continue;
     const rx=b.x-p.x,ry=b.y-p.y,ahead=rx*p.dx+ry*p.dy,side=ry*p.dx-rx*p.dy;
     if(ahead<=0||ahead>p.sp*.4||ahead>p.rng-p.d||Math.abs(side)>R+10)continue;
     b.dodged=p;
-    if(Math.random()>diff().dodge+(G.t-(b.lastHitT??-9)<4?.3:0))continue;
-    const s=side>=0?1:-1;b.dodge={x:-p.dy*s,y:p.dx*s,t:.3};return;
+    if(Math.random()>(diff().dodge+(G.t-(b.lastHitT??-9)<4?diff().guard:0))*(.4+.6*moveSk(b)))continue;
+    const s=side>=0?1:-1;b.dodge={x:-p.dy*s,y:p.dx*s,t:.3};b.dodgeCd=G.t+rnd(...diff().dodgeCd);return;
   }
+}
+/* bots lead a moving target too, by part of the way (diff().lead: 쉬움 30%, 보통 60%, 어려움 85%), so strafing
+   doesn't make you untouchable; capped at 15° like a person's eye would. They read how the target has been moving
+   lately (svx/svy, see drive), so fast weaving still works against them, and never aim at a spot behind a wall */
+function botLead(b,t){
+  const a0=Math.atan2(t.y-b.y,t.x-b.x),vx=t.svx||0,vy=t.svy||0;if(Math.hypot(vx,vy)<20||locked(t)||t.sit||t.chan)return a0;
+  const sp=b.ammo>0?720:560,k=diff().lead,tt=dist(b,t)/sp,px=t.x+vx*tt*k,py=t.y+vy*tt*k;
+  if(!shotLos(b.f,b.x,b.y,px,py))return a0;
+  const L=15*Math.PI/180;return a0+Math.max(-L,Math.min(L,angDiff(Math.atan2(py-b.y,px-b.x),a0)));
 }
 function updBot(b,dt){
   b.think-=dt;if(b.think<=0){b.think=.22+Math.random()*.12;think(b);}
@@ -136,6 +151,7 @@ function updBot(b,dt){
   let vx=0,vy=0;
   if(!(b.dodge&&b.dodge.t>0))dodgeCheck(b);
   if(b.dodge&&b.dodge.t>0){b.dodge.t-=dt;vx=b.dodge.x;vy=b.dodge.y;}
+  else if(b.throwT>0)b.throwT-=dt; // plants their feet for a moment to throw: a window to hit back (a paper coming in still makes them dodge)
   else if(b.nudge&&b.nudge.t>0){b.nudge.t-=dt;vx=b.nudge.x;vy=b.nudge.y;}
   else if(b.mode==='fight'&&b.target&&visibleTo(b,b.target)){
     const t=b.target,d=dist(b,t),see=shotLos(b.f,b.x,b.y,t.x,t.y);
@@ -143,13 +159,14 @@ function updBot(b,dt){
     else{
       const ax=(t.x-b.x)/d,ay=(t.y-b.y)/d;let fx=-ay*b.strafe,fy=ax*b.strafe;
       if(d<150){fx-=ax*.8;fy-=ay*.8;}else if(d>200){fx+=ax*.5;fy+=ay*.5;}
-      const m=Math.hypot(fx,fy)||1;vx=fx/m;vy=fy/m;if(Math.random()<dt*.6)b.strafe*=-1;
+      const sk=moveSk(b),m=(Math.hypot(fx,fy)||1)/(.5+.5*sk);vx=fx/m;vy=fy/m;if(Math.random()<dt*(.25+.6*sk))b.strafe*=-1;
+      if(b.idleT>0){b.idleT-=dt;vx=vy=0;}else if(Math.random()<dt*(1-sk)*.6)b.idleT=rnd(.4,.7); // a 허당 stands there for a moment
     }
     b.face=Math.atan2(t.y-b.y,t.x-b.x);
-    if(b.cd<=0&&b.react<=0&&d<330&&see){
+    if(b.cd<=0&&b.react<=0&&d<330&&see){b.face=botLead(b,t);
       const careful=b.type!=='폭주'&&!G.final;
       const risky=watchers(b).some(n=>!immune(b,n)&&(sees(n,b)||dist(n,t)<VIS[n.kind].sound*.8));
-      if(!(careful&&risky)){throwPaper(b,b.face+(Math.random()-.5)*(b.type==='폭주'?.5:.3)*diff().aim);b.react=Math.max(.08,.15+Math.random()*.45+diff().react);}
+      if(!(careful&&risky)){if(throwPaper(b,b.face+(Math.random()-.5)*(b.type==='폭주'?.5:.3)*diff().aim))b.throwT=rnd(...diff().plant);b.react=Math.max(.08,.15+Math.random()*.45+diff().react);}
     }
   }else{if(b.mode==='fight')b.mode='idle';[vx,vy]=follow(b);if(vx||vy)b.face=Math.atan2(vy,vx);}
   b.stuckT+=dt;

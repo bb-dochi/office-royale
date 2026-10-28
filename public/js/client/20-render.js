@@ -8,7 +8,8 @@ const DF=s=>`900 ${Math.round(s*UIS)}px 'Noto Sans KR','Apple SD Gothic Neo',san
 function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
 function txt(t,x,y,font,color,align='left'){ctx.font=font;ctx.fillStyle=color;ctx.textAlign=align;ctx.fillText(t,x,y);ctx.textAlign='left';}
 const U=1/36,W3=FW*U,D3=FH*U,WALL_H=2.4;
-const gl=new THREE.WebGLRenderer({antialias:true,stencil:true});
+/* no three.js or no WebGL: say so instead of leaving an empty screen (the rest of this file cannot run) */
+const gl=(()=>{try{return new THREE.WebGLRenderer({antialias:true,stencil:true});}catch(e){document.getElementById('glFail').hidden=false;throw e;}})();
 gl.setPixelRatio(Math.min(window.devicePixelRatio||1,isTouch?1.5:2));
 gl.shadowMap.enabled=true;gl.shadowMap.type=THREE.PCFSoftShadowMap;gl.autoClear=false;
 gl.toneMapping=THREE.ACESFilmicToneMapping;gl.toneMappingExposure=1.12;
@@ -256,6 +257,45 @@ function plantAt(g,mx,my,s=1){
   for(let i=0;i<7;i++){const a=i/7*Math.PI*2,h=.85+(i%3)*.22;const lf=new THREE.Mesh(new THREE.ConeGeometry(.11,h,4),lam(i%2?'#4f8f45':'#3f7a3a'));
     lf.position.set(Math.cos(a)*.12,.48+h/2,Math.sin(a)*.12);lf.rotation.set(Math.sin(a)*.45,0,-Math.cos(a)*.45);lf.castShadow=true;p.add(lf);}
 }
+/* 사내 게시판 on the back wall of the 사내 카페, left of the coffee counter: a wood-framed cork board with papers,
+   sticky notes and a photo pinned up. E in front of it opens the update notes (client/49-board.js) and NEW! floats
+   over it while one is unread. It hangs off the wall bottom-out, so the high camera sees its face, not a strip */
+const BOARD_W=3.3,BOARD_H=1.32;
+function boardTex(){
+  const c=document.createElement('canvas');c.width=1000;c.height=400;const x=c.getContext('2d'),f=(w,s)=>`${w} ${s}px 'Noto Sans KR',sans-serif`;
+  x.fillStyle='#bf8f57';x.fillRect(0,0,1000,400);
+  let sd=7;const rn=()=>(sd=(sd*16807)%2147483647)/2147483647;   // same speckles every build
+  for(let i=0;i<2600;i++){x.fillStyle=rn()<.5?'rgba(120,80,40,.28)':'rgba(240,205,150,.3)';x.fillRect(rn()*1000,rn()*400,2+rn()*3,2+rn()*3);}
+  x.fillStyle='#2f5d46';x.fillRect(370,14,260,46);x.fillStyle='#fbfaf6';x.font=f(900,30);x.textAlign='center';x.textBaseline='middle';x.fillText('사내 게시판',500,38);
+  const pin=(px,py,col)=>{x.fillStyle='rgba(0,0,0,.25)';x.beginPath();x.arc(px+3,py+4,9,0,7);x.fill();x.fillStyle=col;x.beginPath();x.arc(px,py,9,0,7);x.fill();
+    x.fillStyle='rgba(255,255,255,.6)';x.beginPath();x.arc(px-3,py-3,3,0,7);x.fill();};
+  /* paper(x,y,w,h,tilt,colour,draw the content in its own coordinates, pin colour) */
+  const paper=(px,py,w,h,rot,bg,body,pc)=>{x.save();x.translate(px+w/2,py+h/2);x.rotate(rot);x.translate(-w/2,-h/2);
+    x.fillStyle='rgba(0,0,0,.22)';x.fillRect(5,6,w,h);x.fillStyle=bg;x.fillRect(0,0,w,h);x.textAlign='left';x.textBaseline='alphabetic';body(w,h);x.restore();
+    pin(px+w/2,py+12,pc);};
+  const lines=(x0,y0,w,n,gap=20)=>{x.fillStyle='rgba(60,70,80,.35)';for(let i=0;i<n;i++)x.fillRect(x0,y0+i*gap,w*(i%3===2?.6:1),5);};
+  paper(36,84,190,250,-.04,'#fbfaf6',(w)=>{x.fillStyle='#cf3626';x.font=f(900,26);x.fillText('업데이트',18,48);x.fillText('안내',18,80);
+    x.fillStyle='#2a3036';x.font=f(700,15);x.fillText('경영지원팀',18,108);lines(18,130,w-36,5,22);},'#cf3626');
+  paper(250,92,130,130,.06,'#f7dc6f',()=>{x.fillStyle='#4a3a12';x.font=f(900,24);x.fillText('칼퇴',22,58);x.fillText('금지!',22,92);},'#2b6cb0');
+  paper(268,248,120,116,-.07,'#f5c6d0',()=>{x.fillStyle='#5a2a35';x.font=f(800,17);x.fillText('분실물',16,40);x.font=f(700,14);x.fillText('사원증 1개',16,68);x.fillText('안내데스크로',16,90);},'#3f8f5f');
+  paper(410,80,180,240,.03,'#fbfaf6',(w)=>{x.fillStyle='#2a3036';x.font=f(900,22);x.fillText('이번 주 랭킹',16,40);
+    for(let i=0;i<5;i++){x.fillStyle=i?'#7a8ea6':'#c08a1e';x.font=f(900,18);x.fillText(i+1+'',18,78+i*32);x.fillStyle='rgba(60,70,80,.35)';x.fillRect(44,66+i*32,w-64-i*12,6);}},'#e0c23d');
+  paper(616,98,140,170,-.05,'#fbfaf6',()=>{const gr=x.createLinearGradient(0,12,0,120);gr.addColorStop(0,'#8ec5e8');gr.addColorStop(1,'#d9eef9');x.fillStyle=gr;x.fillRect(12,12,116,108);
+    x.fillStyle='#4f8f45';x.beginPath();x.moveTo(12,120);x.lineTo(50,78);x.lineTo(84,104);x.lineTo(110,86);x.lineTo(128,100);x.lineTo(128,120);x.fill();
+    for(const[cx,col]of[[44,'#cf3626'],[70,'#2b6cb0'],[96,'#e0c23d']]){x.fillStyle=col;x.fillRect(cx-6,98,12,18);x.fillStyle='#f1c9a5';x.beginPath();x.arc(cx,92,6,0,7);x.fill();}
+    x.fillStyle='#2a3036';x.font=f(800,16);x.textAlign='center';x.fillText('워크숍 단체사진',70,150);},'#cf3626');
+  paper(782,84,184,232,.05,'#d8ecf7',(w)=>{x.fillStyle='#2b4a6b';x.font=f(900,22);x.fillText('이번 주 점심',16,40);x.font=f(700,15);
+    ['월  김치찌개','화  돈까스','수  비빔밥','목  짜장면','금  ???'].forEach((t,i)=>x.fillText(t,18,76+i*30));},'#3f8f5f');
+  paper(140,350,110,40,.02,'#fbfaf6',()=>{x.fillStyle='#2a3036';x.font=f(800,14);x.fillText('동호회 모집',14,26);},'#8e5c8a');
+  paper(800,334,150,52,-.03,'#f7dc6f',()=>{x.fillStyle='#4a3a12';x.font=f(800,15);x.fillText('커피는 셀프 ☕',14,32);},'#cf3626');
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;return t;
+}
+function noticeBoard(g,b){
+  const p=new THREE.Group();p.position.set(b.x*U,2.32,.02);p.rotation.x=-.42;g.add(p);   // hinged at the top edge on the wall
+  part(p,BOARD_W+.16,BOARD_H+.16,.08,'#6b4a2e',0,-BOARD_H/2,.04);
+  const face=new THREE.Mesh(new THREE.PlaneGeometry(BOARD_W,BOARD_H),ownMat(new THREE.MeshLambertMaterial({map:boardTex()})));face.position.set(0,-BOARD_H/2,.085);p.add(face);
+  for(const sx of[-1,1])part(p,.04,.3,.04,'#4b555d',sx*(BOARD_W/2-.3),.05,-.02);   // hanging wires
+}
 function obMesh(g,o,f){
   const k=o.k,x=o.x,y=o.y,w=o.w,h=o.h,mx=x+w/2,my=y+h/2;
   switch(k){
@@ -380,8 +420,10 @@ function pantryProps(g){
   for(let i=0;i<4;i++){const s=new THREE.Mesh(GEO.sph,lam(['#e5483a','#e0c23d','#3fbf6a','#e5483a'][i]));s.scale.setScalar(.06);s.position.set(K(910)*U+i*.09,1.02,K(30)*U+(i%2)*.06);g.add(s);}
 }
 function lobbyProps(g){
-  const sign=textPlane('OFFICE ROYALE',420,70,null,'#2a3036',DF(54));onBackWall(g,sign,FW/2,1.75);
-  const sub=textPlane('인사평가 서바이벌',300,26,null,'#5d666e',F(800,18));onBackWall(g,sub,FW/2,1.24);sub.position.z=.16; // in front of the chair rail, or the rail z-fights it
+  const sign=textPlane('OFFICE ROYALE',420,70,null,'#2a3036',DF(54));onBackWall(g,sign,FW/2,1.7);
+  const sub=textPlane('인사평가 서바이벌',300,26,null,'#5d666e',F(800,18));onBackWall(g,sub,FW/2,.55);sub.position.z=.16; // on the lower panel under the chair rail, clear of the sign above it
+  /* the empty parts of either plate must not hide the other: drawn first, the subtitle cut off the bottom of the sign */
+  for(const m of[sign,sub])m.material.depthWrite=false;sub.renderOrder=1;
   /* revolving door at the front entrance */
   const rv=new THREE.Group();rv.position.set(DOOR.x*U,0,(FH+20)*U);
   const glass=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.1,2.2,24,1,true,0,Math.PI*2),ownMat(new THREE.MeshLambertMaterial({color:'#c8d7e1',transparent:true,opacity:.35,depthWrite:false,side:THREE.DoubleSide})));glass.position.y=1.1;rv.add(glass);
@@ -390,6 +432,7 @@ function lobbyProps(g){
   /* info screen at the reception */
   const by=K(560)+8,bh=1.0;bx(g,K(550)-49,by-3,98,3,1.12,bh+.08,lam('#1d2328'),false);
   for(const sx of[-34,34])bx(g,K(550)+sx-2,by-3,4,3,1.05,.08,lam('#5d666e'),false);   // framed board on two short feet on the desk top
+  noticeBoard(g,FLOORS[0].spots.board);
   const scr=textPlane('방문 등록\n1F 안내데스크',90,34,'#2b4a6b','#e8f1fb',F(800,11));scr.position.set(K(550)*U,1.16+bh/2,by*U+.01);g.add(scr);
 }
 function execProps(g){
@@ -472,7 +515,7 @@ function clearSpot(fl,x,y,r){
 function wallDecor(g,f,fl){
   if(f===ROOF)return;
   /* keep plants out from in front of posters, the clock and the whiteboard */
-  const boards=f===0?[]:[[480,0,70],[1050,0,70],[770,0,40]];if(f>0&&f<5)boards.push([0,330,110]);
+  const boards=f===0?[[FW/2,0,230],[FLOORS[0].spots.board.x,0,BOARD_W/U/2+30]]:[[480,0,70],[1050,0,70],[770,0,40]];if(f>0&&f<5)boards.push([0,330,110]);
   const blocksBoard=(x,y)=>boards.some(([bx0,by0,r])=>by0===0?y<60&&Math.abs(x-bx0)<r:x<60&&Math.abs(y-by0)<r);
   const tryPlant=(x,y,s)=>{if(clearSpot(fl,x,y,22)&&!blocksBoard(x,y)){plantAt(g,x,y,s);return true;}return false;};
   /* between the windows on the back wall, then down both side walls */
@@ -728,15 +771,27 @@ function makeChar(color,kind,seed,outfit){
    개발 = a laptop tucked flat under the left arm, 마케팅 = a megaphone pointed forward, 인사 = a clipboard held up
    in front of the chest: three different silhouettes, all in object colours so they never clash with the rank colours.
    Chunky so they read from the quarter view; attached to the rig so they swing with the arms. */
-const PROP_G={horn:new THREE.CylinderGeometry(.13,.045,.3,14,1,true),grip:new THREE.CylinderGeometry(.03,.03,.12,8)};
+const PROP_G={horn:new THREE.CylinderGeometry(.13,.045,.3,14,1,true),grip:new THREE.CylinderGeometry(.03,.03,.12,8),
+  band:new THREE.TorusGeometry(.42,.042,10,32,Math.PI),cap:new THREE.CylinderGeometry(1,1,1,20)};
+/* 개발 also wears a headset: the laptop alone is hard to spot. One chunky cream band that hugs the hair (light, so it
+   shows on dark hair from above), round cream ear cups with a slightly darker cap on the outside, a grey cushion against the head */
+function headset(R){
+  const g=new THREE.Group(),M=(geo,c,x,y,z)=>{const m=new THREE.Mesh(geo,lam(c));m.position.set(x,y,z);m.castShadow=true;g.add(m);return m;};
+  M(PROP_G.band,'#f3f1ea',0,0,0).scale.set(1,.96,1.15);
+  for(const s of[-1,1]){M(CG.ball,'#f3f1ea',s*.44,-.05,0).scale.set(.07,.125,.12);
+    const cap=M(PROP_G.cap,'#dcd7cb',s*.5,-.05,0);cap.rotation.z=Math.PI/2;cap.scale.set(.085,.02,.085);
+    M(CG.ball,'#8a929a',s*.395,-.05,0).scale.set(.03,.11,.105);}
+  g.position.set(0,.2,-.03);R.head.add(g);return g;
+}
 function teamProp(m,team){
   const u=m.userData;if(u.team===team)return;u.team=team;
   if(u.prop){u.prop.parent&&u.prop.parent.remove(u.prop);u.prop=null;}
+  if(u.prop2){u.prop2.parent&&u.prop2.parent.remove(u.prop2);u.prop2=null;}
   if(!team)return;const R=u.rig,g=new THREE.Group(),M=(geo,c,x,y,z)=>{const o=new THREE.Mesh(geo,lam(c));o.position.set(x,y,z);o.castShadow=true;g.add(o);return o;};
   if(team==='dev'){const lid=M(GEO.box,'#c3c9cd',0,0,0);lid.scale.set(.035,.3,.42);lid.material=lam('#c3c9cd',{metalness:.5,roughness:.35});
     const base=M(GEO.box,'#aeb4b9',-.035,0,0);base.scale.set(.03,.3,.42);base.material=lam('#aeb4b9',{metalness:.5,roughness:.35});
     const glow=M(GEO.box,'#dfe9f2',.019,0,0);glow.scale.set(.004,.1,.1);glow.material=lam('#dfe9f2',{emissive:'#dfe9f2',emissiveIntensity:.6});
-    g.position.set(.075,-.17,.02);R.armL.add(g);}
+    g.position.set(.075,-.17,.02);R.armL.add(g);u.prop2=headset(R);}
   else if(team==='mkt'){g.scale.setScalar(1.3);const h=M(PROP_G.horn,'#fbfaf6',0,0,.18);h.rotation.x=Math.PI/2;h.material=lam('#fbfaf6',{side:THREE.DoubleSide});
     const r=M(GEO.box,'#e0603d',0,0,.06);r.scale.set(.1,.1,.05);M(PROP_G.grip,'#2a2d31',0,-.07,.04);
     g.position.set(0,-.3,.05);R.armL.add(g);}
@@ -814,6 +869,26 @@ function makeItem(it){
   g.add(new THREE.Mesh(haloGeo,basic(c,{transparent:true,opacity:.24,depthWrite:false,blending:THREE.AdditiveBlending})));
   return g;
 }
+/* spilled water (청소 아주머니's wet floor): a few shapes drawn once, a pool with runs and stray drops;
+   each puddle picks one and a turn from where it lies, so the same spill looks the same to everyone */
+const PUDDLE_TEX=[0,1,2,3].map(v=>{
+  const S=128,c=document.createElement('canvas');c.width=c.height=S;const x=c.getContext('2d');
+  const r=k=>{const h=Math.sin((v+1)*91.7+k*12.9898)*43758.5453;return h-Math.floor(h);};
+  const blob=(cx,cy,R,k)=>{x.beginPath();for(let i=0;i<=48;i++){const a=i/48*Math.PI*2,
+    rr=R*(1+.16*Math.sin(a*2+r(k)*6)+.1*Math.sin(a*3+r(k+1)*6)+.05*Math.sin(a*6+r(k+2)*6)),px=cx+Math.cos(a)*rr,py=cy+Math.sin(a)*rr;i?x.lineTo(px,py):x.moveTo(px,py);}
+    x.closePath();x.fill();};
+  x.fillStyle='#fff';blob(64,64,30,0);
+  for(let i=0;i<3;i++){const a=r(10+i)*Math.PI*2,d=22+r(20+i)*10;blob(64+Math.cos(a)*d,64+Math.sin(a)*d,10+r(30+i)*9,40+i*3);}   // runs off the main pool
+  for(let i=0;i<5;i++){const a=r(50+i)*Math.PI*2,d=44+r(60+i)*14;blob(64+Math.cos(a)*d,64+Math.sin(a)*d,1.8+r(70+i)*3,80+i*3);}   // stray drops
+  /* water colour over the shape only: clearer in the middle, a deeper rim, and a glint */
+  x.globalCompositeOperation='source-atop';
+  const g=x.createRadialGradient(58,58,4,64,64,62);g.addColorStop(0,'#cfeaf8');g.addColorStop(.55,'#a6d4f0');g.addColorStop(1,'#6fafdc');x.fillStyle=g;x.fillRect(0,0,S,S);
+  x.strokeStyle='rgba(255,255,255,.85)';x.lineCap='round';x.lineWidth=3;x.beginPath();x.arc(60,60,17,Math.PI*1.1,Math.PI*1.45);x.stroke();
+  x.lineWidth=2;x.beginPath();x.arc(60,60,11,Math.PI*1.15,Math.PI*1.3);x.stroke();
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t;});
+const puddleGeo=new THREE.PlaneGeometry(1,1);
+function puddle(w){const h=Math.abs(Math.round(w.x*7+w.y*13)),m=new THREE.Mesh(puddleGeo,new THREE.MeshBasicMaterial({map:PUDDLE_TEX[h%4],transparent:true,opacity:0,depthWrite:false}));
+  m.rotation.x=-Math.PI/2;m.rotation.z=(h%360)*Math.PI/180;return m;}
 function flatDisc(color,op){const m=new THREE.Mesh(GEO.disc,basic(color,{transparent:true,opacity:op,depthWrite:false}));m.rotation.x=-Math.PI/2;return m;}
 function makeTask(t){
   const g=new THREE.Group();
@@ -941,12 +1016,15 @@ function nameTag(x,y,name,a,bg,fg){
 }
 function outlined(t,x,y,font,color){ctx.font=font;x=edgeX(x,ctx.measureText(t).width+6);ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='rgba(251,250,246,.95)';ctx.strokeText(t,x,y);ctx.fillStyle=color;ctx.fillText(t,x,y);ctx.textAlign='left';}
 function bubble(text,x,y,color,alpha){
-  ctx.font=F(800,13);const w=Math.min(240*UIS,ctx.measureText(text).width+20),h=26*UIS,c=color&&color!=='#1d2328'?color:'#3d4a54';
+  ctx.font=F(800,13);let lines=[text];
+  if(ctx.measureText(text).width>220*UIS){const sp=[...text.matchAll(/ /g)].map(m=>m.index);   // long lines break at the space nearest the middle
+    if(sp.length){const i=sp.reduce((b,v)=>Math.abs(v-text.length/2)<Math.abs(b-text.length/2)?v:b);lines=[text.slice(0,i),text.slice(i+1)];}}
+  const w=Math.min(240*UIS,Math.max(...lines.map(l=>ctx.measureText(l).width))+20),h=(lines.length*16+10)*UIS,c=color&&color!=='#1d2328'?color:'#3d4a54';
   const ax=x;x=edgeX(x,w); // the tail stays over the speaker
   ctx.globalAlpha=alpha;ctx.fillStyle='rgba(255,255,255,.97)';rr(x-w/2,y-h,w,h,12);ctx.fill();ctx.strokeStyle=c;ctx.lineWidth=2;ctx.stroke();
   ctx.beginPath();ctx.moveTo(ax-7,y-1);ctx.lineTo(ax,y+8);ctx.lineTo(ax+7,y-1);ctx.closePath();ctx.fill();
   ctx.beginPath();ctx.moveTo(ax-7,y);ctx.lineTo(ax,y+8);ctx.lineTo(ax+7,y);ctx.stroke();
-  ctx.fillStyle='#1d2328';ctx.textAlign='center';ctx.fillText(text,x,y-h/2+5*UIS,w-12);ctx.textAlign='left';ctx.globalAlpha=1;
+  ctx.fillStyle='#1d2328';ctx.textAlign='center';lines.forEach((l,i)=>ctx.fillText(l,x,y-h+(i*16+18)*UIS,w-12));ctx.textAlign='left';ctx.globalAlpha=1;
 }
 function glyph(k,x,y,s){
   const it=ITEMS[k];ctx.fillStyle=it.c;rr(x-s/2,y-s/2,s,s,s*.24);ctx.fill();ctx.strokeStyle='#fbfaf6';ctx.lineWidth=2;ctx.stroke();
@@ -970,7 +1048,7 @@ function render(dt){
   const zoom=VW<VH?1.4:VW<700?1.15:1,sx=shake>0?(Math.random()-.5)*.35:0,sz=shake>0?(Math.random()-.5)*.35:0;
   cam3.position.set(cam.x*U+sx,16.5*zoom,cam.y*U+10.5*zoom+sz);
   /* at my desk the camera glides down into my eyes, looking at the monitor (the work itself is the #desk panel) */
-  const fpOn=running&&me.alive&&!!me.desk&&!!me.sit&&me.f===f;if(fpOn)fpSeat=me.sit;
+  const fpOn=(running||G.plaza)&&me.alive&&!!me.desk&&!!me.sit&&me.f===f;if(fpOn)fpSeat=me.sit;
   fpK+=((fpOn?1:0)-fpK)*Math.min(1,dt*5);if(fpK<.002||!fpSeat||fpSeat.f!==f)fpK=0;
   if(fpK>0){const s=fpSeat,e=fpK*fpK*(3-2*fpK),dx=Math.cos(s.face),dy=Math.sin(s.face);
     fpEye.set((s.x-dx*6)*U,1.42,(s.y-dy*6)*U);fpLook.set((s.x+dx*64)*U,1.15,(s.y+dy*64)*U);
@@ -1031,7 +1109,7 @@ function render(dt){
   /* items, traps, wet, tasks, drops */
   syncSet(itemM,G.items.filter(i=>i.f===f),makeItem,(it,m)=>{m.position.set(it.x*U,.5+Math.sin(G.t*4+it.x)*.07,it.y*U);m.children[0].rotation.y+=dt*1.4;m.children[1].scale.setScalar(1+Math.sin(G.t*4+it.x)*.14);});
   syncSet(trapM,G.traps.filter(t=>t.f===f),()=>flatDisc('#6b4a2e',.6),(t,m)=>{m.scale.set(26*U,17*U,1);m.position.set(t.x*U,.025,t.y*U);});
-  syncSet(wetM,G.wet.filter(w=>w.f===f),()=>flatDisc('#78b9e6',.5),(w,m)=>{m.scale.set(34*U,22*U,1);m.position.set(w.x*U,.022,w.y*U);m.material.opacity=Math.min(1,(18-w.t)/3)*.5;});
+  syncSet(wetM,G.wet.filter(w=>w.f===f),puddle,(w,m)=>{const k=Math.min(1,.55+w.t*1.5)*120*U;m.scale.set(k,k,1);m.position.set(w.x*U,.022,w.y*U);m.material.opacity=Math.min(1,(18-w.t)/3)*.75;}); // spreads out as it lands
   syncSet(taskM,G.tasks.filter(t=>t.f===f),makeTask,(t,m)=>{const c=t.by===me?(t.ready?'#2f9e57':'#4f93e0'):t.by?'#9aa3ab':t.ready?'#2f9e57':'#f3d77a';for(const ch of m.children)ch.material.color.set(c);});
   syncSet(dropM,G.drops.filter(d=>d.f===f),()=>{const m=new THREE.Mesh(GEO.box,lam('#fbfaf6'));m.scale.set(.32,.05,.42);m.castShadow=true;return m;},(d,m)=>{m.position.set(d.x*U,.04,d.y*U);m.rotation.y=.3;});
   if(G.cake&&G.cake.f===f){if(!cakeM){cakeM=new THREE.Group();const b=new THREE.Mesh(GEO.cyl,lam('#f6d3dc'));b.scale.set(.38,.32,.38);b.position.y=.16;b.castShadow=true;cakeM.add(b);
@@ -1073,7 +1151,7 @@ function render(dt){
       ctx.fillStyle='#cf3626';ctx.fillRect(s[0]-30,s[1]+8,60*(1-dv.t/20),4);}}}
   /* the stall: a sign over the toilet, or how long until my phone is charged again */
   {const sp=f!==ROOF&&FLOORS[f].spots.toilet;if(sp&&!(me.wc&&me.f===f)){const p=scr(sp.x,sp.y,1.5);if(p){const busy=G.actors.some(o=>o.wc&&o.f===f);
-    tag(p[0],p[1],busy?'🚽 사용 중':me.wcCd>0?`🚽 폰 충전 중 ${Math.ceil(me.wcCd)}초`:'🚽 화캉스하기',busy||me.wcCd>0?'rgba(93,102,110,.9)':'#2f9e57','#fbfaf6',11);}}}
+    tag(p[0],p[1],busy?'🚽 사용 중':me.wcCd>0?`🚽 폰 충전 중 ${Math.ceil(me.wcCd)}초`:'🚽 화캉스 즐기기',busy||me.wcCd>0?'rgba(93,102,110,.9)':'#2f9e57','#fbfaf6',11);}}}
   for(const sm of seatMs){const s=sm.s;if(s.owner===me&&s.occ!==me){const p=scr(s.x,s.y,1.25);if(p)tag(p[0],p[1],'내 자리','#2b6cb0','#fbfaf6',11);}}
   for(const t of G.tasks){if(t.f!==f)continue;
     const ix=t.kind==='copy'||t.kind==='print'?t.x+K(52):t.x,iy=t.zone?t.y:t.y-30;const p=scr(ix,iy,1.7+Math.sin(G.t*4+t.id)*.08);if(!p)continue;
@@ -1116,6 +1194,9 @@ function render(dt){
     if(a.chan){const q=scr(a.x,a.y,.05);if(q){const kk=1-a.chan.t/a.chan.max;ctx.beginPath();ctx.arc(q[0],q[1],28,-Math.PI/2,-Math.PI/2+kk*Math.PI*2);ctx.strokeStyle=a===me?'#4f93e0':'#f3d77a';ctx.lineWidth=5;ctx.stroke();
       outlined(a.chan.max-a.chan.t<a.chan.tag?'사원증 태그':'이동 중',q[0],q[1]+44,F(800,10),'#1d2328');}}
   }
+  /* lobby: what E (the 💬 button on phones) does right here */
+  if(G.plaza&&PZ.boardNew&&!PZ.dress&&!(pzTarget()||{}).board){const b=FLOORS[0].spots.board,p=b&&scr(b.x,8,2.55);if(p)tag(p[0],p[1]-10+(reduceMotion?0:Math.sin(G.t*4)*3),'NEW!','#cf3626','#fbfaf6',13);}
+  if(G.plaza){const t=pzTarget();if(t&&!t.quiet){const p=scr(t.x,t.y,1.9);if(p)tag(p[0],p[1]-(t.bot?34:14),`${isTouch?'💬':'E'} ${t.label}`,'#1d2328','#fbfaf6');}}
   /* npc labels */
   for(const n of npcs){const p=scr(n.x,n.y,n.kind==='ceo'?2.0:1.8);if(!p)continue;
     if(n.kind==='desk'){if(n.ask&&n.job){tag(p[0],p[1]-6,`부탁 있어요 +${n.job.r}`,'#3f6f99','#fbfaf6');outlined('!',p[0],p[1]-26,DF(26),'#3f6f99');}continue;}
@@ -1172,7 +1253,7 @@ function render(dt){
     if(p.by!=null){const sp=typeof p.by==='string'?G.npcs.find(n=>n.id===p.by):G.actors.find(a=>a.id===p.by);
       if(sp){const m=(typeof p.by==='string'?npcM:actorM).get(sp);if(m&&!m.visible)continue;if(sp.f!==f)continue;x=sp.x;y=sp.y;}}
     const s=scr(x,y,1.75);if(!s)continue;
-    const a=p.t<.12?p.t/.12:p.t>2.0?Math.max(0,(2.4-p.t)/.4):1;bubble(p.text,s[0],s[1]-40,p.color,a);}
+    const L=p.life||2.4,a=p.t<.12?p.t/.12:p.t>L-.4?Math.max(0,(L-p.t)/.4):1;bubble(p.text,s[0],s[1]-40,p.color,a);}
   /* lunch: my team's ashtrays are marked; carrying lighters, an arrow points to the nearest one */
   if(f===ROOF&&G.lunch&&me.alive&&me.f===ROOF&&me.side){const col=me.side==='L'?'#2b7fc4':'#c0452a',ash=ashOf(me.side);
     for(const a of ash){const p=scr(a.x,a.y,2.2);if(p)tag(p[0],p[1],'🔥 우리 재떨이',col,'#fbfaf6',11);}

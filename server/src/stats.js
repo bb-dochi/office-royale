@@ -80,6 +80,7 @@ export async function adminHTML(stats, q) {
   } else {
     const days = await stats.days(14), people = await stats.people(), rec = await stats.recent();
     const sort = q.get('sort') || 'last', ppl = people.sort((a, b) => sort === 'games' ? b.games - a.games : sort === 'time' ? b.sec - a.sec : b.last - a.last);
+    const nameOf = new Map(people.map(p => [p.uid, p.name])); // games keep the name used then; show who it is now
     const t = days[0], wk = days.slice(0, 7), wkPeople = new Set(wk.flatMap(d => d.people));
     const sum = (a, f) => a.reduce((s, d) => s + f(d), 0);
     body = `<div class="cards">
@@ -93,7 +94,7 @@ export async function adminHTML(stats, q) {
       <h3>사람별 <small>정렬: <a href="?sort=last">최근</a> · <a href="?sort=games">판 수</a> · <a href="?sort=time">플레이 시간</a></small></h3>
       <table><tr><th>사원명</th><th>판</th><th>플레이 시간</th><th>CEO</th><th>처음</th><th>마지막</th></tr>
       ${ppl.slice(0, 300).map(p => `<tr><td>${link(p.uid, p.name)}</td><td>${p.games}</td><td>${dur(p.sec)}</td><td>${p.wins}</td><td>${when(p.first)}</td><td>${when(p.last)}</td></tr>`).join('')}</table>
-      <h3>최근 판</h3><table>${GAME_HEAD(true)}${rec.slice(0, 50).map(g => gameRow(g, g => link(g.uid, g.name))).join('')}</table>`;
+      <h3>최근 판</h3><table>${GAME_HEAD(true)}${rec.slice(0, 50).map(g => gameRow(g, g => link(g.uid, nameOf.get(g.uid) || g.name))).join('')}</table>`;
   }
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <title>오피스 로얄 · 관리</title><style>

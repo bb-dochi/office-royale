@@ -52,6 +52,7 @@ const FLOORS=[];
   f.ob.push(O(120,470,110,40,'reception',0));f.spots.badge={x:175,y:530};
   f.ob.push(O(430,560,240,46,'reception',0));f.recep.push({x:550,y:532},{x:550,y:636});
   f.ob.push(O(300,180,40,40,'pillar'),O(700,180,40,40,'pillar'));
+  f.spots.board={x:818,y:62}; // 사내 게시판 on the cafe's back wall, left of the counter: the lobby reads update notes from it
   const cafeTable=(x,y)=>{f.ob.push(O(x,y,44,44,'rtable',0));let n=f.seats.filter(s=>s.dept==='카페').length;
     f.seats.push({f:0,x:x-18,y:y+22,face:0,dept:'카페',name:`카페 ${++n}번`,owner:null,occ:null},{f:0,x:x+62,y:y+22,face:Math.PI,dept:'카페',name:`카페 ${++n}번`,owner:null,occ:null});};
   cafeTable(820,190);cafeTable(950,190);cafeTable(820,290);cafeTable(950,290);

@@ -6,3 +6,6 @@
   Cache-Control: no-cache
 /css/*
   Cache-Control: no-cache
+# versioned in the file name, so it never changes
+/vendor/*
+  Cache-Control: public, max-age=31536000, immutable

@@ -141,23 +141,6 @@ function lunchBoard(me){
     $('lbX').innerHTML=(top.length?top.map((a,i)=>`<span class="${a===me?'me':''}">${i+1}등 ${a===me?'나':a.name} <em>${plate(a)}</em></span>`).join(''):'<span>아직 아무도 못 먹음</span>')+(top.includes(me)?'':`<span class="me">내 식판 <em>${plate(me)}</em></span>`);
     $('lbP').innerHTML=`🍱 배식대 원 안: 혼자면 2배, 맞으면 흘림 → <strong>1~3등 +${LUNCH.meal.prize.join('/+')}</strong>`;}
 }
-/* rule card: the first time I reach the roof in a lunch, goal / how / reward under the lunch board for 4 s (the CSS fades it).
-   It waits for the arrival banner ("연초파") to clear, so they are not on top of each other */
-let lcFor=null,lcEnd=0;
-function lunchCard(me){
-  const L=G&&G.lunch,el=$('lunchCard'),on=running&&me&&me.alive&&L&&L.kind!=='ladder'&&me.f===ROOF&&!G.tutorial;
-  if(!L)lcFor=null;
-  if(on&&lcFor!==L.kind&&$('cine').hidden){lcFor=L.kind;lcEnd=performance.now()+4000;const k=L.kind,E=isTouch?'상호작용':'E';
-    const R={lighter:{t:`🚬 라이터 쟁탈전 · 나는 ${me.side?teamOf(me.side):''}`,g:'떨어지는 라이터를 주워 우리 팀 재떨이에 넣기',
-        h:`한 번에 ${LUNCH.carry}개까지 · 맞으면 떨어뜨려요 · ${E}로 담배 연막`,r:`라이터를 더 많이 넣은 팀 전원 <strong>+${LUNCH.win}</strong>`},
-      bill:{t:'🧾 계산서 폭탄 돌리기',g:'끝날 때 계산서를 안 들고 있기',
-        h:`계산서를 들고 있으면 서류로 맞혀서 넘기기 · 넘긴 사람한테 ${LUNCH.bill.safe}초간은 못 돌려줌`,r:`들고 있으면 <u>-${LUNCH.bill.pay}</u> · 나머지 전원 <strong>+${LUNCH.bill.treat}</strong>`},
-      meal:{t:'🍱 오늘의 특식',g:'배식대 원 안에 서서 식판 채우기',
-        h:'혼자면 2배 빨리, 여럿이면 느리게 · 맞으면 흘려요 · 중간에 배식대가 옮겨가요',r:`식판 1~3등 <strong>+${LUNCH.meal.prize.join(' / +')}</strong>`}}[k];
-    if(R){$('lcT').textContent=R.t;$('lcL').innerHTML=`<dt>목표</dt><dd>${R.g}</dd><dt>방법</dt><dd>${R.h}</dd><dt>보상</dt><dd>${R.r}</dd>`;
-      const lb=$('lunchBoard');el.style.top=(lb.hidden?60:lb.getBoundingClientRect().bottom+10)+'px';el.hidden=false;}}
-  if(!el.hidden&&(!on||performance.now()>lcEnd))el.hidden=true;
-}
 /* coffee ladder: my group's ladder over the whole screen. Pick a lane (tap, or number keys), then every line is traced
    down at once and the one that lands on the cup buys. The HUD only ticks every 80ms (and online G.lunch.t only every
    snapshot), so the lines are drawn by a CSS animation from a local clock, and my own pick shows before the server echoes it */
@@ -206,7 +189,7 @@ let lastQ='';
 function questList(me){
   const Q=[];
   if(running&&me.alive&&!G.plaza){
-    if(!me.branch&&!G.lunch&&!G.tutorial&&me.jobs){const j=me.jobs,l=leadTeam(me);
+    if(!isTouch&&!me.branch&&!G.lunch&&!G.tutorial&&me.jobs){ // phones: the list is small, so no team preview thereconst j=me.jobs,l=leadTeam(me);
       Q.push({c:'#8a949c',h:'부서 발령',n:'사원 승진 때',t:`업무 ${j.dev} · 명중 ${j.mkt} · 응대 ${j.hr}`,bar:0,r:l?`→ ${teamShort(l)}팀`:''});}
     if(me.lighter>0)Q.push({c:'#e0603d',h:'라이터',t:`${me.lighter}개 → 우리 재떨이`,bar:me.lighter/LUNCH.carry,r:`+${me.lighter}점`});
     if(me.carry)Q.push({c:'#e0b52a',h:'배달',t:'출력물 → 결재함',bar:1,r:'+12'});
@@ -221,31 +204,34 @@ function questList(me){
 /* 화캉스 phone: the coin chart, redrawn every frame from the round's clock (the crash time stays on the server) */
 const PH={trail:[]};
 function phoneHud(me){
-  const w=running&&me&&me.alive&&me.wc,el=$('phone');
+  const w=(running||G.plaza)&&me&&me.alive&&me.wc,el=$('phone');
   if(document.body.classList.contains('phoning')!==!!w)document.body.classList.toggle('phoning',!!w);
   if(!w){if(!el.hidden){el.hidden=true;PH.trail=[];}return;}
   el.hidden=false;
-  const m=wcMult(w.t),crash=w.res==='crash',cash=w.res==='cash';
-  $('pMult').textContent=crash?'폭락':`×${m.toFixed(2)}`;$('pMult').className=crash?'bad':cash?'ok':'';
-  $('pGain').textContent=crash?`고과 -${WC.crash}`:cash?`익절 +${w.gain}`:`지금 팔면 +${wcGain(m)}`;
+  const m=w.m??2,crash=w.res==='crash',cash=w.res==='cash',g=wcGain(m),sg=v=>v>=0?`+${v}`:`${v}`;
+  $('pMult').textContent=crash?'폭락':`×${m.toFixed(2)}`;$('pMult').className=crash||m<1?'bad':cash?'ok':'';
+  $('pGain').textContent=crash?`고과 -${WC.crash}`:cash?`${w.gain>=0?'익절':'손절'} ${sg(w.gain)}`:`지금 팔면 ${sg(g)}`;
   $('pTime').textContent=w.res?'':`${w.t.toFixed(1)}초`;
-  $('pRes').textContent=crash?'떡락… 존버는 실패':cash?'수익 실현! 퇴근각':'';$('pRes').className='pres '+(crash?'bad':cash?'ok':'');
+  $('pRes').textContent=crash?'떡락… 존버는 실패':cash?(w.gain>=0?'수익 실현! 퇴근각':'손절… 다음엔 존버'):'';$('pRes').className='pres '+(crash?'bad':cash&&w.gain>=0?'ok':cash?'bad':'');
   $('pCash').disabled=!!w.res;
-  /* chart: the real curve plus a little cosmetic wobble; a crash drops the line off the bottom in red */
-  const c=$('pChart').getContext('2d'),W=240,H=150,T=Math.max(3,w.t+.6),top=Math.max(2.2,wcMult(T)*1.08);
-  const X=t=>8+t/T*(W-16),Y=v=>H-10-(v-1)/(top-1)*(H-24),wob=t=>wcMult(t)*(1+.05*Math.sin(t*11)+.03*Math.sin(t*29+1));
+  /* chart: the price as it came in (the rules move it every 0.1 s; online it arrives with the snapshots),
+     a dashed ×1 line below which selling is a loss, and a crash drops the line off the bottom in red */
+  const P=PH.trail;if(!P.length||w.t<P[P.length-1].t-.05)P.length=0;if(!P.length||w.t>P[P.length-1].t)P.push({t:w.t,m});
+  const c=$('pChart').getContext('2d'),W=240,H=150,T=Math.max(3,w.t+.6),top=Math.max(3,...P.map(p=>p.m))*1.1,bot=WC.lo;
+  const X=t=>8+t/T*(W-16),Y=v=>H-10-(v-bot)/(top-bot)*(H-24);
   c.clearRect(0,0,W,H);c.strokeStyle='rgba(255,255,255,.08)';c.lineWidth=1;for(let i=1;i<4;i++){c.beginPath();c.moveTo(0,H*i/4);c.lineTo(W,H*i/4);c.stroke();}
-  c.beginPath();for(let t=0;t<=w.t;t+=.04)c[t?'lineTo':'moveTo'](X(t),Y(wob(t)));
-  if(crash){c.lineTo(X(w.t)+6,H);c.strokeStyle='#ff5a4a';}else c.strokeStyle='#3fd17a';
+  c.setLineDash([4,4]);c.strokeStyle='rgba(255,120,110,.45)';c.beginPath();c.moveTo(0,Y(1));c.lineTo(W,Y(1));c.stroke();c.setLineDash([]);
+  c.beginPath();P.forEach((p,i)=>c[i?'lineTo':'moveTo'](X(p.t),Y(p.m)));
+  const up=m>=2;if(crash){c.lineTo(X(w.t)+6,H);c.strokeStyle='#ff5a4a';}else c.strokeStyle=up?'#3fd17a':'#ff8a5a';
   c.lineWidth=2.5;c.lineJoin='round';c.stroke();
-  if(!crash){c.lineTo(X(w.t),H);c.lineTo(X(0),H);c.closePath();c.fillStyle='rgba(63,209,122,.14)';c.fill();
-    c.fillStyle='#fff';c.beginPath();c.arc(X(w.t),Y(wob(w.t)),3.5,0,7);c.fill();}
+  if(!crash){c.lineTo(X(w.t),H);c.lineTo(X(P[0].t),H);c.closePath();c.fillStyle=up?'rgba(63,209,122,.14)':'rgba(255,138,90,.14)';c.fill();
+    c.fillStyle='#fff';c.beginPath();c.arc(X(w.t),Y(m),3.5,0,7);c.fill();}
 }
 /* desk work screen: shown while the rules say I'm at my desk (the camera goes first-person in render) */
 let lastDesk='';
 const DK={U:'▲',D:'▼',L:'◀',R:'▶'};
 function deskHud(me){
-  const d=running&&me&&me.alive&&me.desk,el=$('desk');
+  const d=(running||G.plaza)&&me&&me.alive&&me.desk,el=$('desk');
   if(document.body.classList.contains('desking')!==!!d)document.body.classList.toggle('desking',!!d);
   if(!d){if(!el.hidden){el.hidden=true;lastDesk='';}return;}
   el.hidden=false;
@@ -322,7 +308,7 @@ function hud(dt){
   {const nx=RANKS.find(([t])=>t>me.peak);if(nx){const pv=[...RANKS].reverse().find(([t])=>t<=me.peak)[0],base=Math.max(pv,50);/* in 고과 from work: win back what was lost since the best, then the rest at this rank's PROMO_K rate */
     const need=Math.max(0,me.peak-me.g)+(nx[0]-me.peak)/(PROMO_K[me.rank]??1);$('promoT').textContent=`${nx[1]}까지 실적 +${Math.ceil(need)}`;$('promoB').style.width=Math.max(0,Math.min(100,(me.peak-base)/(nx[0]-base)*100))+'%';}else{$('promoT').textContent='최고 직급';$('promoB').style.width='100%';}}
   fxBar(me);
-  statusBar(me);gearSlots(me);deskHud(me);questList(me);lunchBoard(me);lunchCard(me);ladderBox(me);
+  statusBar(me);gearSlots(me);deskHud(me);questList(me);lunchBoard(me);ladderBox(me);
   $('mFloor').textContent=viewF>=0?(viewF===ROOF?'옥상':`${FLOORS[viewF].short} ${FLOORS[viewF].name.replace(/^\d층 /,'')}`):'';
   {const fh=floorsHTML();if(fh!==lastFloors){lastFloors=fh;$('tower').innerHTML=fh;}}
   $('mTap').textContent=`${isTouch?'탭해서':'Tab'} 닫기`;

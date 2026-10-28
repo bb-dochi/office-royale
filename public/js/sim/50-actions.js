@@ -9,8 +9,10 @@ function throwPaper(a,ang){
   /* a human holding an attack item fires it with the attack button (bots decide in botItems) */
   if(a.isPlayer&&a.items.length&&!staple){a.face=ang;a.cd=a.lastCd=base;useItem(a,0,ang);return true;}
   if(staple)a.ammo--;
+  const sp=staple?720:560,rng=(staple?300:340)*(a.branch==='mkt'?1+.25*teamK(a):1); // 마케팅: 멀리 던짐 (대리 +12%, 팀장 +25%)
+  if(a.isPlayer)ang=leadAim(a,ang,sp,rng);
   a.cd=base*(staple?.35:1);a.lastCd=a.cd;a.face=ang;a.cloakT=0;
-  G.proj.push({f:a.f,x:a.x+Math.cos(ang)*(R+4),y:a.y+Math.sin(ang)*(R+4),ox:a.x,oy:a.y,dx:Math.cos(ang),dy:Math.sin(ang),d:0,o:a,spin:Math.random()*6,staple,sp:staple?720:560,rng:(staple?300:340)*(a.branch==='mkt'?1+.25*teamK(a):1)}); // 마케팅: 멀리 던짐 (대리 +12%, 팀장 +25%)
+  G.proj.push({f:a.f,x:a.x+Math.cos(ang)*(R+4),y:a.y+Math.sin(ang)*(R+4),ox:a.x,oy:a.y,dx:Math.cos(ang),dy:Math.sin(ang),d:0,o:a,spin:Math.random()*6,staple,sp,rng});
   if(staple&&a.ammo===0)tell(a,'스테이플러를 다 썼다');
   for(const n of watchers(a))if(!immune(a,n)&&sees(n,a)){caught(a,n,'act');break;}
   return true;
@@ -23,6 +25,21 @@ function visibleTo(a,o){
   if(ally(a,o))return false;
   const d=dist(a,o);if(o.sit&&o.sit.owner===o&&d>150)return false;
   return true;
+}
+/* a person's throw bends a little toward where the target will be when the paper gets there (bots strafe the whole fight,
+   so a paper aimed at where they are now always misses). Only the one target nearest the aimed direction, inside 10°,
+   in range and in a clear line, counts; the bend is at most 9° on every level (a bot strafing at full speed needs about 15°;
+   how hard the bots are to hit comes from how well they dodge, see DIFF), and someone standing still gets none */
+const AIM_CONE=10*Math.PI/180,AIM_BEND=9*Math.PI/180;
+function leadAim(a,ang,sp,rng){
+  let best=null,bd=AIM_CONE;
+  for(const o of G.actors){if(!visibleTo(a,o))continue;const d=dist(a,o);if(d>rng)continue;
+    const off=Math.abs(angDiff(Math.atan2(o.y-a.y,o.x-a.x),ang));if(off<bd&&shotLos(a.f,a.x,a.y,o.x,o.y)){bd=off;best=o;}}
+  if(!best||locked(best)||best.sit)return ang;
+  const vx=best.vx||0,vy=best.vy||0;if(Math.hypot(vx,vy)<20)return ang;
+  let t=dist(a,best)/sp;for(let i=0;i<2;i++)t=Math.hypot(best.x+vx*t-a.x,best.y+vy*t-a.y)/sp; // where it will be when the paper arrives
+  const want=Math.atan2(best.y+vy*t-a.y,best.x+vx*t-a.x),bend=Math.max(-AIM_BEND,Math.min(AIM_BEND,angDiff(want,ang)));
+  return ang+bend;
 }
 function nearest(a,range,need){
   let best=null,bd=range;
@@ -182,9 +199,12 @@ function moveActor(a,vx,vy,dt){
 const spd=a=>a.speed*(a.speedT>0?1.45:1)*(a.slowT>0?.5:1)*(a.sprint?1.5:1);
 const onWet=a=>a.slipT>0||!a.cleanFriend&&G.wet.some(w=>w.f===a.f&&Math.hypot(w.x-a.x,w.y-a.y)<34);
 function drive(a,dx,dy,dt){
-  const s=spd(a),tx=dx*s,ty=dy*s;
+  const s=spd(a),tx=dx*s,ty=dy*s,x0=a.x,y0=a.y;
   if(onWet(a)){const k=Math.min(1,dt*1.6);a.vx+=(tx-a.vx)*k;a.vy+=(ty-a.vy)*k;}else{a.vx=tx;a.vy=ty;}
   moveActor(a,a.vx,a.vy,dt);
+  /* how it has really been moving lately (walls included), for bots to lead it: smoothed over ~1/8 s, so someone
+     weaving left-right every few frames reads as standing still instead of fooling the prediction */
+  if(dt>0){const k=Math.min(1,dt*8);a.svx=(a.svx||0)+((a.x-x0)/dt-(a.svx||0))*k;a.svy=(a.svy||0)+((a.y-y0)/dt-(a.svy||0))*k;}
 }
 function openDoor(a){
   const d=G.doors[a.f];if(!d||!d.v)return;const v=d.v;d.v=null;d.cd=rnd(18,32);
@@ -239,20 +259,22 @@ function deskStepA(a,dt){
   if(d.t<=0)deskDone(a,false);
 }
 /* ================= 화캉스: the toilet stall's phone game =================
-   Sit on the toilet and a coin chart starts climbing. Cash out (E) whenever you like: the longer you hold, the
-   bigger the payout, but it crashes at a random moment (-3). One round per visit, then the phone needs a rest.
+   Sit on the toilet and a coin chart starts at ×2 and wanders up and down (a random walk, a little more up than down).
+   Cash out (E) whenever you like for what the price is then: selling at once pays only +1, ×4 +8, ×6 +15, below ×1 you
+   lose a little. It crashes at a random moment (-4) and cashes itself out at 8 s. Holding to about ×4-5 pays best,
+   about what the old climbing chart did (+3 a round), so there is a reason to sit through the swings. One round per visit, then the phone needs a rest.
    You are in the restroom, so nobody can hit you meanwhile; the restroom's 10 s rule still applies. */
-const WC={cd:40,max:6,crash:3,wait:1.3};
-const wcMult=t=>1+t*.45+t*t*.09;                       // the chart: ×1 at the start, about ×4 at 4 s
-const wcGain=m=>Math.min(12,Math.round(1.5+(m-1)*3));  // +4 at ×1.8, +7 at ×2.8, capped at +12
+const WC={cd:40,max:8,crash:4,wait:1.3,step:.1,drift:.01,vol:.15,lo:.5,hi:6};
+const wcGain=m=>m<1?(m<.75?-2:-1):Math.min(15,Math.max(0,Math.round((m-1.7)*3.5))); // ×2 +1, ×4 +8, ×6 +15
+const gauss=()=>Math.sqrt(-2*Math.log(1-Math.random()))*Math.cos(2*Math.PI*Math.random());
 const wcSpot=a=>a.f>=0&&a.f!==ROOF?FLOORS[a.f].spots.toilet:null;
 function startWc(a){
   const sp=wcSpot(a);if(!sp||a.wc||a.wcCd>0||a.sit||G.actors.some(o=>o!==a&&o.wc&&o.f===a.f))return false;
   a.x=sp.x;a.y=sp.y;a.vx=a.vy=0;a.path=[];a.face=Math.PI/2;
-  a.wc={t:0,crashAt:1.2-Math.log(1-Math.random())*2.8,res:'',resT:0,gain:0,end:0};return true;
+  a.wc={t:0,m:2,nx:WC.step,crashAt:1.5-Math.log(1-Math.random())*3,res:'',resT:0,gain:0,end:0};return true;
 }
 function wcDone(a,res){const w=a.wc;w.res=res;w.resT=G.t;w.end=G.t+WC.wait;
-  if(res==='cash'){w.gain=wcGain(wcMult(w.t));gain(a,w.gain);pop(a.f,a.x,a.y-30,`+${w.gain} 익절!`,'#2f7d4f');}
+  if(res==='cash'){w.gain=wcGain(w.m);if(w.gain>=0){gain(a,w.gain);pop(a.f,a.x,a.y-30,`+${w.gain} 익절!`,'#2f7d4f');}else{dmg(a,-w.gain,'wc');pop(a.f,a.x,a.y-30,`손절 ${w.gain}`,'#cf3626');}}
   else if(res==='crash'){dmg(a,WC.crash,'wc');pop(a.f,a.x,a.y-30,`폭락 -${WC.crash}`,'#cf3626');}}
 function cashWc(a){if(a.wc&&!a.wc.res)wcDone(a,'cash');}
 function endWc(a){if(!a.wc)return;const w=a.wc;a.wc=null;if(w.res)a.wcCd=WC.cd;}
@@ -260,7 +282,8 @@ function wcStep(a,dt){
   const w=a.wc,sp=wcSpot(a);if(!sp||!a.inRest){a.wc=null;return;}
   a.x=sp.x;a.y=sp.y;
   if(w.res){if(G.t>=w.end)endWc(a);return;}
-  w.t+=dt;if(w.t>=w.crashAt)wcDone(a,'crash');else if(w.t>=WC.max)wcDone(a,'cash');
+  w.t+=dt;while(w.t>=w.nx){w.nx+=WC.step;w.m=Math.max(WC.lo,Math.min(WC.hi,w.m*Math.exp(WC.drift+WC.vol*gauss())));}
+  if(w.t>=w.crashAt)wcDone(a,'crash');else if(w.t>=WC.max)wcDone(a,'cash');
 }
 /* ================= player commands (shared by the browser and the room server) ================= */
 function useFloor(a,dir){if(a.sit)return;const p=padOf(a);if(!a.alive||!p)return;if(startChan(a,p,dir))tell(a,`${PADS[p].n} → ${FLOORS[a.f+dir].name}`);}
@@ -282,7 +305,7 @@ function callOptions(a){return[{key:'greet',t:'인사',s:'죄송합니다!'},a.d
 function contextAction(me){
   if(!me.alive||me.f<0||me.transit||locked(me)||me.chan)return null;
   if(me.f===ROOF&&roofLunch())return me.smokeCd>0?{label:`담배 ${Math.ceil(me.smokeCd)}초`,cls:'off',fn:()=>{}}:{label:'담배 피우기 (연막)',cls:'go',fn:()=>smoke(me)};
-  if(me.wc)return me.wc.res?null:{label:`익절! +${wcGain(wcMult(me.wc.t))}`,cls:'hot',fn:()=>cashWc(me)};
+  if(me.wc)return me.wc.res?null:{label:(g=>g>=0?`익절! +${g}`:`손절 ${g}`)(wcGain(me.wc.m)),cls:'hot',fn:()=>cashWc(me)};
   if(me.contact)return{label:`${bossTitle(me.contact.n)}께 인사!`,cls:'hot',fn:()=>greet(me)};
   if(me.quest)return{label:'신입 질문 답해주기 +2',cls:'hot',fn:()=>answerQuest(me)};
   if(!me.errand){const n=G.npcs.find(n=>n.kind==='desk'&&n.ask&&n.f===me.f&&dist(n,me)<70);if(n)return{label:`부탁 들어주기 +${n.job.r}`,cls:'go',fn:()=>acceptErrand(me,n)};}
@@ -304,7 +327,7 @@ function contextAction(me){
   {const sp=wcSpot(me);if(sp&&me.inRest&&dist(me,sp)<48){
     /* cls 'off': shown greyed out, the button and E do nothing */
     if(G.actors.some(o=>o!==me&&o.wc&&o.f===me.f))return{label:'변기 사용 중',cls:'off',fn:()=>{}};
-    return me.wcCd>0?{label:`폰 충전 중 · ${Math.ceil(me.wcCd)}초`,cls:'off',fn:()=>{}}:{label:'화캉스하기',cls:'go',fn:()=>startWc(me)};}}
+    return me.wcCd>0?{label:`폰 충전 중 · ${Math.ceil(me.wcCd)}초`,cls:'off',fn:()=>{}}:{label:'화캉스 즐기기',cls:'go',fn:()=>startWc(me)};}}
   const own=me.seats[me.f];
   if(own&&dist(me,own)<40&&!own.occ){
     if(me.deskCd>0)return{label:`내 자리 · ${Math.ceil(me.deskCd)}초 뒤 근무 가능`,cls:'',fn:()=>tell(me,`방금 근무했어요. ${Math.ceil(me.deskCd)}초 뒤에 다시 앉을 수 있어요`)};

@@ -187,8 +187,13 @@ $('specPrev').addEventListener('click',()=>specCycle(-1));
 $('specNext').addEventListener('click',()=>specCycle(1));
 $('specExit').addEventListener('click',specExit);
 
-let last=performance.now();
+let last=performance.now(),frameErr=0;
+/* the next frame is booked first, so one bad frame is logged and skipped instead of freezing the screen for good */
 function frame(now){
+  requestAnimationFrame(frame);
+  try{frameBody(now);}catch(e){if(frameErr++<3)console.error(e);}
+}
+function frameBody(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;
   shake=Math.max(0,shake-dt);
   /* hit-stop: in solo the rules crawl for a blink after a hit that involves me (online the server keeps time) */
@@ -199,7 +204,6 @@ function frame(now){
   juiceFrame(dt);
   render(dt);hud(dt);keybar();countdown();specHud();unstick(dt);
   {const pb=$('pauseBtn'),h=!canPause();if(pb.hidden!==h)pb.hidden=h;}
-  requestAnimationFrame(frame);
 }
 /* one line under the character at a time: a new line replaces the old one, except that an urgent (red) line
    is not pushed out by an ordinary one for its first 1.5 s, and repeats only refresh the timer */

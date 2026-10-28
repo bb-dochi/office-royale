@@ -6,6 +6,15 @@ const PZ={fits:new Map(),dress:false,on:false,ws:null,pid:null,others:new Map(),
 const EMOTES=['안녕하세요.','좋은 아침입니다.','집 가고 싶다..','배고프다..','점심 뭐 드세요?','커피 한잔 하실래요?','오늘도 야근인가요…','수고하셨습니다!','회의 몇 시였죠?','같이 출근하실 분~'];
 /* what the lobby bots mutter, one line every several seconds each */
 const BOT_LINES=['오늘 점심 뭐 먹지…','회의 몇 시였더라','커피 한 잔 해야겠다','퇴근까지 몇 시간 남았지','월요일 싫다…','보고서 아직 못 썼는데','팀장님 어디 가셨지?','주말만 기다린다','야근 각이다…','오늘도 무사히…'];
+/* 안내원 at the 1F 안내데스크: E gets a piece of advice at random, each one once before any comes round again */
+const GUIDE_TIPS=['신입 씨, 위층부터 올라가세요. 아래층부터 닫혀요!','대표님 보이면 꼭 먼저 인사하세요!','옆 팀 팀장님은 피하세요. 말씀이 엄청 길어요…',
+  '부장님 보이면 인사부터 하세요.','부장님 앞에선 던지지 마세요. 바로 걸려요!','청소 아주머니께 인사 잘해 두세요.',
+  '젖은 바닥에선 뛰지 마세요. 미끄러져요.','인턴 후배가 물어보면 친절하게 알려 주세요.','내 자리에 앉으면 업무를 할 수 있어요.',
+  '화장실에 너무 오래 숨어 있지 마세요.','화장실 변기에 앉으면 폰으로 화캉스를 즐길 수 있어요~','너무 노시면 업무 태만으로 찍혀요.',
+  '힘들면 커피 카트 근처로 가 보세요.','직급 높은 사람을 이기면 보상을 더 받아요.','곧 폐쇄되는 층의 업무는 보상이 커요.',
+  '고과 관리 잘하시고 동료들 조심하세요!'];
+const GUIDE_IDLE=['어서 오세요, 신입 씨!','모르는 거 있으면 물어보세요~','첫 출근이죠? 긴장 푸세요.','오늘도 파이팅하세요!'];
+const GUIDE_FIT={hair:'bun',hairC:'#1f1b1a',skin:'#fbd8bb',top:'vest',topC:'#2b4a6b',shirtC:'#f4f6f8',tie:'#d9a441',badge:true,glasses:false,bottom:'pants',bottomC:'#2b3a55'};
 const PZ_BASE=100000; // actor ids for real people, so every client builds the same outfit for the same person
 
 function plazaWorld(){
@@ -15,6 +24,9 @@ function plazaWorld(){
   PZ.bots=[];
   for(let i=0;i<5;i++){const p=randFree(0,60),b=mk(NAMES[(i*4+3)%NAMES.length],false,'봇',SHIRTS[(i*5+2)%SHIRTS.length],p);b.f=0;b.alive=true;b.path=[];b.pause=1+i;b.talkT=rnd(3,10);
     G.actors.push(b);PZ.bots.push(b);}
+  /* stands behind the 안내데스크, left of the info board, facing the visitors */
+  const g=mk('안내원',false,'안내원','#2b4a6b',{x:K(478),y:K(538)});g.f=0;g.alive=true;g.face=Math.PI/2;g.fit=GUIDE_FIT;g.talkT=rnd(6,12);g.lookT=0;
+  G.actors.push(g);PZ.guide=g;PZ.desk=FLOORS[0].ob.filter(o=>o.k==='reception').sort((a,b)=>b.w-a.w)[0];PZ.tips=PZ.tips||[]; // anywhere along the desk counts
   PZ.others.clear();cam={x:me.x,y:me.y};
 }
 function pzURL(){
@@ -51,7 +63,8 @@ function plazaStart(keepLobby){
   plazaConnect();
 }
 function plazaStop(){
-  if(!PZ.on)return;PZ.on=false;dressClose();document.body.classList.remove('plaza');$('home').hidden=true;$('pzRooms').hidden=true;PZ.roomsKey='';
+  if(!PZ.on)return;PZ.on=false;if(G&&G.plaza&&G.me){G.me.wc=null;if(G.me.sit)pzStand();}
+  {const fl=FLOORS[0];let ch=false;for(const d of fl.doors)if(d.open){d.open=false;ch=true;}if(ch)refreshObs(fl);}dressClose();document.body.classList.remove('plaza');$('home').hidden=true;$('pzRooms').hidden=true;PZ.roomsKey='';
   const ws=PZ.ws;PZ.ws=null;PZ.online=false;if(ws)try{ws.close();}catch{}
 }
 /* ---------- match rooms seen in the plaza ---------- */
@@ -64,6 +77,57 @@ function pzRoomSend(){
 function pzJoin(code){if(NETC.room)return;$('nameIn').value=$('nameIn').value||store.get('or-name')||'';dressClose();joinRoom(code);}
 /* the nearest person with an open room, close enough to walk up and press E */
 const pzNear=()=>{const me=G.me;let best=null,bd=110;for(const a of PZ.others.values())if(a.room&&a.room[1]<ROOM_MAX){const d=Math.hypot(a.x-me.x,a.y-me.y);if(d<bd){bd=d;best=a;}}return best;};
+/* E on the lobby's things and bots: a taste of the office with nothing at stake (no 고과, only seen on this screen).
+   pzTarget is what E would do here, also drawn as a hint over it by the renderer */
+const PZ_THINGS=[
+  ['coffee',50,'커피 마시기',()=>{pop(0,G.me.x,G.me.y-30,'☕ 카페인 충전','#7a4b2a');say(G.me,pick(['캬~ 살 것 같다','오늘도 커피로 버틴다','아메리카노 수혈 완료']));}],
+  ['cooler',60,'물 마시기',()=>{pop(0,G.me.x,G.me.y-30,'💧 시원하다','#3f6f99');say(G.me,pick(['물 마시는 척 쉬는 중','하루 2리터 목표…']));}],
+  ['printer',55,'출력하기',()=>say(G.me,pick(['지이잉… 출력 중','또 용지 걸렸네','컬러로 뽑으면 혼나겠지?']))],
+  ['copier',55,'복사하기',()=>say(G.me,pick(['복사기 예열 중…','양면으로 할걸','토너가 없다…']))],
+  ['board',70,'사내 게시판 보기',()=>boardOpen()],
+  ['badge',45,'출입증 찍기',()=>say(G.me,pick(['삑! 출근 완료','삑… 오늘도 왔다','지각 아니다 지각 아니다']))],
+];
+const BOT_REPLIES=['아 네, 안녕하세요!','점심 같이 드실래요?','저 지금 회의 가는 길이에요','오늘 출근하셨어요?','부장님 보셨어요?','커피 사주시는 거예요?','네? 저요?','오늘 야근 각이래요…'];
+function pzTarget(){
+  if(!G||!G.plaza||!G.me||PZ.dress)return null;const me=G.me,sp=FLOORS[0].spots,fl=FLOORS[0];
+  /* the match's own door, 화캉스 phone and desk game, run locally (pzLocal) */
+  if(me.wc)return me.wc.res?null:{x:me.x,y:me.y,label:`${wcGain(me.wc.m)>=0?'익절':'손절'}! ×${me.wc.m.toFixed(2)}`,fn:()=>cashWc(me)};
+  if(me.sit)return{x:me.x,y:me.y,label:me.desk?'일어나기 (근무 끝)':'일어나기',fn:()=>pzStand()};
+  {const d=nearDoor(me);if(d)return{x:d.x+d.w/2,y:d.y+d.h/2,label:d.open?`${d.name} 닫기`:`${d.name} 열기`,fn:()=>toggleDoor(0,d,!d.open)};}
+  if(me.inRest&&sp.toilet&&dist(me,sp.toilet)<48)return me.wcCd>0?{x:sp.toilet.x,y:sp.toilet.y,label:`폰 충전 중 · ${Math.ceil(me.wcCd)}초`,fn:()=>{}}
+    :{x:sp.toilet.x,y:sp.toilet.y,label:'화캉스 즐기기',fn:()=>startWc(me)};
+  {const s=fl.seats.find(s=>!s.occ&&!s.npc&&dist(me,s)<26);if(s){const work=s.dept!=='카페'&&me.deskCd<=0;
+    return{x:s.x,y:s.y,label:work?'앉기 (모니터 업무)':'앉기',fn:()=>pzSit(s,work)};}}
+  {const g=PZ.guide,d=PZ.desk;if(g&&(Math.hypot(g.x-me.x,g.y-me.y)<150||d&&inRect(me,{x:d.x-30,y:d.y-80,w:d.w+60,h:d.h+160})))return{x:g.x,y:g.y,bot:true,quiet:g.lookT>0,label:'말 걸기',fn:()=>pzGuide(g)};}
+  let best=null,bd=1e9;
+  for(const b of PZ.bots){const d=Math.hypot(b.x-me.x,b.y-me.y);if(d<70&&d<bd){bd=d;best={x:b.x,y:b.y,bot:true,label:'말 걸기',fn:()=>pzTalk(b)};}}
+  if(best)return best;
+  for(const[k,r,label,fn]of PZ_THINGS){const p=sp[k];if(!p)continue;const d=Math.hypot(p.x-me.x,p.y-me.y);if(d<r&&d<bd){bd=d;best={x:p.x,y:p.y,label,fn,board:k==='board'};}}
+  return best;
+}
+/* the bot stops, turns to me and answers */
+function pzTalk(b){b.pause=Math.max(b.pause,2.5);b.path=[];b.face=Math.atan2(G.me.y-b.y,G.me.x-b.x);b.talkT=Math.max(b.talkT,6);say(b,pick(BOT_REPLIES));}
+/* the 안내원 turns to me and gives a tip off a shuffled pile (reshuffled when empty, without the one just said), held on screen long enough to read */
+function pzGuide(g){g.face=Math.atan2(G.me.y-g.y,G.me.x-g.x);g.lookT=5;g.talkT=Math.max(g.talkT,12);
+  if(!PZ.tips.length){PZ.tips=GUIDE_TIPS.filter(t=>t!==PZ.lastTip);for(let i=PZ.tips.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[PZ.tips[i],PZ.tips[j]]=[PZ.tips[j],PZ.tips[i]];}}
+  PZ.lastTip=PZ.tips.pop();say(g,PZ.lastTip);G.pops[G.pops.length-1].life=5;}
+/* a desk chair runs the monitor game (the rules want the seat to be mine, so it is for as long as I sit) */
+function pzSit(s,work){PZ.seat={s,owner:s.owner};s.owner=work?G.me:null;sit(G.me,s);}
+function pzStand(){stand(G.me);pzSeatBack();}
+const pzSeatBack=()=>{if(PZ.seat){PZ.seat.s.owner=PZ.seat.owner;PZ.seat=null;}};
+/* every frame in the lobby: restroom, phone game, desk game (it stands me up itself when done), sitting still */
+function pzLocal(dt,m){
+  /* the games pay out 고과 as in a match; keep it far enough below the 사원 line (55) that the lobby never promotes
+     anyone or hands out a team (a desk round is +6 at most, 화캉스 +12) */
+  const me=G.me;me.g=me.peak=40;me.rank='인턴';me.branch=null;me.inRest=inRect(me,FLOORS[0].rest);
+  if(me.wcCd>0)me.wcCd-=dt;if(me.deskCd>0)me.deskCd-=dt;
+  if(me.wc){if(m>.35)me.wc=null;else wcStep(me,dt);}
+  if(me.desk)deskStepA(me,dt);
+  if(me.sit&&!me.desk&&m>.35)pzStand();
+  if(!me.sit)pzSeatBack();
+  return!me.sit&&!me.wc;
+}
+function pzUse(){const t=pzTarget();if(!t||G.t<(PZ.useT||0))return false;PZ.useT=G.t+1.2;t.fn();return true;}
 /* chips at the top for every open room in the plaza (one per room, named after whoever is in it), refreshed a few times a second */
 PZ.roomsT=0;PZ.roomsKey='';
 function pzRooms(dt){
@@ -80,16 +144,17 @@ function plazaSay(i){if(!PZ.on||!G||!G.me)return;if(PZ.ws&&PZ.ws.readyState===1)
 function plazaFrame(dt){
   if(!G||!G.plaza)return;G.t+=dt;const me=G.me;
   const inp=PZ.dress?NOINPUT:me.input||NOINPUT;let{vx,vy}=inp;if(PZ.dress)me.face=Math.PI/2;const m=Math.hypot(vx,vy);if(m>1){vx/=m;vy/=m;}
-  me.sprint=inp.run&&m>.15;if(m>.15)me.face=Math.atan2(vy,vx);drive(me,m>.15?vx:0,m>.15?vy:0,dt);
+  if(m>.15&&!G.me.sit)me.face=Math.atan2(vy,vx);const free=pzLocal(dt,m);me.sprint=free&&inp.run&&m>.15;if(free)drive(me,m>.15?vx:0,m>.15?vy:0,dt);
   for(const b of PZ.bots){
     b.talkT-=dt;if(b.talkT<=0){b.talkT=rnd(8,16);say(b,pick(BOT_LINES));}
     if(b.pause>0){b.pause-=dt;continue;}
     if(!b.path.length){const p=randFree(0,60);b.path=findPath(0,b.x,b.y,p.x,p.y);b.pause=rnd(1.5,4);continue;}
     const q=b.path[0],dx=q.x-b.x,dy=q.y-b.y,d=Math.hypot(dx,dy);if(d<6){b.path.shift();continue;}
     b.face=Math.atan2(dy,dx);drive(b,dx/d*.75,dy/d*.75,dt);}
+  {const g=PZ.guide;if(g){if(g.lookT>0&&(g.lookT-=dt)<=0)g.face=Math.PI/2;g.talkT-=dt;if(g.talkT<=0){g.talkT=rnd(14,24);say(g,pick(GUIDE_IDLE));}}}
   const k=Math.min(1,dt*10);
   for(const a of PZ.others.values()){a.x+=(a.nx-a.x)*k;a.y+=(a.ny-a.y)*k;if(a.tf!=null)a.face=a.tf;}
-  for(const p of G.pops)p.t+=dt;G.pops=G.pops.filter(p=>p.t<(p.say?2.4:1.1));
+  for(const p of G.pops)p.t+=dt;G.pops=G.pops.filter(p=>p.t<(p.life||(p.say?2.4:1.1)));
   const now=performance.now();
   if(PZ.ws&&PZ.ws.readyState===1&&now-PZ.sendT>160){const s=`${Math.round(me.x)},${Math.round(me.y)},${me.face.toFixed(2)}`;
     if(s!==PZ.sent||now-PZ.sendT>2000){PZ.sent=s;PZ.sendT=now;PZ.ws.send(JSON.stringify({t:'pz-pos',x:me.x,y:me.y,face:me.face,mv:m>.15}));}}
@@ -105,10 +170,11 @@ const plazaSayRandom=()=>plazaSay(Math.floor(Math.random()*EMOTES.length));
 /* phones: the same five lines plus one that picks any of the ten */
 $('emotePop').innerHTML=EMOTES.slice(0,5).map((t,i)=>`<button data-i="${i}">${t}</button>`).join('')+'<button data-i="rnd" class="rnd">아무 말이나</button>';
 $('emotePop').addEventListener('click',e=>{const b=e.target.closest('button');if(b){if(b.dataset.i==='rnd')plazaSayRandom();else plazaSay(+b.dataset.i);$('emotePop').hidden=true;}});
-$('emoteBtn').addEventListener('click',()=>{$('emotePop').hidden=!$('emotePop').hidden;});
+$('emoteBtn').addEventListener('click',()=>{if($('emotePop').hidden&&pzUse())return;$('emotePop').hidden=!$('emotePop').hidden;}); // next to something: use it instead
 addEventListener('keydown',e=>{if(!PZ.on||($('home').hidden&&!$('lobby').classList.contains('dock'))||(e.target.closest&&e.target.closest('input')))return;
+  if(G&&G.plaza&&G.me.desk){const k={KeyW:'U',ArrowUp:'U',KeyS:'D',ArrowDown:'D',KeyA:'L',ArrowLeft:'L',KeyD:'R',ArrowRight:'R'}[e.code];if(k){e.preventDefault();deskKey(G.me,k);return;}}
   const n=/^(?:Digit|Numpad)([1-5])$/.exec(e.code);if(n)plazaSay(+n[1]-1);
-  else if(e.code==='KeyE'){const a=!NETC.room&&pzNear();if(a)pzJoin(a.room[0]);else plazaSayRandom();}});
+  else if(e.code==='KeyE'){const a=!NETC.room&&pzNear();if(a)pzJoin(a.room[0]);else if(!pzUse())plazaSayRandom();}});
 /* how much of the screen bottom the card covers; the lobby camera lifts me into the space above it */
 PZ.cardH=0;
 const pzCover=()=>{const c=!$('home').hidden&&$('home').classList.contains('dressing')?$('home').querySelector('.homecard'):!$('lobby').hidden&&$('lobby').classList.contains('dock')?$('lobby').querySelector('.memo'):null;

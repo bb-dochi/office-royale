@@ -52,6 +52,9 @@ body.pc .rbtn{display:none!important}
 @media (max-width:440px){.bopts dl{grid-template-columns:1fr;gap:0}.bopts dd{margin-bottom:4px}}
 @media (prefers-reduced-motion:reduce){.bopts button{transition:none}}
 html,body{height:100%}
+#glFail{position:fixed;inset:0;z-index:9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;text-align:center;color:#fff;font:700 17px var(--body);background:var(--void)}
+#glFail[hidden]{display:none}
+#glFail small{font-weight:500;font-size:13px;opacity:.75}
 body{background:var(--void);color:var(--ink);font-family:var(--body);overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0}
 #gl{position:fixed;inset:0;width:100%;height:100%;display:block}
@@ -200,6 +203,11 @@ body.plaza #home.closed:not([hidden]) + #dock{display:flex}
 #dock button:active{transform:translateX(-2px)}
 #dock button.pri{min-width:114px;background:var(--ink);color:var(--paper);border-left-color:var(--lit);font:900 14px var(--display)}
 #dock button[data-go=guide]{border-left-color:var(--stamp)}
+/* NEW! on the 사내 게시판 tab and link while a post is unread */
+.newmark{display:inline-block;margin-left:6px;padding:1px 5px 2px;border-radius:3px;background:var(--stamp);color:#fff;font:900 10px/1.2 var(--body);font-style:normal;letter-spacing:.02em;vertical-align:1px;text-decoration:none;animation:newmark 1.6s ease-in-out infinite}
+.newmark[hidden]{display:none}
+@keyframes newmark{50%{transform:scale(1.12)}}
+@media (prefers-reduced-motion:reduce){.newmark{animation:none}}
 #dockCount{margin:0 10px 2px 0;font:800 11px var(--body);color:var(--ok);background:var(--paper);border-radius:3px;padding:2px 7px;box-shadow:0 2px 0 rgba(0,0,0,.25)}
 @media (prefers-reduced-motion:reduce){#dock button{transition:none}}
 /* first visit: pick a name before anything else; afterwards a small chip to change it */
@@ -864,14 +872,17 @@ body.band2 .hud,body.band2 #lunchBoard,body.band2:not(.pc) #pdock .idcard{transl
 @media (max-width:560px){#sSub{font-size:11px}body{--b2:14px}}
 @media (min-width:1600px) and (min-height:820px){#sSub{font-size:14px}body{--b2:19px}}
 @media (min-width:2200px) and (min-height:1150px){#sSub{font-size:17px}body{--b2:23px}}
-#lunchCard{position:fixed;left:50%;transform:translateX(-50%);top:150px;z-index:4;pointer-events:none;width:min(calc(100% - 32px),400px);
-  background:var(--paper);color:var(--ink);border:2px solid var(--ink);border-radius:14px;padding:10px 14px 11px;box-shadow:0 14px 30px rgba(0,0,0,.35);
-  animation:lcard 4s ease both}
-#lunchCard h4{margin:0 0 6px;font:900 17px var(--display);text-align:center}
-#lunchCard dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:13.5px;line-height:1.35}
-#lunchCard dt{font-weight:900;color:#5d666e;white-space:nowrap}#lunchCard dd{margin:0;font-weight:700}
-#lunchCard dd strong{color:#2b6cb0}#lunchCard dd u{color:var(--stamp);text-decoration:none;font-weight:900}
-@keyframes lcard{0%{opacity:0;translate:0 -8px}6%,90%{opacity:1;translate:0 0}100%{opacity:0}}
-@media (prefers-reduced-motion:reduce){#lunchCard{animation:none}}
-@media (min-width:1600px) and (min-height:820px){#lunchCard{zoom:1.2}}
 #ladder .lr{margin:4px 0 0;font-size:13px;font-weight:700;color:#5d666e}#ladder .lr strong{color:#2b6cb0}#ladder .lr u{color:var(--stamp);text-decoration:none;font-weight:900}
+
+/* 사내 게시판 */
+.boardmemo{max-width:480px}
+.boardlist{max-height:min(60vh,520px);overflow:auto;margin:0 -6px;padding:0 6px;overscroll-behavior:contain}
+.boardlist section{border-top:1px solid rgba(29,35,40,.18);padding:10px 0 6px}
+.boardlist section:first-child{border-top:0;padding-top:2px}
+.boardlist article{padding:4px 0 6px}
+.boardlist header{display:flex;align-items:baseline;gap:8px}
+.boardlist time{display:block;margin-bottom:2px;font:800 11px var(--body);color:var(--muted);font-variant-numeric:tabular-nums}
+.boardlist h2{margin:0;font:900 15px/1.35 var(--body)}
+.boardlist .newchip{flex:none;padding:1px 5px 2px;border-radius:3px;background:var(--stamp);color:#fff;font:900 10px/1.2 var(--body);font-style:normal}
+.boardlist ul{margin:5px 0 0;padding-left:18px;font-size:13px;line-height:1.55}
+.boardlist li+li{margin-top:2px}

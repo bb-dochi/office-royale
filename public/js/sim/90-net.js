@@ -15,7 +15,7 @@ const FIXED_A=new Set(['name','color','fit']);
 /* empty values (0, false, null, '', [], spent timers) are left out of public actor data to keep snapshots small */
 const empty=v=>v===null||v===false||v===''||v===undefined||(typeof v==='number'&&v<=0&&v>-1e-9)||(Array.isArray(v)&&!v.length);
 /* bot brain and bookkeeping that never leaves the server */
-const SKIP_A=new Set(['path','pathAge','goal','mode','think','target','strafe','react','sx','sy','stuckT','nudge','met','input','aim','pref','padPref','greed','lunchGo','seeker','lastHitBy','type','key','_n','sitGoal','desk','wc','jobs']);
+const SKIP_A=new Set(['path','pathAge','goal','mode','think','target','strafe','react','sx','sy','stuckT','nudge','met','input','aim','pref','padPref','greed','lunchGo','seeker','lastHitBy','type','key','_n','sitGoal','desk','wc','jobs','moveSk','idleT','throwT','dodgeCd','svx','svy']);
 function serA(a,full,fixed){
   const o={};
   if(!full){for(const k in PUB_A){if(!fixed&&FIXED_A.has(k))continue;let v=a[k];if(typeof v==='number'){v=r1(v);if((k.endsWith('T')||k==='flash')&&v<0)v=0;}if(k==='f'||k==='x'||k==='y'||k==='face'?v!==0:!empty(v))o[k]=v;}}
@@ -33,7 +33,7 @@ function serA(a,full,fixed){
     o.killer=idOf(a.killer);o.stampNpc=idOf(a.stampNpc);
     o.errand=a.errand?{...a.errand}:null;
     o.jobs={...a.jobs};
-    o.wc=a.wc?{t:r2(a.wc.t),res:a.wc.res,resT:a.wc.resT,gain:a.wc.gain}:null; // never the crash time
+    o.wc=a.wc?{t:r2(a.wc.t),m:r2(a.wc.m),res:a.wc.res,resT:a.wc.resT,gain:a.wc.gain}:null; // never the crash time
     o.desk=a.desk?{round:a.desk.round,ok:a.desk.ok,seq:a.desk.seq,pos:a.desk.pos,t:r2(a.desk.t),max:a.desk.max,job:a.desk.job,wait:r2(a.desk.wait),res:a.desk.res,resT:a.desk.resT}:null;
   }
   return o;

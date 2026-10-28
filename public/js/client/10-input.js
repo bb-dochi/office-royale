@@ -51,7 +51,7 @@ let ibT=null,ibLong=false;
 $('slots').addEventListener('pointerdown',e=>{const b=e.target.closest('.slot');if(!b)return;e.preventDefault();e.stopPropagation();ibLong=false;});
 $('slots').addEventListener('pointerup',e=>{const b=e.target.closest('.slot');clearTimeout(ibT);if(!b)return;e.preventDefault();if(!ibLong&&running)ACT.item(+b.dataset.i);ibLong=true;});
 $('slots').addEventListener('pointerleave',()=>clearTimeout(ibT));
-press($('pCash'),()=>doInteract());
+press($('pCash'),()=>{if(!running&&G&&G.plaza)pzUse();else doInteract();});
 /* phones: the control guide's chips (keybar() in 40-main.js) are buttons */
 $('keybar').addEventListener('pointerdown',e=>{const b=e.target.closest('[data-a]');if(!b||!running)return;e.preventDefault();e.stopPropagation();
   const a=b.dataset.a;if(a==='down')ACT.floor(-1);else if(a==='skill')ACT.skill();});
@@ -61,7 +61,7 @@ for(const b of document.querySelectorAll('.msys button'))b.addEventListener('poi
 function mapFold(on){$('mapbox').classList.toggle('folded',on);$('mFold').textContent=on?'지도':'▴';$('mFold').setAttribute('aria-label',on?'지도 펴기':'지도 접기');try{localStorage.setItem('or-mapfold',on?'1':'');}catch{}}
 $('mFold').addEventListener('click',e=>{e.stopPropagation();mapFold(!$('mapbox').classList.contains('folded'));});
 try{if(localStorage.getItem('or-mapfold'))mapFold(true);}catch{}
-$('dPad').addEventListener('pointerdown',e=>{const b=e.target.closest('button');if(!b||!running)return;e.preventDefault();e.stopPropagation();if(b.dataset.k==='Q')doInteract();else ACT.desk(b.dataset.k);});
+$('dPad').addEventListener('pointerdown',e=>{const b=e.target.closest('button');const pz=!running&&G&&G.plaza;if(!b||!running&&!pz)return;e.preventDefault();e.stopPropagation();if(b.dataset.k==='Q'){if(pz)pzUse();else doInteract();}else if(pz)deskKey(G.me,b.dataset.k);else ACT.desk(b.dataset.k);});
 $('pills').addEventListener('pointerdown',e=>{const b=e.target.closest('button');if(!b)return;e.preventDefault();e.stopPropagation();
   const a=b.dataset.a;if(a==='up')ACT.floor(1);else if(a==='down')ACT.floor(-1);else if(a==='act')doInteract();});
 $('callOpts').addEventListener('pointerdown',e=>{const b=e.target.closest('button');if(!b)return;e.preventDefault();e.stopPropagation();if(G&&G.me.call)ACT.answer(b.dataset.k);});
