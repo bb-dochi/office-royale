@@ -317,7 +317,7 @@ function hud(dt){
   const held=me.items[0]&&ITEMS[me.items[0]],tl=me.ammo>0?`스테이플<br>${me.ammo}발`:held?held.n.replace(' ','<br>'):'서류<br>투척';
   if(tl!==lastTl){lastTl=tl;$('throwLabel').innerHTML=tl;tb.classList.toggle('staple',me.ammo>0||!!held);tb.style.setProperty('--ic',held?held.c:ITEMS.stapler.c);}
   tb.disabled=!!(me.sit||locked(me));
-  const act=running&&me.alive?myAction():null;
+  const act=running&&me.alive?myAction():G.plaza?(t=>t&&{label:t.label,cls:'go'})(pzTarget()):null; // lobby: what E would do here
   const ph=act?act.label+'|'+act.cls:'';
   if(ph!==lastPills){lastPills=ph;$('actLabel').textContent=act?act.label:'상호작용';gb.disabled=!act||act.cls==='off';gb.className='rbtn'+(act&&act.cls?' '+act.cls:'');}
 }

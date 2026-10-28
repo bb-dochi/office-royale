@@ -121,7 +121,7 @@ function pzLocal(dt,m){
      anyone or hands out a team (a desk round is +6 at most, 화캉스 +12) */
   const me=G.me;me.g=me.peak=40;me.rank='인턴';me.branch=null;me.inRest=inRect(me,FLOORS[0].rest);
   if(me.wcCd>0)me.wcCd-=dt;if(me.deskCd>0)me.deskCd-=dt;
-  if(me.wc){if(m>.35)me.wc=null;else wcStep(me,dt);}
+  if(me.wc){if(wcLeave(me,m))me.wc=null;else wcStep(me,dt);}
   if(me.desk)deskStepA(me,dt);
   if(me.sit&&!me.desk&&m>.35)pzStand();
   if(!me.sit)pzSeatBack();
@@ -170,7 +170,7 @@ const plazaSayRandom=()=>plazaSay(Math.floor(Math.random()*EMOTES.length));
 /* phones: the same five lines plus one that picks any of the ten */
 $('emotePop').innerHTML=EMOTES.slice(0,5).map((t,i)=>`<button data-i="${i}">${t}</button>`).join('')+'<button data-i="rnd" class="rnd">아무 말이나</button>';
 $('emotePop').addEventListener('click',e=>{const b=e.target.closest('button');if(b){if(b.dataset.i==='rnd')plazaSayRandom();else plazaSay(+b.dataset.i);$('emotePop').hidden=true;}});
-$('emoteBtn').addEventListener('click',()=>{if($('emotePop').hidden&&pzUse())return;$('emotePop').hidden=!$('emotePop').hidden;}); // next to something: use it instead
+$('emoteBtn').addEventListener('click',()=>{$('emotePop').hidden=!$('emotePop').hidden;}); // using things is the 상호작용 button (#greetBtn)
 addEventListener('keydown',e=>{if(!PZ.on||($('home').hidden&&!$('lobby').classList.contains('dock'))||(e.target.closest&&e.target.closest('input')))return;
   if(G&&G.plaza&&G.me.desk){const k={KeyW:'U',ArrowUp:'U',KeyS:'D',ArrowDown:'D',KeyA:'L',ArrowLeft:'L',KeyD:'R',ArrowRight:'R'}[e.code];if(k){e.preventDefault();deskKey(G.me,k);return;}}
   const n=/^(?:Digit|Numpad)([1-5])$/.exec(e.code);if(n)plazaSay(+n[1]-1);

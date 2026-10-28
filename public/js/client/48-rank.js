@@ -5,8 +5,13 @@
    still shows, the board just says it can't connect. */
 const RANKED='hard';
 const RANK_PT={인턴:0,사원:50,대리:100,팀장:200,임원:300,CEO:500};
-/* same formula as scoreOf() in server/src/rank.js */
-const soloScore=e=>(TOTAL+1-e.place)*50+RANK_PT[e.rank]+e.kills*40+e.tasks*10+Math.floor(e.time/2);
+/* same formula as scoreOf() in server/src/rank.js: from the week of NEW_SCORE a win is a +300 bonus on the rank
+   actually reached (real) instead of a flat CEO 500 */
+const NEW_SCORE='2026-11-02',CEO_BONUS=300;
+const weekKST=(ms=Date.now())=>{const d=new Date(ms+9*3600e3);d.setUTCDate(d.getUTCDate()-(d.getUTCDay()+6)%7);return d.toISOString().slice(0,10);}; // its Monday
+const soloScore=(e,w=weekKST())=>(TOTAL+1-e.place)*50+(w>=NEW_SCORE?RANK_PT[e.real||e.rank]+(e.place===1?CEO_BONUS:0):RANK_PT[e.rank])+e.kills*40+e.tasks*10+Math.floor(e.time/2);
+const scoreHow=w=>w>=NEW_SCORE?'순위 (1위 1,000점부터 50점씩) + 1위 보너스 300 + 오른 직급 (사원 50 ~ 임원 300) + 해고 ×40 + 업무 ×10 + 버틴 시간 (2초에 1점). 기기마다 이번 주 최고 기록만 남아요.'
+  :'순위 (1위 1,000점부터 50점씩) + 최종 직급 (사원 50 ~ 임원 300, CEO 500) + 해고 ×40 + 업무 ×10 + 버틴 시간 (2초에 1점). 기기마다 이번 주 최고 기록만 남아요.';
 function rankUid(){let u=store.get('or-uid');if(!u||!/^[a-z0-9]{8,32}$/.test(u)){u=Array.from(crypto.getRandomValues(new Uint8Array(10)),b=>(b%36).toString(36)).join('');store.set('or-uid',u);}return u;}
 function rankURL(q,what='rank'){const s=new URLSearchParams(location.search).get('server');
   const base=s?`${/^(localhost|127\.|192\.168\.|10\.)/.test(s)?'http':'https'}://${s}`:'';return `${base}/api/${what}${q||''}`;}
@@ -16,7 +21,7 @@ function weekLabel(w){const mon=Date.parse(w+'T00:00:00+09:00'),end=mon+7*864e5,
   return `${d(mon)}(월) ~ ${d(end-1)}(일) · ${dd?dd+'일 ':''}${hh}시간 뒤 초기화`;}
 /* called from showResult in solo games */
 function rankSubmit(win){
-  const me=G.me,e={uid:rankUid(),name:store.get('or-name')||'신입',diff:G.diff||'normal',place:win?1:me.place,rank:win?'CEO':me.rank,kills:me.kills||0,tasks:me.tasksDone||0,time:Math.round(me.alive?G.t:me.outT??G.t),lunch:G.lunchKind||''};
+  const me=G.me,e={uid:rankUid(),name:store.get('or-name')||'신입',diff:G.diff||'normal',place:win?1:me.place,rank:win?'CEO':me.rank,real:me.rank,kills:me.kills||0,tasks:me.tasksDone||0,time:Math.round(me.alive?G.t:me.outT??G.t),lunch:G.lunchKind||''};
   const ranked=e.diff===RANKED,sc=soloScore(e);
   if(ranked){$('rScore').textContent=`${sc.toLocaleString()}점`;for(const el of document.querySelectorAll('#result .rsc'))el.hidden=false;} // only 어려움 is ranked
   fetch(rankURL('','game'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(e)}).then(r=>r.json()).then(r=>{
@@ -30,7 +35,7 @@ const rkSub=e=>`${e.rank==='CEO'?'':e.place+'위 · '}업무 ${e.tasks} · 해�
 function rankLoad(){
   $('rankPod').innerHTML='';$('rankMe').innerHTML='';$('rankList').innerHTML='<p class="rkmsg">불러오는 중…</p>';$('rankWeek').textContent='';
   fetch(rankURL(`?uid=${rankUid()}`)).then(r=>r.json()).then(r=>{
-    $('rankWeek').textContent=`${weekLabel(r.week)} · ${r.n}명 참가`;
+    $('rankWeek').textContent=`${weekLabel(r.week)} · ${r.n}명 참가`;$('rankHow').textContent=scoreHow(r.week);
     const top=r.top,nm=e=>`${esc(e.name)}${e.mine?' <span class="me">(나)</span>':''}`;
     /* top three: the 우수 사원 section of an HR report — ruled rows, bigger type, a red stamp on first place */
     $('rankPod').innerHTML=top.length?`<p class="rkcap">이번 주 우수 사원</p><ol>${top.slice(0,3).map((e,i)=>

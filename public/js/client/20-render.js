@@ -1196,7 +1196,7 @@ function render(dt){
   }
   /* lobby: what E (the 💬 button on phones) does right here */
   if(G.plaza&&PZ.boardNew&&!PZ.dress&&!(pzTarget()||{}).board){const b=FLOORS[0].spots.board,p=b&&scr(b.x,8,2.55);if(p)tag(p[0],p[1]-10+(reduceMotion?0:Math.sin(G.t*4)*3),'NEW!','#cf3626','#fbfaf6',13);}
-  if(G.plaza){const t=pzTarget();if(t&&!t.quiet){const p=scr(t.x,t.y,1.9);if(p)tag(p[0],p[1]-(t.bot?34:14),`${isTouch?'💬':'E'} ${t.label}`,'#1d2328','#fbfaf6');}}
+  if(G.plaza){const t=pzTarget();if(t&&!t.quiet){const p=scr(t.x,t.y,1.9);if(p)tag(p[0],p[1]-(t.bot?34:14),isTouch?t.label:`E ${t.label}`,'#1d2328','#fbfaf6');}}
   /* npc labels */
   for(const n of npcs){const p=scr(n.x,n.y,n.kind==='ceo'?2.0:1.8);if(!p)continue;
     if(n.kind==='desk'){if(n.ask&&n.job){tag(p[0],p[1]-6,`부탁 있어요 +${n.job.r}`,'#3f6f99','#fbfaf6');outlined('!',p[0],p[1]-26,DF(26),'#3f6f99');}continue;}

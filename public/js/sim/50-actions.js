@@ -271,8 +271,11 @@ const wcSpot=a=>a.f>=0&&a.f!==ROOF?FLOORS[a.f].spots.toilet:null;
 function startWc(a){
   const sp=wcSpot(a);if(!sp||a.wc||a.wcCd>0||a.sit||G.actors.some(o=>o!==a&&o.wc&&o.f===a.f))return false;
   a.x=sp.x;a.y=sp.y;a.vx=a.vy=0;a.path=[];a.face=Math.PI/2;
-  a.wc={t:0,m:2,nx:WC.step,crashAt:1.5-Math.log(1-Math.random())*3,res:'',resT:0,gain:0,end:0};return true;
+  a.wc={t:0,m:2,nx:WC.step,crashAt:1.5-Math.log(1-Math.random())*3,res:'',resT:0,gain:0,end:0,held:true};return true;
 }
+/* moving (stick or WASD) puts the phone down, but not a push that was already held when the round began (a thumb
+   resting on the stick while tapping the button): that one counts only once it has been let go, or after 1.2 s */
+function wcLeave(a,m){const w=a.wc;if(m<=.35){w.held=false;return false;}return !w.held||w.t>1.2;}
 function wcDone(a,res){const w=a.wc;w.res=res;w.resT=G.t;w.end=G.t+WC.wait;
   if(res==='cash'){w.gain=wcGain(w.m);if(w.gain>=0){gain(a,w.gain);pop(a.f,a.x,a.y-30,`+${w.gain} 익절!`,'#2f7d4f');}else{dmg(a,-w.gain,'wc');pop(a.f,a.x,a.y-30,`손절 ${w.gain}`,'#cf3626');}}
   else if(res==='crash'){dmg(a,WC.crash,'wc');pop(a.f,a.x,a.y-30,`폭락 -${WC.crash}`,'#cf3626');}}

@@ -43,10 +43,11 @@ cv.addEventListener('pointermove',e=>{
 const endJoy=e=>{if(e.pointerId!==joy.id)return;joy={id:null,ox:0,oy:0,dx:0,dy:0,full:false};$('knob').classList.remove('run');$('stick').classList.remove('run');$('stick').hidden=true;};
 cv.addEventListener('pointerup',endJoy);cv.addEventListener('pointercancel',endJoy);
 const tb=$('throwBtn'),gb=$('greetBtn');
-const press=(el,fn)=>{el.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(running)fn();});el.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&running){e.preventDefault();fn();}});};
+const press=(el,fn)=>{const on=()=>running||!!(G&&G.plaza); // in a match, or walking around the lobby
+  el.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(on())fn();});el.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&on()){e.preventDefault();fn();}});};
 tb.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();throwHeld=true;if(running)ACT.throw(autoAim(G.me));});
 ['pointerup','pointercancel','pointerleave'].forEach(t=>tb.addEventListener(t,()=>throwHeld=false));
-press(gb,()=>doInteract());
+press(gb,()=>{if(!running&&G&&G.plaza)pzUse();else doInteract();});
 let ibT=null,ibLong=false;
 $('slots').addEventListener('pointerdown',e=>{const b=e.target.closest('.slot');if(!b)return;e.preventDefault();e.stopPropagation();ibLong=false;});
 $('slots').addEventListener('pointerup',e=>{const b=e.target.closest('.slot');clearTimeout(ibT);if(!b)return;e.preventDefault();if(!ibLong&&running)ACT.item(+b.dataset.i);ibLong=true;});
