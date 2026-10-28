@@ -707,8 +707,8 @@ function makeChar(color,kind,seed,outfit){
     for(let i=0;i<3;i++){const c=new THREE.Mesh(GEO.cyl,lam('#fbfaf6'));c.scale.set(.05,.1,.05);c.position.set(-.2+i*.2,.8,0);ct.add(c);}
     const um=new THREE.Mesh(new THREE.ConeGeometry(.55,.28,10),lam('#cf3626'));um.position.y=1.85;ct.add(um);const pole=new THREE.Mesh(GEO.cyl,lam('#d8d8dc'));pole.scale.set(.02,1.1,.02);pole.position.y=1.25;ct.add(pole);
     ct.position.z=.6;inner.add(ct);
-    const zone=new THREE.Mesh(GEO.disc,basic('#3fbf6a',{transparent:true,opacity:.14,depthWrite:false}));zone.rotation.x=-Math.PI/2;zone.position.y=.018;zone.scale.setScalar(75*U);g.add(zone);
-    const ring=new THREE.Mesh(GEO.ring,basic('#3fbf6a',{transparent:true,opacity:.5,depthWrite:false}));ring.rotation.x=-Math.PI/2;ring.position.y=.02;ring.scale.setScalar(75*U);g.add(ring);}
+    const zone=new THREE.Mesh(GEO.disc,basic('#3fbf6a',{transparent:true,opacity:.14,depthWrite:false}));zone.rotation.x=-Math.PI/2;zone.position.y=.018;zone.scale.setScalar(95*U);g.add(zone);
+    const ring=new THREE.Mesh(GEO.ring,basic('#3fbf6a',{transparent:true,opacity:.5,depthWrite:false}));ring.rotation.x=-Math.PI/2;ring.position.y=.02;ring.scale.setScalar(95*U);g.add(ring);}
   let mop=null;   // the cleaner holds the mop in the right hand and sweeps it side to side (poseRig)
   if(kind==='cleaner'){mop=piv(inner,.31,.43,.14);const st=new THREE.Mesh(GEO.cyl,lam('#7d6a52'));st.scale.set(.022,1.05,.022);st.position.y=.025;mop.add(st);
     const mh=new THREE.Mesh(GEO.box,lam('#e9e6df'));mh.scale.set(.3,.06,.14);mh.position.y=-.5;mh.rotation.x=.35;mh.castShadow=true;mop.add(mh);}
@@ -1119,8 +1119,9 @@ function render(dt){
   /* npc labels */
   for(const n of npcs){const p=scr(n.x,n.y,n.kind==='ceo'?2.0:1.8);if(!p)continue;
     if(n.kind==='desk'){if(n.ask&&n.job){tag(p[0],p[1]-6,`부탁 있어요 +${n.job.r}`,'#3f6f99','#fbfaf6');outlined('!',p[0],p[1]-26,DF(26),'#3f6f99');}continue;}
-    const lbl={boss:n.senior?'전무님':'부장님',ceo:'대표님',cleaner:'청소 아주머니',busy:'옆팀 팀장',newbie:isHawawa(n)?'신입 하와와':'신입 인턴',courier:'택배 기사',cart:'커피 카트 · 회복'}[n.kind];
+    const lbl={boss:n.senior?'전무님':'부장님',ceo:'대표님',cleaner:'청소 아주머니',busy:'옆팀 팀장',newbie:isHawawa(n)?'신입 하와와':'신입 인턴',courier:'택배 기사',cart:'커피카트'}[n.kind];
     tag(p[0],p[1]-6,lbl,n.senior?'#7a1f17':{boss:'#cf3626',ceo:'#c08a1e',newbie:'#3f8f5f',courier:'#b5651d',cart:'#7a4b2a'}[n.kind]||'#5d666e','#fbfaf6');
+    if(n.kind==='cart')outlined('고과 70까지 회복',p[0],p[1]+18*UIS,F(700,10),'#7a4b2a');
     if(n.kind==='newbie'&&n.att)outlined('?',p[0]+18,p[1]-24,DF(24),'#3f8f5f');
     if(me.contact&&me.contact.n===n){const kk=me.contact.t/me.contact.max;outlined('!',p[0],p[1]-26,DF(30),'#cf3626');ctx.beginPath();ctx.arc(p[0],p[1]-36,16,-Math.PI/2,-Math.PI/2+kk*Math.PI*2);ctx.strokeStyle='#cf3626';ctx.lineWidth=3;ctx.stroke();}
     if(n.alert)outlined('?',p[0]+18,p[1]-24,DF(24),'#c08a1e');

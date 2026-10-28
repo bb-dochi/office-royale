@@ -160,7 +160,10 @@ function updNpcs(dt){
   }
   for(const n of G.npcs){if(n.kind!=='cart'||!npcActive(n))continue;
     /* near the cart: 2.5/s up to 70, shown as "회복 +5" every 5 points so it's clear it's working */
-    for(const a of G.actors)if(a.alive&&a.f===n.f&&!a.transit&&a.g<70&&dist(a,n)<95){gain(a,2.5*dt,true);a.cartAcc=(a.cartAcc||0)+2.5*dt;
+    for(const a of G.actors){if(!a.alive||a.f!==n.f||a.transit||dist(a,n)>=95)continue;
+      /* 70 and up: the vendor shoos high flyers back to work (a speech bubble, at most every 12 s per cart) */
+      if(a.g>=70){if(a.isPlayer&&G.t>(n.shooT||0)){n.shooT=G.t+12;say(n,pick(['아이고 쌩쌩하시네~ 커피는 지친 분들 먼저요','얼굴 좋은데? 힘들 때 또 와요~','에이스는 커피 말고 일하러 가셔야지~','오늘 컨디션 최고네! 화이팅~']),'#7a4b2a');}continue;}
+      gain(a,2.5*dt,true);a.cartAcc=(a.cartAcc||0)+2.5*dt;
       if(a.cartAcc>=5){a.cartAcc=0;pop(a.f,a.x,a.y-30,'회복 +5','#7a4b2a');}}}
   // contact & chats
   for(const a of alive()){

@@ -18,6 +18,9 @@ function mkNpc(kind,f,x,y){return{id:'n'+(++NID),kind,f,x,y,face:0,wp:0,pause:0,
 const isOpen=f=>f>=G.closed&&f<=Math.min(NF-1,G.closed+WIN-1)&&f<NF;
 const isLocked=f=>f>Math.min(NF-1,G.closed+WIN-1);
 const topOpen=()=>Math.min(NF-1,G.closed+WIN-1);
+/* which open floor a bot settles on, counted up from the lowest: 55% stay low, 30% one up, 15% go to the top one
+   (so the top floor isn't left to the people) */
+const prefRoll=()=>{const r=Math.random();return r<.15?WIN-1:r<.45?1:0;};
 const warnFloor=f=>G.warn&&f===G.closed&&G.closed<NF-1;
 
 function assignSeats(f){
@@ -46,7 +49,7 @@ function newGame(opts={}){
   const me=actors[0];
   /* opts.bots: how many bots (default: fill to TOTAL). opts.tutorial: a practice floor with no closures or events */
   const nb=opts.bots??TOTAL-hs.length;
-  for(let i=0;i<nb;i++){const b=mk(NAMES[i],false,TYPES[i],SHIRTS[i],pickPos());b.pref=Math.random()<.3?1:0;actors.push(b);}
+  for(let i=0;i<nb;i++){const b=mk(NAMES[i],false,TYPES[i],SHIRTS[i],pickPos());b.pref=prefRoll();actors.push(b);}
   G={t:0,actors,me,proj:[],items:[],traps:[],tasks:[],drops:[],wet:[],pops:[],dings:[],bursts:[],closed:0,nextClose:INTERVAL,warn:false,final:false,finalT:0,over:false,itemT:0,winner:null,
      npcs:[],doors:[],events:[],notice:null,ceo:null,blackout:null,cake:null,fire:0,star:null,audit:null,taskId:0,fillT:0,lunch:null,airdrops:[],respawn:[],smokes:[]};
   for(let f=0;f<NF;f++){

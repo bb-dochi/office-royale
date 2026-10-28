@@ -9,7 +9,7 @@ function step(dt){
       G.tasks=G.tasks.filter(t=>t.f>=G.closed);G.items=G.items.filter(t=>t.f>=G.closed);G.drops=G.drops.filter(t=>t.f>=G.closed);G.wet=G.wet.filter(t=>t.f>=G.closed);
       const nf=G.closed+WIN-1;let msg='';
       if(nf<NF){assignSeats(nf);fillTasks(nf);for(let i=0;i<itemQuota(nf);i++)spawnItem(nf);msg=`${FLOORS[nf].name} 개방`;for(const h of hs){const s=h.seats[nf];if(h.alive)tell(h,`인사 발령: ${FLOORS[nf].name} ${s?s.name:'자리 없음'}`);}}
-      for(const b of G.actors)if(!b.isPlayer)b.pref=Math.min(topOpen(),G.closed+(Math.random()<.3?1:0));
+      for(const b of G.actors)if(!b.isPlayer)b.pref=Math.min(topOpen(),G.closed+prefRoll());
       feed(`${f===0?'로비':(f+1)+'층'} 폐쇄!`,true);
       if(G.closed===NF-1){G.final=true;for(const b of G.actors)if(!b.isPlayer)b.seeker=Math.random()<(G.online?NET_SEEK:diff().seek);}
       UI.closure(f,nf<NF?nf:-1,msg);
