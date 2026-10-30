@@ -1,6 +1,6 @@
 // Local server for solo + online play without Cloudflare: serves public/ and runs match rooms over WebSocket.
 // Usage: node tools/dev-server.mjs [port=8787] [--demo]   → http://localhost:8787 (friends on the same Wi-Fi use this PC's IP)
-// --demo fills the play stats with a month of made-up games so /admin has something to show.
+// --demo fills the play stats with a month of made-up games so /admin has something to show, and shows sample 성과.
 // No dependencies: the WebSocket handshake and framing below cover what the game needs (text frames, ping, close).
 import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
@@ -11,9 +11,10 @@ import vm from 'node:vm';
 import { RoomCore } from '../server/src/room.js';
 import { PlazaCore } from '../server/src/plaza.js';
 import { RankCore, apiHTTP, recordMatch } from '../server/src/rank.js';
-import { CareerCore } from '../server/src/career.js';
+import { CareerCore, judge, newCareer } from '../server/src/career.js';
 import { FeedbackCore } from '../server/src/feedback.js';
 import { StatsCore, adminHTML } from '../server/src/stats.js';
+import { rewardEdit } from './rewards-edit.mjs';
 
 const PORT = +(process.argv.slice(2).find(a => /^\d+$/.test(a)) || process.env.PORT || 8787);
 const PUB = fileURLToPath(new URL('../public/', import.meta.url));
@@ -40,8 +41,16 @@ function roomFor(code) {
 /* weekly ranking and play stats, kept in memory (gone when the dev server stops); /admin needs no key here */
 const mem = new Map(), memStore = { get: k => mem.get(k), put: (k, v) => mem.set(k, v) };
 const statsCore = new StatsCore(memStore), api = { rank: new RankCore(memStore), stats: statsCore, career: new CareerCore(memStore, statsCore), feedback: new FeedbackCore(memStore) };
+/* --strict holds outfits to what each career owns, as the live server does; without it the 옷장's 전체 해금 can be walked around in */
+const STRICT = process.argv.includes('--strict');
+api.career.openAll = !STRICT;
 const recordGame = rs => recordMatch(api, rs).catch(e => console.error('stats', e));
-if (process.argv.includes('--demo')) await seedDemo(statsCore);
+if (process.argv.includes('--demo')) {
+  await seedDemo(statsCore);
+  /* --demo also shows the 성과 (off until they open, AWARDS_ON) with sample numbers on every device, for checking the 사원증 and the 옷장 locks */
+  const view = api.career.view.bind(api.career), sample = { ...newCareer(), games: 42, sec: 11000, bestRank: 3, ceo: 4, tasks: 340, kills: 25, dev: 27, mkt: 12, hr: 120, lunchWin: 6, wcGo: 20, top3: 2 };
+  api.career.view = async uid => ({ ...await view(uid), awards: judge(sample) });
+}
 async function seedDemo(stats) {
   const names = ['김대리', '박과장', '이사원', '최부장', '정인턴', '한팀장', '오주임', '윤차장'], ranks = ['인턴', '사원', '주임', '대리', '과장', '차장', '부장', 'CEO'];
   const realNow = Date.now, end = realNow(); let at = end - 29.5 * 864e5;
@@ -57,7 +66,8 @@ async function seedDemo(stats) {
 
 const server = createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
-  if (url.pathname === '/admin') { adminHTML(api.stats, url.searchParams, api.career, api.feedback).then(h => res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }).end(h)); return; }
+  if (url.pathname === '/admin/rewards' && req.method === 'POST') { let body = ''; req.on('data', d => { if (body.length < 1024) body += d; }); req.on('end', () => res.writeHead(rewardEdit(body) ? 200 : 400).end()); return; }
+  if (url.pathname === '/admin') { adminHTML(api.stats, url.searchParams, api.career, api.feedback, true).then(h => res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }).end(h)); return; }
   if (url.pathname.startsWith('/api/')) {
     let body = ''; req.on('data', d => { if (body.length < 4096) body += d; });
     req.on('end', async () => { const r = await apiHTTP(api, req.method, url, body);
@@ -83,12 +93,14 @@ server.on('upgrade', (req, sock) => {
   sock.write(`HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ${accept}\r\n\r\n`);
   sock.setNoDelay(true);
   const room = isPlaza ? plaza : roomFor(m[1]), peer = { sock: wrap(sock) };
-  let joined = false;
-  peer.sock.onText = txt => {
+  let joined = false, hello = false;
+  peer.sock.onText = async txt => {
     let msg; try { msg = JSON.parse(txt); } catch { return; }
     if (!joined) {
-      if (msg.t !== 'hello') return;
-      const err = room.join(peer, msg.name, msg.fit, msg.uid, msg.resume);
+      if (msg.t !== 'hello' || hello) return;
+      hello = true;
+      const own = STRICT ? new Set(await api.career.ownOf(typeof msg.uid === 'string' ? msg.uid : '')) : undefined;
+      const err = room.join(peer, msg.name, msg.fit, msg.uid, msg.resume, own);
       if (err) { peer.sock.sendText(JSON.stringify({ t: 'err', m: err })); peer.sock.close(); return; }
       joined = true; return;
     }

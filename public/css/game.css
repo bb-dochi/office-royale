@@ -261,18 +261,33 @@ body.plaza #home.closed:not([hidden]) ~ #dock{display:flex}
 .idpane{max-height:min(46vh,380px);overflow:auto;overscroll-behavior:contain;margin-bottom:12px;touch-action:pan-y;-webkit-overflow-scrolling:touch}
 .awmsg{margin:16px 0;text-align:center;color:var(--muted);font-size:13px}
 .awlist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
-.awsum{font-size:12px;font-weight:700;color:var(--muted);padding:0 2px 2px}.awsum b{color:var(--ink);font-size:14px}
+.awsum{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;font-weight:700;color:var(--muted);padding:0 2px 2px}.awsum b{color:var(--ink);font-size:14px}.awsum small{font-size:11px;font-weight:600;line-height:1.35}.awsum span{flex:none}
 .awlist .aw{border:1.5px solid #cfcabd;border-radius:8px;background:#fff;padding:9px 11px}
 .awlist .aw:not(.got){background:#f7f6f1}.awlist .aw:not(.got) .awh b{color:var(--muted)}
 .awh{display:flex;justify-content:space-between;align-items:baseline}.awh b{font:900 14.5px var(--body)}
-.awrk{font:900 12px var(--body);color:#a0661a}.aw:not(.got) .awrk{color:#b9b5aa}
+.awrk{font:900 12px var(--body);color:#2b6cb0}.aw:not(.got) .awrk{color:#8f8b80}
 .awlist small{display:block;margin-top:1px;font-size:11.5px;color:var(--muted)}
 .awsteps{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin:7px 0 5px}
-.awsteps i{font:800 10.5px var(--body);font-style:normal;text-align:center;padding:2px 0;border-radius:3px;background:#eeece4;color:#a3a097}
-.awsteps i.on{background:#c08a1e;color:#fff}
+.awsteps i{font:800 10px var(--body);font-style:normal;text-align:center;padding:2px 0;border-radius:3px;background:#eeece4;color:#a3a097}
+.awsteps i.on{background:#2b6cb0;color:#fff}
 .awbar{position:relative;height:16px;border-radius:3px;background:#eeece4;overflow:hidden}
-.awbar span{position:absolute;inset:0 auto 0 0;background:#e9d29a}
-.awbar em{position:relative;display:block;font:700 10.5px/16px var(--body);font-style:normal;color:#6b5a32;padding-left:6px}
+/* 성과 card: tap to open its steps and their rewards. Finished ones sit dimmed at the bottom, folded under one line */
+.awdonebar{display:flex;justify-content:space-between;padding:7px 11px;border-radius:8px;background:#eeece4;font:800 12px var(--body);color:var(--muted);cursor:pointer}.awdonebar span{font-weight:700}.awlist .aw.done{opacity:.55}.awlist .aw[hidden]{display:none}
+.awtop{display:grid;grid-template-columns:minmax(0,1fr) 58px;gap:8px;align-items:start}.awm{min-width:0}
+.awfin{margin-top:8px}.awfin figure{margin:0;text-align:center}.awfin img,.awfin b{display:grid;place-items:center;width:58px;height:58px;border-radius:6px;background:#eeece4;font-size:24px;font-weight:400;opacity:.65}
+.awfin b.tt{font:800 10.5px/1.25 var(--body);word-break:keep-all;padding:2px;box-sizing:border-box}.awfin.on img,.awfin.on b{opacity:1}
+.awfin figcaption{font:700 10px/1.2 var(--body);color:var(--muted);margin-top:2px;word-break:keep-all}
+.awsteps i{white-space:nowrap;letter-spacing:-.03em}
+.awlist .aw{cursor:pointer}
+.awdet{margin-top:8px;border-top:1px dashed #d6d2c6;padding-top:4px}
+.awr{display:grid;grid-template-columns:52px 1fr 18px;gap:6px;align-items:start;padding:6px 0;border-bottom:1px solid #eeece4;color:#8f8b80}.awr:last-child{border-bottom:0}
+.awr.on{color:var(--ink)}.awg{font:800 11.5px var(--body);padding-top:1px}.awr>i{font-style:normal;font-size:11px;text-align:center;color:#2b6cb0}
+.awi em{display:block;font:800 12px var(--body);font-style:normal}
+.awt{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}.awt figure{margin:0;width:58px;text-align:center}
+.awt img,.awt b{display:grid;place-items:center;width:58px;height:58px;border-radius:6px;background:#eeece4;font-size:24px;font-weight:400}.awr:not(.on) .awt img,.awr:not(.on) .awt b{opacity:.6}
+.awt figcaption{font:700 10.5px/1.2 var(--body);margin-top:2px;word-break:keep-all}
+.awbar span{position:absolute;inset:0 auto 0 0;background:#bcd6f0}
+.awbar em{position:relative;display:block;font:700 10.5px/16px var(--body);font-style:normal;color:#1d4f86;padding-left:6px}
 /* 인사관리 (2026-10-30): 인사기록카드 + number grid + 기기 연동 boxes */
 .hrcard{border:1.5px solid #cfcabd;border-radius:8px;background:#fff}
 .hrh{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;color:var(--muted);letter-spacing:.06em;padding:6px 12px;border-bottom:1px solid #e6e2d6}
@@ -297,7 +312,7 @@ body.plaza #home.closed:not([hidden]) ~ #dock{display:flex}
 .crjoin{display:flex;flex-wrap:wrap;gap:6px}.crjoin input{flex:1 1 140px;min-width:0;font:700 14px var(--body);border:1.5px solid #c9cdd0;border-radius:8px;padding:7px 9px}
 /* phones: the card never takes more than the bottom part of the screen, so the whole character stays in view above
    it (on short screens it used to cut the legs off); the tab's content scrolls inside */
-@media (max-width:700px){#home.dressing .homecard{height:calc(100dvh - 300px);max-height:calc(100dvh - 300px);box-sizing:border-box;display:flex;flex-direction:column}
+@media (max-width:700px){#home.dressing .homecard{height:calc(100dvh - 380px);max-height:calc(100dvh - 380px);box-sizing:border-box;display:flex;flex-direction:column}
   #home.dressing #dress:not([hidden]){display:flex;flex-direction:column;min-height:0;flex:1}
   #home.dressing .idpane{max-height:none;flex:1;min-height:0}#home.dressing #dress .rows{max-height:none}}
 /* dressing room rows */
@@ -332,9 +347,9 @@ body.plaza #home.closed:not([hidden]) ~ #dock{display:flex}
 #dress .th span{font:800 11px var(--body);line-height:1.2;text-align:center;word-break:keep-all}
 #dress .th.lock img,#dress .th.lock .thi{opacity:.6}#dress .th.trying img{opacity:1}
 /* 칭호: the lobby name tag (gold chip + name) and the titles as small gold plates */
-.tplate{display:inline-flex;align-items:center;gap:6px;padding:2px 8px 2px 2px;border-radius:6px;background:#2b6cb0;color:#fbfaf6;font:800 13px var(--body)}
-.tplate i{font-style:normal;font-size:11px;padding:2px 7px;border-radius:4px;background:#fbfaf6;color:#2b6cb0}
-.tplate:not(:has(i)){padding-left:8px}
+.tplate{display:inline-flex;flex-direction:column;align-items:center;gap:3px;font:800 13px var(--body)}.tplate b{padding:2px 9px;border-radius:6px;background:#2b6cb0;color:#fbfaf6;font-weight:800}
+.tstamp{display:inline-block;padding:1px 6px;border:2px solid #c8283a;border-radius:3px;background:#fbfaf6;color:#c8283a;font:900 12px/1.25 var(--body);font-style:normal;transform:rotate(-3deg);word-break:keep-all}
+.awbar em .tstamp{font-size:10px;padding:0 4px;border-width:1.5px}.awfin b.tt .tstamp{font-size:10px;padding:1px 3px}.awi em.tstamp{display:inline-block;margin:1px 0 3px}
 #dress .row.tnow .opts{align-items:center;gap:10px}
 #dress .opts button.tchip{border-color:#b9cde4;background:#eef4fb;color:#2b6cb0}
 #dress .opts button.tchip.on{background:#2b6cb0;border-color:var(--ink);color:#fbfaf6}
@@ -1055,3 +1070,10 @@ body.band2 .hud,body.band2 #lunchBoard,body.band2:not(.pc) #pdock .idcard{transl
 @media (max-width:700px){#home.dressing:is([data-idtab=award],[data-idtab=career]){bottom:auto;align-items:flex-start}#home.dressing:is([data-idtab=award],[data-idtab=career]) .homecard{height:calc(var(--vvh,100dvh) - 24px);max-height:calc(var(--vvh,100dvh) - 24px)}}
 /* phones: an input under 16px makes iOS zoom the page in on focus, and it stays zoomed (2026-10-30: 기기 연동, 자유게시판) */
 @media (pointer:coarse){input,select,textarea{font-size:16px!important}}
+.dunlock{display:block;width:100%;margin:0 0 8px;padding:6px 8px;font:inherit;font-size:12px;font-weight:800;color:var(--ink);background:#eef3fa;border:1px dashed #9db6d6;border-radius:8px;cursor:pointer}.dunlock small{font-weight:600;color:var(--muted)}
+.dhide{display:flex;align-items:center;gap:5px;margin:0 0 8px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer}.dhide input{margin:0}
+/* 성과 달성 (결과 화면, 로비 안내) */
+.nw{border-top:1.5px dashed #b9b2a2;margin:10px 0;padding-top:8px;text-align:left}.nw h5{margin:0 0 6px;font:800 12px var(--body);color:var(--muted)}.nwr{display:flex;align-items:center;gap:9px;margin-bottom:6px}.nwr img,.nwr>b{flex:none;display:grid;place-items:center;width:46px;height:46px;border-radius:6px;background:#eeece4;font-size:22px;font-weight:400}.nwr p{margin:0;font:800 13px/1.3 var(--body)}.nwr small{display:block;margin-top:2px;font:600 11px/1.4 var(--body);color:var(--muted)}.nwr .tstamp{font-size:10px;padding:0 4px;border-width:1.5px}.nwm{margin:0;font:700 11px var(--body);color:var(--muted)}
+.bang{position:absolute;left:50%;top:44%;z-index:3;transform:translate(-50%,-50%) rotate(-9deg);border:5px solid #c8283a;border-radius:6px;background:rgba(251,250,246,.95);color:#c8283a;padding:12px 20px;text-align:center;font:900 26px/1.2 var(--body);white-space:nowrap;box-shadow:0 4px 18px rgba(0,0,0,.22);animation:bangIn .24s cubic-bezier(.2,1.5,.4,1) both}.bang small{display:block;margin-top:4px;font:800 13px var(--body)}
+@keyframes bangIn{from{opacity:0;transform:translate(-50%,-50%) rotate(-9deg) scale(2.4)}to{opacity:1;transform:translate(-50%,-50%) rotate(-9deg) scale(1)}}
+@media (prefers-reduced-motion:reduce){.bang{animation:none}}

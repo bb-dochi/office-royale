@@ -37,7 +37,7 @@ function pzURL(){
 function plazaConnect(){
   let ws;try{ws=new WebSocket(pzURL());}catch{return;}
   PZ.ws=ws;
-  ws.onopen=()=>ws.send(JSON.stringify({t:'hello',name:store.get('or-name')||'신입',fit:myFit()}));
+  ws.onopen=()=>ws.send(JSON.stringify({t:'hello',name:store.get('or-name')||'신입',fit:myFit(),uid:rankUid()}));
   ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch{return;}
     if(m.t==='pz-hi'){PZ.pid=m.you;PZ.online=true;PZ.roomSent='';pzRoomSend();const me=G&&G.plaza&&G.me;if(me){me.id=PZ_BASE+m.you;me.name=m.name;dropMesh(me);}}
     else if(m.t==='pz'){PZ.count=m.n;plazaPeople(m.p);}
@@ -60,7 +60,7 @@ function plazaStart(keepLobby){
   plazaWorld();document.body.classList.add('plaza');
   for(const id of['lobby','result','cine','notice','callBox','branchBox','countdown','spec'])if(!(keepLobby&&id==='lobby'))$(id).hidden=true;
   $('home').hidden=!!keepLobby;$('feed').textContent='';PZ.roomSent='';
-  plazaConnect();
+  plazaConnect();if(typeof careerLoad==='function')careerLoad();   // (the very first time 51-career.js isn't loaded yet: it does this itself)
 }
 function plazaStop(){
   if(!PZ.on)return;PZ.on=false;if(G&&G.plaza&&G.me){G.me.wc=null;if(G.me.sit)pzStand();}
@@ -225,40 +225,68 @@ $('hMulti').addEventListener('click',()=>{$('home').hidden=true;showLobby();});
    each option (charShot: the view, or one per option); the rest are colour swatches. Keys other than fit fields: eyes
    (안경/선글라스), faceK (없음/다크서클/주근깨), badgeK (사원증 기본/금장), gear (toggled 성과 pieces). Options a 성과 step unlocks are shown locked (🔒) and only tried on */
 const DRESS_CATS=[['hair','헤어'],['face','얼굴'],['top','상의'],['bottom','하의'],['acc','소품'],['fx','이펙트'],['title','칭호']];
+/* a colour list with the 성과 swatches for that fit field after the ordinary ones */
+const rwCols=(k,base)=>[...base,...Object.keys(RW_COLOR).filter(c=>RW_COLOR[c].key===k&&!base.includes(c))];
 const DRESS_ROWS={
-  hair:[['헤어','hair',FIT.hair,{short:'짧은 머리',side:'옆가르마',long:'긴 머리',bun:'올림 머리',bald:'대머리',twin:'양갈래',slick:'2대8 가르마',messy:'부스스',pony:'포니테일',allback:'올백',perm:'뽀글 파마',buzz:'반삭'},null,'head'],['헤어 색','hairC',FIT.hairC]],
-  face:[['눈 모양','eye',FIT.eye,{normal:'기본',sparkle:'초롱초롱',sleepy:'게슴츠레',smile:'실눈'},null,'face'],['안경','eyes',['none','glasses','shades'],{none:'없음',glasses:'안경',shades:'선글라스'},null,'face'],['얼굴','faceK',['off','eyebags','freckles'],{off:'없음',eyebags:'다크서클',freckles:'주근깨'},null,'face'],['피부','skin',FIT.skin]],
-  top:[['상의','top',FIT.top,{shirt:'셔츠',jacket:'정장',cardigan:'가디건',vest:'조끼'},null,'chest'],['상의 색','topC',[...FIT.topC,...Object.keys(RW_COLOR)]],
-    ['셔츠','shirtC',FIT.shirtC,null,f=>f.top!=='shirt'],['넥타이','tie',FIT.tie]],
-  bottom:[['하의','bottom',FIT.bottom,{pants:'바지',skirt:'치마'},null,'legs'],['하의 색','bottomC',FIT.bottomC],
-    ['신발','shoe',FIT.shoe,{loafer:'구두',sneaker:'운동화',slipper:'슬리퍼'},null,'feet'],['신발 색','shoeC',FIT.shoeC]],
-  acc:[['사원증','badgeK',['off','on','goldBadge'],{off:'없음',on:'기본',goldBadge:'금장'},null,'chest'],
-    ['소품','gear',['sleeves','pillow','postit','gloves'],{sleeves:'팔토시',pillow:'목베개',postit:'포스트잇',gloves:'검은 장갑'},null,{sleeves:'arms',pillow:'chest',postit:'chest',gloves:'arms'}]],
-  fx:[['달리기','fx',[null,'gold','paper','wind'],{null:'없음',gold:'금가루',paper:'서류 날림',wind:'칼바람'},null,{null:'—',gold:'✨',paper:'📄',wind:'💨'}]],
+  hair:[['헤어','hair',FIT.hair,{short:'짧은 머리',side:'옆가르마',long:'긴 머리',bun:'올림 머리',bald:'대머리',twin:'양갈래',slick:'2대8 가르마',messy:'부스스',pony:'포니테일',allback:'올백',perm:'뽀글 파마',buzz:'반삭'},null,'head'],['헤어 색','hairC',rwCols('hairC',FIT.hairC)]],
+  face:[['표정','eye',FIT.eye,{normal:'기본',sparkle:'초롱초롱',sleepy:'게슴츠레',smile:'실눈',dead:'기절'},null,'face'],['안경','eyes',['none','glasses','shades'],{none:'없음',glasses:'안경',shades:'선글라스'},null,'face'],['얼굴','faceK',['off','eyebags','freckles','stamp'],{off:'없음',eyebags:'다크서클',freckles:'주근깨',stamp:'반려 도장'},null,'face'],['피부','skin',FIT.skin]],
+  top:[['상의','top',FIT.top,{shirt:'셔츠',jacket:'정장',cardigan:'가디건',vest:'조끼',hoodie:'후드티',check:'체크셔츠',tee:'거래소 티셔츠',pj:'파자마'},null,'chest'],['상의 색','topC',rwCols('topC',FIT.topC),null,f=>f.top!=='pj'&&f.top!=='tee'],
+    ['셔츠','shirtC',FIT.shirtC,null,f=>['jacket','cardigan','vest'].includes(f.top)],['넥타이','tie',rwCols('tie',FIT.tie),null,f=>f.top!=='hoodie'&&f.top!=='tee'&&f.top!=='pj']],
+  bottom:[['하의','bottom',FIT.bottom,{pants:'바지',skirt:'치마',shorts:'반바지',pj:'파자마 바지'},null,'legs'],['하의 색','bottomC',rwCols('bottomC',FIT.bottomC),null,f=>f.bottom!=='pj'],
+    ['신발','shoe',FIT.shoe,{loafer:'구두',sneaker:'운동화',slipper:'슬리퍼'},null,'feet'],['신발 색','shoeC',rwCols('shoeC',FIT.shoeC)]],
+  acc:[['사원증','badgeK',['off','on','goldBadge'],{off:'없음',on:'기본',goldBadge:'금장'},null,{off:'chest',on:'chest',goldBadge:'badge'}],
+    ['소품','gear',['cig','coffee','dragon','pillow','postit','crown','watch','tissue','sash','trophy','halo'],{cig:'담배',coffee:'커피',dragon:'용문신 토시',pillow:'목베개',postit:'포스트잇',crown:'왕관',watch:'금시계',tissue:'바지에 낀 휴지',sash:'어깨띠',trophy:'트로피',halo:'후광'},null,{cig:'face',coffee:'cup',dragon:'dragon',pillow:'neck',postit:'note',crown:'crown',watch:'wrist',tissue:'tail',sash:'sash',trophy:'trophy',halo:'halo'}],
+    ['후광 색 (관리자)','haloT',[1,2,3],{1:'금',2:'은',3:'동'},f=>RW_LOCAL&&(f.gear||[]).includes('halo')]],
+  fx:[['달리기','fx',[null,'gold','paper','wind','smoke','escort'],{null:'없음',gold:'금가루',paper:'서류 날림',wind:'칼바람',smoke:'담배연기',escort:'수행원'},null,{null:'—',gold:'✨',paper:'📄',wind:'💨',smoke:'🚬',escort:'🕴️'}],
+    ['던지기','thr',[null,'plane','sticky','trophy','keyboard','mug'],{null:'서류',plane:'종이비행기',sticky:'포스트잇',trophy:'작은 트로피',keyboard:'키보드',mug:'머그컵'},null,{null:'📄',plane:'✈️',sticky:'🟨',trophy:'🏆',keyboard:'⌨️',mug:'☕'}]],
 };
-const RW_AW_N=REWARDS.awards,RW_ST=REWARDS.steps;
+const RW_AW_N=REWARDS.awards;
 /* the open tab and the locked options being tried on ([{k,v}]) */
 const DR={cat:'hair',tries:[]};
 /* which 성과 step an option needs (null: free) and whether I have it (the server's 성과 steps, see 51-career.js) */
 function rwNeed(k,v){
-  if(k==='gear')return RW_GEAR[v];if(k==='hair')return RW_HAIR[v]||null;if(k==='eyes'&&v==='shades')return RW_GEAR.shades;if(k==='faceK'&&v==='eyebags')return RW_GEAR.eyebags;if(k==='badgeK'&&v==='goldBadge')return RW_GEAR.goldBadge;
-  if(k==='fx')return RW_FX[v]||null;
-  if(k==='title'){const[aw,st]=String(v).split(':');return{aw,st:+st};}
-  const c=RW_COLOR[v];return c&&c.key===k?c:null;}
-function rwHave(n){if(!n)return true;const a=typeof CR!=='undefined'&&CR.view&&CR.view.awards&&CR.view.awards.find(x=>x.id===n.aw);return!!a&&a.step>=n.st;}
-const rwWhy=n=>`${RW_AW_N[n.aw]} ${RW_ST[n.st-1]} 달성 시 열려요`;
+  if(k==='title'){const[aw,st]=String(v).split(':');return{aw,st:+st,oid:`title:${v}`};}
+  const aw=r=>r&&(r.aw||r.temp)?r:null;   // (no aw: free for everyone)
+  if(k==='eyes')return v==='shades'?aw(RW_GEAR.shades):null;if(k==='badgeK')return v==='goldBadge'?aw(RW_GEAR.goldBadge):null;if(k==='faceK')return aw(RW_GEAR[v]||REWARDS.face[v]);
+  if(REWARDS[k])return aw(REWARDS[k][v]);
+  const c=RW_COLOR[v];return c&&c.key===k?c:null;}   // a colour is locked even with no step yet
+/* the default outfit wearing one option, for its picture */
+const rwShotFit=(k,v)=>{const f=dressApply(DEFAULT_FIT,k,v);return f;};
+/* 로컬 전체 해금: on the dev server everything can be worn, to walk round in it (the 옷장 button turns it off to see the locks); never on the real site */
+const RW_LOCAL=/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname),rwUnlocked=()=>RW_LOCAL&&store.get('or-unlock')!=='0';
+/* have it: in the career's 소지품 (the server's `own`) */
+for(const k of['top','hair','eye','face','shoe','bottom','gear','fx','thr','color'])for(const[id,r]of Object.entries(REWARDS[k]))r.oid=`${k}:${id}`;
+function rwHave(n){if(!n||rwUnlocked())return true;const own=typeof CR!=='undefined'&&CR.view&&CR.view.own;return!!own&&own.includes(n.oid);}
+/* my place last week (1~3) if it lends me anything, and taking off what was only lent once the week is over */
+const rwPlace=()=>{const own=(typeof CR!=='undefined'&&CR.view&&CR.view.own)||[],k=own.find(x=>/^halo:/.test(x));return k?+k.slice(5):0;};
+/* 지난주 1~3위: once a week, on coming back to the lobby: the 후광 put on for them (금가루 too for 1위, unless another trail is on) and a note saying so */
+function rwLentCheck(){const l=typeof CR!=='undefined'&&CR.view&&CR.view.lent;if(!l||!PZ.on||store.get('or-lentSeen')===l.week)return;store.set('or-lentSeen',l.week);
+  const f=myFit();f.gear=[...new Set([...(f.gear||[]),'halo'])];f.haloT=l.place;if(l.place===1&&!f.fx)f.fx='gold';store.set('or-fit',JSON.stringify(f));
+  if(G&&G.plaza&&G.me)dressShow();if(PZ.ws&&PZ.ws.readyState===1)PZ.ws.send(JSON.stringify({t:'pz-fit',fit:f}));profSave();
+  $('rankWinList').hidden=true;$('rankWinH').textContent=`지난주 랭킹 ${l.place}위!`;
+  $('rankWinS').textContent=`${['','금빛 후광과 금가루를','은빛 후광을','동빛 후광을'][l.place]} 입혀 드렸어요. 이번 주 동안 쓸 수 있고, 옷장에서 벗을 수도 있어요.`;$('rankWin').hidden=false;if($('nameStep').hidden&&!PZ.dress)homeClose(true);}   // the note takes the place of the guide card
+$('rankWinOk').addEventListener('click',()=>{$('rankWin').hidden=true;newsCheck();});
+function rwPrune(){if(rwUnlocked())return;let f;try{f=JSON.parse(store.get('or-fit'));}catch{return;}if(!f)return;
+  const g=f.gear||[],keep=g.filter(x=>x!=='halo'||rwHave(RW_GEAR.halo)),p=rwPlace();let ch=keep.length!==g.length;
+  if(f.fx==='gold'&&!rwHave(RW_FX.gold)){f.fx=null;ch=true;}if(p&&keep.includes('halo')&&f.haloT!==p){f.haloT=p;ch=true;}
+  if(ch){f.gear=keep;store.set('or-fit',JSON.stringify(f));if(G&&G.plaza&&G.me)dressShow();}}
+/* the goal of a 성과 step in its own number (100일), from the server's list; `n단계` until that has loaded */
+function rwGoal(aw,st){const a=typeof CR!=='undefined'&&CR.view&&CR.view.awards&&CR.view.awards.find(x=>x.id===aw);
+  return a?(a.names?a.names[st-1]:`${a.at[st-1].toLocaleString()}${a.unit}`):`${st}단계`;}
+const rwWhy=n=>n.temp?'지난주 주간 랭킹 3위 안에 들면 일주일 동안 쓸 수 있어요':n.aw?`${RW_AW_N[n.aw]} ${rwGoal(n.aw,n.st)} 달성 시 열려요`:'아직 열 수 없어요';
 function dressIs(f,k,v){const g=f.gear||[];
   if(k==='eyes')return v==='shades'?g.includes('shades'):v==='glasses'?f.glasses&&!g.includes('shades'):!f.glasses&&!g.includes('shades');
   if(k==='badgeK')return v==='goldBadge'?g.includes('goldBadge'):v==='on'?f.badge&&!g.includes('goldBadge'):!f.badge&&!g.includes('goldBadge');
-  if(k==='faceK')return v==='eyebags'?g.includes('eyebags'):v==='freckles'?!!f.freckles:!f.freckles&&!g.includes('eyebags');
-  if(k==='gear')return g.includes(v);if(k==='title')return f.title===v;return f[k]===v;}
+  if(k==='faceK')return v==='eyebags'?g.includes('eyebags'):v==='freckles'?!!f.freckles:v==='stamp'?!!f.stamp:!f.freckles&&!f.stamp&&!g.includes('eyebags');
+  if(k==='haloT')return(f.haloT||1)===v;if(k==='gear')return g.includes(v);if(k==='title')return f.title===v;return(f[k]??null)===v;}
 /* one choice applied to a copy of a fit */
 function dressApply(f0,k,v){const f={...f0,gear:[...(f0.gear||[])]},drop=x=>{f.gear=f.gear.filter(y=>y!==x);},put=x=>{if(!f.gear.includes(x))f.gear.push(x);};
   if(k==='eyes'){drop('shades');f.glasses=v==='glasses';if(v==='shades')put('shades');}
   else if(k==='badgeK'){drop('goldBadge');f.badge=v!=='off';if(v==='goldBadge')put('goldBadge');}
   else if(k==='tie')f.tie=v||null;
-  else if(k==='faceK'){drop('eyebags');f.freckles=v==='freckles';if(v==='eyebags')put('eyebags');}   // one of 없음 / 다크서클 / 주근깨
-  else if(k==='gear'){if(f.gear.includes(v))drop(v);else put(v);}
+  else if(k==='faceK'){drop('eyebags');f.freckles=v==='freckles';f.stamp=v==='stamp';if(v==='eyebags')put('eyebags');}   // one of 없음 / 다크서클 / 주근깨
+  else if(k==='gear'){if(f.gear.includes(v))drop(v);else put(v);if(v==='halo'&&rwPlace())f.haloT=rwPlace();}
+  else if(k==='haloT')f.haloT=+v;
   else if(k==='title')f.title=f.title===v?null:v;
   else f[k]=v;
   return cleanFit(f);}
@@ -274,23 +302,26 @@ function dressRender(){
   const btn=(lab,k,v,names,view)=>{const n=rwNeed(k,v),lock=!rwHave(n),tr=DR.tries.some(t=>t.k===k&&t.v===v);
     const cls=`${dressIs(f,k,v)?'on':''}${lock?' lock':''}${tr?' trying':''}${n&&!lock?' rw':''}`,data=`data-k="${k}" data-v="${v??''}"`,tip=n?(lock?rwWhy(n):n.n||''):'';
     if(names&&view){const vw=typeof view==='string'?view:view[v];
-      if(k==='fx')return`<button ${data} class="th ${cls}" title="${tip}"><b class="thi">${vw}</b><span>${lock?lockI:''}${names[v]}</span></button>`;
-      const tf=dressApply(DEFAULT_FIT,k,v),url=shotKnown(tf,vw);   // always on the default outfit: the same few pictures, drawn once (what I wear shows on me beside the card)
+      if(k==='fx'||k==='thr')return`<button ${data} class="th ${cls}" title="${tip}"><b class="thi">${vw}</b><span>${lock?lockI:''}${names[v]}</span></button>`;
+      const tf=rwShotFit(k,v),url=shotKnown(tf,vw);   // always on the default outfit: the same few pictures, drawn once (what I wear shows on me beside the card)
       if(!url)jobs.push([tf,vw]);   // drawn ones go straight in, so re-rendering the rows on every tap doesn't blink
       return`<button ${data} class="th ${cls}" title="${tip}"><img alt="" ${url?`src="${url}"`:`data-j="${jobs.length-1}"`}><span>${lock?lockI:''}${names[v]}</span></button>`;}
     if(names)return`<button ${data} class="${cls}" title="${tip}">${lock?lockI:''}${names[v]}</button>`;
-    return`<button ${data} class="sw${v?'':' none'} ${cls}" style="--c:${v||'#fff'}" aria-label="${lab} ${n?n.n:v||'없음'}" title="${tip}">${lock?lockI:''}</button>`;};
+    return`<button ${data} class="sw${v?'':' none'} ${cls}" style="--c:${v===RAINBOW?'linear-gradient(#e8607a,#f2a25c,#f5df7a,#8fd08a,#7fbfe8,#8f8fe0,#c08fe0)':v||'#fff'}" aria-label="${lab} ${n?n.n:v||'없음'}" title="${tip}">${lock?lockI:''}</button>`;};
   let html;
   if(DR.cat==='title'){   // 칭호: one per 성과 step, one worn at a time; a gold chip in my name tag in the lobby
-    const nm=esc(store.get('or-name')||G.me.name||'나'),plate=t=>`<span class="tplate">${t?`<i>${esc(t)}</i>`:''}${nm}</span>`;
-    html=`<div class="row tnow"><span>이름표</span><div class="opts">${plate(titleOf(f.title))}${f.title?'<button class="tlink" data-k="title" data-v="'+f.title+'">떼기</button>':''}</div></div>`+
-      Object.keys(RW_TITLES).map(aw=>`<div class="row"><span>${RW_AW_N[aw]}</span><div class="opts tchips">${RW_TITLES[aw].map((t,i)=>{const v=`${aw}:${i+1}`,lock=!rwHave({aw,st:i+1});
-        return`<button data-k="title" data-v="${v}" class="tchip${f.title===v?' on':''}${lock?' lock':''}" title="${RW_AW_N[aw]} ${RW_ST[i]}${lock?' 달성 시 열려요':''}">${lock?lockI:''}${t}</button>`;}).join('')}</div></div>`).join('');}
-  else html=DRESS_ROWS[DR.cat].filter(r=>!r[4]||r[4](f)).map(([lab,key,opts,names,,view])=>`<div class="row${view?' big':''}"><span>${lab}</span><div class="opts${view?' ths':''}">${opts.map(v=>btn(lab,key,v,names,view)).join('')}</div></div>`).join('');
-  $('dressRows').innerHTML=html;
+    const nm=esc(store.get('or-name')||G.me.name||'나'),plate=t=>`<span class="tplate">${t?`<i class="tstamp">${esc(t)}</i>`:''}<b>${nm}</b></span>`;
+    html=`<div class="row tnow"><span>이름표</span><div class="opts">${plate(titleOf(f.title))}</div></div>`+
+      `<div class="row big"><span>전체 칭호</span><div class="opts tchips">${Object.keys(RW_TITLES).flatMap(aw=>RW_TITLES[aw].flatMap((t,i)=>t?[{t,aw,st:i+1,v:`${aw}:${i+1}`,lock:!rwHave({oid:`title:${aw}:${i+1}`})}]:[])).sort((x,y)=>x.lock-y.lock)   // the ones I have first
+        .map(({t,aw,st,v,lock})=>`<button data-k="title" data-v="${v}" class="tchip${f.title===v?' on':''}${lock?' lock':''}" title="${RW_AW_N[aw]} ${rwGoal(aw,st)}${lock?' 달성 시 열려요':''}">${lock?lockI:''}${t}</button>`).join('')}</div></div>`;}
+  else{const hide=store.get('or-hideLock')==='1',has=(k,v)=>rwHave(rwNeed(k,v));   // in each row the ones I have come first; the locked ones can be hidden (a piece I'm trying on stays). 후광 only shows for those it's lent to
+    html=DRESS_ROWS[DR.cat].filter(r=>!r[4]||r[4](f)).map(([lab,key,opts,names,,view])=>{const list=opts.filter(v=>!(key==='gear'&&v==='halo'&&!has(key,v))&&(!hide||has(key,v)||DR.tries.some(t=>t.k===key&&t.v===v))).sort((x,y)=>has(key,y)-has(key,x));
+      return`<div class="row${view?' big':''}"><span>${lab}</span><div class="opts${view?' ths':''}">${list.map(v=>btn(lab,key,v,names,view)).join('')}</div></div>`;}).join('');
+    html=`<label class="dhide"><input type="checkbox" id="dHideLock"${hide?' checked':''}> 잠긴 것 숨기기</label>`+html;}
+  $('dressRows').innerHTML=(RW_LOCAL?`<button class="dunlock" data-unlock="1">🔓 전체 해금 ${rwUnlocked()?'ON':'OFF'} <small>로컬 전용</small></button>`:'')+html;
   shotQ=[...$('dressRows').querySelectorAll('img[data-j]')].map(img=>[img,...jobs[+img.dataset.j]]);if(shotQ.length)setTimeout(shotPump,0);
   const t=DR.tries[DR.tries.length-1],n=t&&rwNeed(t.k,t.v);$('dressNote').hidden=!n;
-  if(n)$('dressNote').innerHTML=`<b>🔒 미리보기${DR.tries.length>1?` ${DR.tries.length}개`:''}</b> ${n.n||titleOf(t.v)} · ${rwWhy(n)}<button class="tlink" id="dressTryX">벗기</button>`;
+  if(n)$('dressNote').innerHTML=`<b>🔒 미리보기${DR.tries.length>1?` ${DR.tries.length}개`:''}</b> ${n.n||titleOf(t.v)} · ${rwWhy(n)}`;
 }
 function dressSet(k,v){
   /* locked: only tried on, several at once (tap again to take one off); one of a kind per slot except gear */
@@ -303,7 +334,7 @@ function dressSet(k,v){
 }
 /* turning me round: the ◀ ▶ buttons or dragging across the view. The 헤어 / 얼굴 tabs bring the camera in on the head */
 PZ.yaw=0;PZ.zoom=0;
-$('dressCats').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;DR.cat=b.dataset.c;PZ.zoom=DR.cat==='hair'||DR.cat==='face'?1:0;dressRender();$('paneWear').scrollTop=0;});
+$('dressCats').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;DR.cat=b.dataset.c;PZ.zoom=DR.cat==='face'?1:0;dressRender();$('paneWear').scrollTop=0;});
 for(const[id,d]of[['dRotL',-1],['dRotR',1]])$(id).addEventListener('click',()=>{PZ.yaw+=d*Math.PI/4;});
 {let dx=null;addEventListener('pointerdown',e=>{if(PZ.dress&&(e.target===cv||e.target===gl.domElement))dx=e.clientX;});
  addEventListener('pointermove',e=>{if(dx===null||!PZ.dress)return;PZ.yaw-=(e.clientX-dx)*.012;dx=e.clientX;});
@@ -318,11 +349,11 @@ function dressOpen(){if(!PZ.on)return;PZ.dress=true;$('home').classList.add('dre
    let best=spots[start]||{x:FW/2,y:K(300)};
    for(let i=0;i<n;i++){const p=spots[(start+i)%n];if(!others.some(a=>Math.hypot(a.x-p.x,a.y-p.y)<60)){best=p;break;}}
    G.me.x=best.x;G.me.y=best.y;}
-  G.me.vx=G.me.vy=0;cam={x:G.me.x,y:G.me.y};$('homeMenu').hidden=true;$('dress').hidden=false;DR.tries=[];PZ.yaw=0;PZ.zoom=DR.cat==='hair'||DR.cat==='face'?1:0;dressRender();idTab('wear');}
+  G.me.vx=G.me.vy=0;cam={x:G.me.x,y:G.me.y};$('homeMenu').hidden=true;$('dress').hidden=false;DR.tries=[];PZ.yaw=0;PZ.zoom=DR.cat==='face'?1:0;dressRender();idTab('wear');careerLoad();}   // the 옷장 locks read the 성과 steps
 function dressClose(){if(DR.tries.length){DR.tries=[];dressShow();}PZ.dress=false;$('home').classList.remove('dressing');$('homeMenu').hidden=false;$('dress').hidden=true;
   if(PZ.dressFromDock){PZ.dressFromDock=false;homeClose(true);}} // opened from the tabs: go back to the tabs
-$('dressNote').addEventListener('click',e=>{if(e.target.id==='dressTryX'){DR.tries=[];dressShow();dressRender();}});
-$('dressRows').addEventListener('click',e=>{const b=e.target.closest('button');if(b)dressSet(b.dataset.k,b.dataset.v||null);});
+$('dressRows').addEventListener('change',e=>{if(e.target.id==='dHideLock'){store.set('or-hideLock',e.target.checked?'1':'0');dressRender();}});
+$('dressRows').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.unlock){store.set('or-unlock',rwUnlocked()?'0':'1');DR.tries=[];dressShow();dressRender();return;}dressSet(b.dataset.k,b.dataset.v||null);});
 $('hDress').addEventListener('click',dressOpen);
 $('dressDone').addEventListener('click',dressClose);
 $('dressReset').addEventListener('click',()=>{DR.tries=[];G.me.fit=cleanFit({...DEFAULT_FIT,title:dressSaved().title});   // 기본 옷으로 keeps the 칭호

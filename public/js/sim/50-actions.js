@@ -149,7 +149,7 @@ function dropLighters(a){if(!(a.lighter>0)||a.f!==ROOF)return;for(let i=0;i<a.li
 function passBill(t,o){
   const L=G.lunch;if(!L||L.kind!=='bill'||!o||!o.bill||t.bill||t.f!==ROOF||o.f!==ROOF)return;
   if(o.billFrom===t&&G.t-o.billT<LUNCH.bill.safe)return;
-  o.bill=false;t.bill=true;t.billFrom=o;t.billT=G.t;
+  o.bill=false;t.bill=true;t.hadBill=true;t.billFrom=o;t.billT=G.t;
   pop(ROOF,t.x,t.y-54,'계산서 받음!','#cf3626');pop(ROOF,o.x,o.y-54,'계산서 넘김','#2f7d4f');
   tell(t,`${o.name}님이 계산서를 넘겼다! 서류로 다른 사람을 맞혀 넘기세요`,true);tell(o,`계산서를 ${t.name}님에게 넘겼다`);
 }
@@ -294,7 +294,7 @@ function startWc(a){
 /* moving (stick or WASD) puts the phone down, but not a push that was already held when the round began (a thumb
    resting on the stick while tapping the button): that one counts only once it has been let go, or after 1.2 s */
 function wcLeave(a,m){const w=a.wc;if(m<=.35){w.held=false;return false;}return !w.held||w.t>1.2;}
-function wcDone(a,res){const w=a.wc;w.res=res;w.resT=G.t;w.end=G.t+WC.wait;
+function wcDone(a,res){const w=a.wc;w.res=res;w.resT=G.t;w.end=G.t+WC.wait;a.wcGo=(a.wcGo||0)+1;
   if(res==='cash'){w.gain=wcGain(w.m);if(w.gain>=0){gain(a,w.gain);pop(a.f,a.x,a.y-30,`+${w.gain} 익절!`,'#2f7d4f');}else{dmg(a,-w.gain,'wc');pop(a.f,a.x,a.y-30,`손절 ${w.gain}`,'#cf3626');}}
   else if(res==='crash'){dmg(a,WC.crash,'wc');pop(a.f,a.x,a.y-30,`상장폐지 -${WC.crash}`,'#cf3626');}}
 function cashWc(a){if(a.wc&&!a.wc.res)wcDone(a,'cash');}

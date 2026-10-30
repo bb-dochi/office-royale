@@ -97,7 +97,7 @@ export async function apiHTTP({ rank, stats, career, feedback }, method, url, bo
   await stats.record({ ...e, mode: 'solo', lunch: typeof m.lunch === 'string' ? m.lunch.slice(0, 10) : '', branch: m.branch });
   const r = e.diff === RANKED ? await rank.submit(e) : null;
   rank.last.set(e.uid, now);
-  const c = await career.record(e.uid, e).catch(err => { console.error('career', err); return null; });
+  const c = await career.record(e.uid, { ...e, branch: typeof m.branch === 'string' ? m.branch : '', lunchWin: m.lunchWin === true, wcGo: m.wcGo }).catch(err => { console.error('career', err); return null; });
   return { status: 200, json: { rank: r && !r.err ? r : null, career: c } };
 }
 

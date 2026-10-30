@@ -33,7 +33,7 @@ function showResult(win){
   $('rNote').textContent=note;
   Object.assign(RES,{win,title:$('rTitle').textContent,name:me.name==='나'?store.get('or-name')||'신입':me.name,place:$('rPlace').textContent,time:$('rTime').textContent,
     rank:$('rRank').textContent,perf:$('rPerf').textContent,note});
-  for(const el of document.querySelectorAll('#result .rsc'))el.hidden=true;if(!NETC.room&&!G.net&&!G.tutorial)rankSubmit(win); // solo: stats, and the weekly score on 어려움
+  $('rNews').hidden=$('rBang').hidden=true;for(const el of document.querySelectorAll('#result .rsc'))el.hidden=true;if(!NETC.room&&!G.net&&!G.tutorial)rankSubmit(win); // solo: stats, and the weekly score on 어려움
   $('watchBtn').hidden=win||G.over||!running; // nothing left to watch once the room has gone back to its lobby
   $('againBtn').textContent=NETC.room?'대기실로':'다시 출근';
   $('result').hidden=false;$('callBox').hidden=true;
@@ -88,7 +88,7 @@ function start(d){if((d||store.get('or-diff'))===RANKED&&!hardOpen()){store.set(
 /* lunch events come from a shuffled deck kept in this browser, so all four turn up before any repeats */
 function nextLunch(){let bag=[];try{bag=JSON.parse(store.get('or-lunch')||'[]');}catch{}bag=Array.isArray(bag)?bag.filter(k=>LUNCH_KINDS.includes(k)):[];
   if(!bag.length)bag=[...LUNCH_KINDS].sort(()=>Math.random()-.5);const k=bag.shift();store.set('or-lunch',JSON.stringify(bag));return k;}
-const DIFF_TXT={easy:'봇이 굼뜨고 서류가 잘 빗나가요. 가만히 있어도 고과가 안 깎여요.',normal:'기본 난이도. 할 일을 안 하면 고과가 깎여요.',hard:'봇이 빠르고 정확하게 던져요. 놀면 고과가 깎여요.'};
+const DIFF_TXT={easy:'봇이 굼뜨고 서류가 잘 빗나가요. 가만히 있어도 고과가 안 깎여요. 성과에는 집계되지 않아요.',normal:'기본 난이도. 할 일을 안 하면 고과가 깎여요.',hard:'봇이 빠르고 정확하게 던져요. 놀면 고과가 깎여요.'};
 function diffOpen(){
   const last=store.get('or-diff')||'normal';
   $('diffOpts').innerHTML=Object.entries(DIFF).map(([k,v],i)=>{const lock=k===RANKED&&!hardOpen();return`<button data-d="${k}" class="${k===last?'last':''}"${lock?' disabled':''}>

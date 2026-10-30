@@ -15,7 +15,7 @@ const FIXED_A=new Set(['name','color','fit']);
 /* empty values (0, false, null, '', [], spent timers) are left out of public actor data to keep snapshots small */
 const empty=v=>v===null||v===false||v===''||v===undefined||(typeof v==='number'&&v<=0&&v>-1e-9)||(Array.isArray(v)&&!v.length);
 /* bot brain and bookkeeping that never leaves the server */
-const SKIP_A=new Set(['path','pathAge','goal','mode','think','target','strafe','react','sx','sy','stuckT','nudge','met','input','aim','pref','padPref','greed','lunchGo','seeker','lastHitBy','type','key','_n','sitGoal','desk','wc','jobs','moveSk','idleT','throwT','dodgeCd','svx','svy']);
+const SKIP_A=new Set(['lunchWin','hadBill','wcGo','path','pathAge','goal','mode','think','target','strafe','react','sx','sy','stuckT','nudge','met','input','aim','pref','padPref','greed','lunchGo','seeker','lastHitBy','type','key','_n','sitGoal','desk','wc','jobs','moveSk','idleT','throwT','dodgeCd','svx','svy']);
 function serA(a,full,fixed){
   const o={};
   if(!full){for(const k in PUB_A){if(!fixed&&FIXED_A.has(k))continue;let v=a[k];if(typeof v==='number'){v=r1(v);if((k.endsWith('T')||k==='flash')&&v<0)v=0;}if(k==='f'||k==='x'||k==='y'||k==='face'?v!==0:!empty(v))o[k]=v;}}
@@ -117,7 +117,7 @@ NET.cmd=function(key,m){const a=byKey(key);if(!a||!a.isPlayer||G.over)return;
   }};
 /* how one player's match went, for the play stats (server/src/stats.js) */
 NET.result=function(key){const a=byKey(key);if(!a)return null;const win=G.winner===a;
-  return{place:win?1:a.place||aliveCount(),rank:win?'CEO':a.rank,kills:a.kills||0,tasks:a.tasksDone||0,time:Math.round(a.alive?G.t:a.outT??G.t),diff:G.diff,lunch:G.lunchKind,branch:a.branch||''};};
+  return{place:win?1:a.place||aliveCount(),rank:win?'CEO':a.rank,kills:a.kills||0,tasks:a.tasksDone||0,time:Math.round(a.alive?G.t:a.outT??G.t),diff:G.diff,lunch:G.lunchKind,branch:a.branch||'',lunchWin:!!a.lunchWin,wcGo:a.wcGo||0};};
 /* every person in the match is out (or gone): the room doesn't wait for the bots to finish it */
 NET.humansOut=()=>!!G&&!humans().some(a=>a.alive);
 /* a player who drops mid-match is handed to the bot brain so the match keeps its numbers */

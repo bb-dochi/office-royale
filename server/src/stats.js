@@ -5,7 +5,7 @@
 // A game's branch is the team the player was posted to (sim BRANCH; '' = still an intern). Days and games from before
 // it was recorded (and games from pages cached since then) have no branch field at all and aren't counted.
 // Storage keys (all small values): s:day:<date> per KST day, s:p:<uid> per person, s:idx (one line per person), s:recent.
-import { AWARDS, AWARDS_ON, STEPS, rewardsOf } from './career.js'; // the admin's 성과 views (career.js uses dayOf from here: only at run time)
+import { AWARDS, AWARDS_ON, STEPS, rewardsOf, REWARD_KINDS } from './career.js'; // the admin's 성과 views (career.js uses dayOf from here: only at run time)
 const BRANCHES = ['dev', 'mkt', 'hr', 'design'];
 const RECENT = 100, PERSON_RECENT = 20, IDX_MAX = 3000, DAY_PEOPLE_MAX = 5000;
 export const dayOf = (ms = Date.now()) => new Date(ms + 9 * 3600e3).toISOString().slice(0, 10);
@@ -138,40 +138,61 @@ async function awardSection(career, uid) {
   const u = `?uid=${encodeURIComponent(uid)}`, R = globalThis.REWARDS;
   const rows = v.list.map(a => {
     const fmt = x => a.names ? a.names[a.at.indexOf(x)] : `${x.toLocaleString()}${a.unit}`;
-    const steps = [0, 1, 2, 3, 4, 5].map(i => i === a.step ? `<b class="stp on">${stepName(i)}</b>` : `<a class="stp" href="${u}&aw=${a.id}&st=${i}#aw">${stepName(i)}</a>`).join('');
+    const steps = [...Array(a.at.length + 1).keys()].map(i => i === a.step ? `<b class="stp on">${stepName(i)}</b>` : `<a class="stp" href="${u}&aw=${a.id}&st=${i}#aw">${stepName(i)}</a>`).join('');
     const got = gotOf(a.id, a.step);
     return `<tr><td><b>${esc(a.n)}</b><div class="mut sm">${esc(a.d)}</div></td><td class="n">${a.names ? (a.step ? a.names[a.step - 1] : '-') : a.val.toLocaleString() + a.unit}</td>
       <td class="mut">${a.step >= a.at.length ? '모두 달성' : '다음 ' + fmt(a.at[a.step])}</td><td><div class="stps">${steps}</div></td><td class="wrap sm">${got.map(esc).join(', ') || '<span class="mut">-</span>'}</td></tr>`;
   }).join('');
   const f = v.prof && v.prof.fit, worn = f ? [f.title && `칭호 「${(R.titles[f.title.split(':')[0]] || [])[f.title.split(':')[1] - 1]}」`, R.hair[f.hair] && `머리 ${R.hair[f.hair].n}`,
     ...(f.gear || []).map(g => R.gear[g] && R.gear[g].n), f.fx && R.fx[f.fx] && `이펙트 ${R.fx[f.fx].n}`, R.color[f.topC] && R.color[f.topC].n].filter(Boolean) : [];
+  const has = new Set(v.own), own = REWARD_KINDS.flatMap(([kind, label]) => Object.entries(R[kind]).filter(([id, r]) => r.aw || kind === 'color').map(([id, r]) => ({ key: `${kind}:${id}`, n: `${label} · ${r.n}` })));
+  const piece = p => `<a class="stp${has.has(p.key) ? ' on' : ''}" href="${u}&own=${encodeURIComponent(p.key)}&on=${has.has(p.key) ? 0 : 1}#aw">${esc(p.n)}</a>`;
   const total = v.list.reduce((s, a) => s + a.step, 0);
   const note = (AWARDS_ON ? '' : `<p class="mut sm note">성과는 아직 꺼져 있어요(<span class="mono">AWARDS_ON</span>). 여기서 단계를 바꾸면 <b>이 사람만 테스트로</b> 사원증에 성과가 보이고 보상이 열려요.</p>`)
     + `<p class="sm note">지금 입은 성과 보상: ${worn.length ? worn.map(esc).join(', ') : '<span class="mut">없음</span>'}${v.prof ? '' : ' <span class="mut">(옷장 연동 기록 없음)</span>'}</p>`;
-  return section(`성과 <small>단계 ${total} / ${v.list.length * 5}${v.test ? ' · 테스트 조정됨' : ''}</small>`,
-    note + tbl(`<thead><tr><th>성과</th><th class="n">값</th><th>다음 목표</th><th>단계 <span class="mut">(눌러서 바꾸기)</span></th><th>열린 보상</th></tr></thead><tbody>${rows}</tbody>`),
+  return section(`성과 <small>단계 ${total} / ${v.list.reduce((s, a) => s + a.at.length, 0)}${v.test ? ' · 테스트 조정됨' : ''}</small>`,
+    note + tbl(`<thead><tr><th>성과</th><th class="n">값</th><th>다음 목표</th><th>단계 <span class="mut">(눌러서 바꾸기)</span></th><th>열린 보상</th></tr></thead><tbody>${rows}</tbody>`) + `<p class="sm note">소지품 ${v.own.length}개 <span class="mut">(파란 것이 가진 것, 눌러서 지급·회수. 회수한 건 단계에 도달해도 다시 안 들어와요)</span></p><div class="stps" style="flex-wrap:wrap">${own.map(piece).join('')}</div>`,
     v.test ? `<a class="btnl" href="${u}&awreset=1#aw">성과 초기화 · 테스트 해제</a>` : '', 'aw');
 }
-/* every 성과 step and what it gives (public/js/shared/rewards.js), and the reward pieces by kind */
-function rewardPage() {
-  const R = globalThis.REWARDS;
-  const grid = AWARDS.map(a => `<tr><td><b>${esc(a.n)}</b><div class="mut sm">${esc(a.d)}</div></td>${STEPS.map((s, i) => { const r = rewardsOf(a.id, i + 1);
-    return `<td class="wrap sm"><div>「${esc(r.title || '-')}」</div>${r.items.map(x => `<div>${x.label} · ${esc(x.n)}</div>`).join('')}${!r.items.length && i >= 2 ? '<div class="mut">아이템 비어 있음</div>' : ''}</td>`; }).join('')}</tr>`).join('');
-  const kinds = [['hair', '머리'], ['gear', '소품'], ['fx', '이펙트'], ['color', '색']];
-  const list = kinds.flatMap(([k, label]) => Object.entries(R[k]).map(([id, r]) => `<tr><td>${label}</td><td><b>${esc(r.n)}</b> <span class="mono mut">${esc(id)}</span></td>
-    <td>${R.awards[r.aw] ? `${esc(R.awards[r.aw])} ${STEPS[r.st - 1]}` : '<span class="mut">어느 성과에도 안 붙음</span>'}</td></tr>`)).join('');
-  return `<nav class="crumb"><a href="?">← 전체 목록</a></nav>`
-    + section('성과 단계별 보상 <small>단계마다 칭호 1개 · 대리부터 아이템</small>', tbl(`<thead><tr><th>성과</th>${STEPS.map(s => `<th>${s}</th>`).join('')}</tr></thead><tbody>${grid}</tbody>`))
-    + section(`보상 아이템 <small>${list.split('<tr>').length - 1}개 · 목록은 public/js/shared/rewards.js</small>`, tbl(`<thead><tr><th>종류</th><th>이름</th><th>열리는 단계</th></tr></thead><tbody>${list}</tbody>`));
+/* every 성과 step and what it gives (public/js/shared/rewards.js), and every reward piece. `edit` (the local dev server only:
+   a deployed server can't rewrite the game's files) adds the controls; the page's script posts to /admin/rewards, see tools/rewards-edit.mjs */
+function rewardPage(edit) {
+  const R = globalThis.REWARDS, goal = (a, i) => (a.names ? a.names[i] : `${a.at[i].toLocaleString()}${a.unit}`);
+  const pieces = REWARD_KINDS.flatMap(([kind, label]) => Object.entries(R[kind]).map(([id, r]) => ({ kind, label, id, ...r })));
+  const where = p => { const a = AWARDS.find(x => x.id === p.aw); return a ? `${a.n} ${goal(a, p.st - 1)}` : ''; };
+  const addSel = (a, st) => `<select class="rwadd" data-aw="${a.id}" data-st="${st}"><option value="">+ 보상 추가</option>${REWARD_KINDS.map(([kind, label]) => `<optgroup label="${label}">${pieces.filter(p => p.kind === kind && !(p.aw === a.id && p.st === st)).map(p => `<option value="${esc(`${p.kind}:${p.id}`)}">${esc(p.n)}${p.aw ? ` (${esc(where(p))})` : ''}</option>`).join('')}</optgroup>`).join('')}</select>`;
+  const cell = (a, i) => { const st = i + 1, r = rewardsOf(a.id, st);
+    if (!edit) return `<td class="wrap sm"><div class="mut">${esc(goal(a, i))}</div>${r.title ? `<div>「${esc(r.title)}」</div>` : ''}${r.items.map(x => `<div>${x.label} · ${esc(x.n)}</div>`).join('')}</td>`;
+    return `<td class="wrap sm"><div class="mut">${esc(goal(a, i))}</div><input class="rwtitle" data-aw="${a.id}" data-st="${st}" placeholder="칭호 없음" maxlength="12" value="${esc(r.title || '')}">${r.items.map(x => `<button class="rwchip" data-p="${esc(`${x.kind}:${x.id}`)}" title="빼기">${x.label} · ${esc(x.n)} ✕</button>`).join('')}${addSel(a, st)}</td>`; };
+  const grid = AWARDS.map(a => `<tr><td><b>${esc(a.n)}</b><div class="mut sm">${esc(a.d)}</div></td>${STEPS.map((s, i) => (i < a.at.length ? cell(a, i) : '<td class="mut">-</td>')).join('')}</tr>`).join('');
+  const none = p => (p.temp ? '주간 1~3위 일주일 한정' : p.kind === 'color' ? '잠금 (아직 안 붙임)' : '모두에게 무료');
+  const stepOpts = p => `<option value="">${none(p)}</option>${AWARDS.map(a => `<optgroup label="${esc(a.n)}">${a.at.map((x, i) => `<option value="${a.id}:${i + 1}"${p.aw === a.id && p.st === i + 1 ? ' selected' : ''}>${esc(a.n)} ${esc(goal(a, i))}</option>`).join('')}</optgroup>`).join('')}`;
+  const list = pieces.map(p => `<tr><td>${p.label}</td><td><b>${esc(p.n)}</b> <span class="mono mut">${esc(p.id)}</span></td>
+    <td>${edit ? `<select class="rwset" data-p="${esc(`${p.kind}:${p.id}`)}">${stepOpts(p)}</select>` : p.aw ? esc(where(p)) : `<span class="mut">${none(p)}</span>`}</td></tr>`).join('');
+  const page = section(`성과 단계별 보상 <small>${edit ? '바꾸면 바로 저장돼요 · 게임은 새로고침하면 반영' : '바꾸는 곳은 로컬 관리자 페이지'}</small>`, tbl(`<thead><tr><th>성과</th>${STEPS.map((s, i) => `<th>${i + 1}단계</th>`).join('')}</tr></thead><tbody>${grid}</tbody>`))
+    + section(`보상 아이템 <small>${pieces.length}개 · 성과에 붙음 ${pieces.filter(p => p.aw).length}개 · 무료 ${pieces.filter(p => !p.aw && !p.temp && p.kind !== 'color').length}개 · 잠긴 색 ${pieces.filter(p => !p.aw && p.kind === 'color').length}개</small>`, tbl(`<thead><tr><th>종류</th><th>이름</th><th>열리는 단계</th></tr></thead><tbody>${list}</tbody>`));
+  if (!edit) return `<nav class="crumb"><a href="?">← 전체 목록</a></nav>${page}`;
+  return `<nav class="crumb"><a href="?">← 전체 목록</a></nav><div id="rwEdit">${page}</div><style>#rwEdit table{table-layout:fixed;width:100%}.rwtitle{display:block;width:100%;min-width:88px;box-sizing:border-box;margin:4px 0;padding:3px 5px;font:inherit;border:1px solid #d5d9e0;border-radius:4px}.rwchip{display:block;width:100%;margin:2px 0;padding:3px 5px;font:inherit;text-align:left;background:#e8f0fb;color:#1f4f8f;border:0;border-radius:4px;cursor:pointer}.rwadd,.rwset{width:100%;font:inherit;margin-top:2px}</style>
+<script>
+const rwPost=m=>fetch('/admin/rewards',{method:'POST',body:JSON.stringify(m)}).then(r=>{if(!r.ok)throw 0;return fetch(location.href);}).then(r=>r.text()).then(h=>{document.getElementById('rwEdit').innerHTML=new DOMParser().parseFromString(h,'text/html').getElementById('rwEdit').innerHTML;}).catch(()=>alert('저장하지 못했어요'));
+const rwPiece=v=>{const i=v.indexOf(':');return{kind:v.slice(0,i),id:v.slice(i+1)};};
+document.addEventListener('change',e=>{const t=e.target,d=t.dataset;
+  if(t.matches('.rwadd')&&t.value)rwPost({...rwPiece(t.value),aw:d.aw,st:+d.st});
+  if(t.matches('.rwset')){const[aw,st]=t.value.split(':');rwPost({...rwPiece(d.p),aw:aw||null,st:+st||null});}
+  if(t.matches('.rwtitle'))rwPost({title:t.value,aw:d.aw,st:+d.st});});
+document.addEventListener('click',e=>{const b=e.target.closest('.rwchip');if(b)rwPost({...rwPiece(b.dataset.p),aw:null,st:null});});
+</script>`;
 }
-export async function adminHTML(stats, q, career, feedback) {
+
+export async function adminHTML(stats, q, career, feedback, rewardEdit = false) {
   const link = (uid, name) => `<a href="?uid=${encodeURIComponent(uid)}">${esc(name)}</a>`;
   if (feedback && q.get('fbhide')) await feedback.hide(+q.get('fbhide'), true); // 사내 게시판 댓글 숨기기 / 되살리기
   if (feedback && q.get('fbshow')) await feedback.hide(+q.get('fbshow'), false);
   if (career && q.get('uid') && q.get('aw') && await career.awardsOf(q.get('uid'))) await career.setAward(q.get('uid'), q.get('aw'), +q.get('st')); // 성과 단계 조정 (테스트; makes the career first if needed)
   if (career && q.get('uid') && q.get('awreset')) await career.resetAwards(q.get('uid'));
+  if (career && q.get('uid') && q.get('own')) await career.setOwn(q.get('uid'), q.get('own'), q.get('on') === '1');
   let body;
-  if (q.get('rw')) body = rewardPage();
+  if (q.get('rw')) body = rewardPage(rewardEdit);
   else if (q.get('uid')) {
     const p = await stats.person(q.get('uid')), code = career && await career.codeOf(q.get('uid'));
     const avgPlace = p && p.recent.length ? (p.recent.reduce((s, g) => s + g.place, 0) / p.recent.length).toFixed(1) : '-';

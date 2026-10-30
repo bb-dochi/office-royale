@@ -11,10 +11,10 @@ export class PlazaCore {
   constructor({ send }) {
     this.send = send; this.peers = []; this.seq = 0; this.timer = null;
   }
-  join(peer, name, fit) {
+  join(peer, name, fit, uid, resume, own) {
     if (this.peers.length >= PLAZA_MAX) return '로비가 꽉 찼어요';
     peer.pid = ++this.seq; peer.name = cleanName(name, this.peers); peer.seed = (Math.random() * 1e6) | 0;
-    peer.fit = cleanFit(fit);
+    peer.own = own; peer.fit = cleanFit(fit, own);
     peer.x = 770 + Math.random() * 120 - 60; peer.y = 760 + Math.random() * 80; peer.face = -Math.PI / 2; peer.mv = 0;
     this.peers.push(peer);
     this.send(peer, { t: 'pz-hi', you: peer.pid, name: peer.name, seed: peer.seed, x: peer.x, y: peer.y });
@@ -37,7 +37,7 @@ export class PlazaCore {
       peer.face = n(m.face); peer.mv = m.mv ? 1 : 0;
     } else if (m.t === 'pz-fit') {
       const now = Date.now(); if (now - (peer.fitT || 0) < 500) return; peer.fitT = now;
-      peer.fit = cleanFit(m.fit); if (peer.fit) for (const p of this.peers) if (p !== peer) this.send(p, { t: 'pz-fit', id: peer.pid, fit: peer.fit });
+      peer.fit = cleanFit(m.fit, peer.own); if (peer.fit) for (const p of this.peers) if (p !== peer) this.send(p, { t: 'pz-fit', id: peer.pid, fit: peer.fit });
     } else if (m.t === 'pz-room') {
       /* the match room this person is waiting in, shown to the plaza so others can walk up and join */
       const c = typeof m.code === 'string' && /^[A-Z0-9]{4,8}$/.test(m.code) ? m.code : null;

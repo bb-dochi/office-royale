@@ -74,7 +74,7 @@ function roofStep(L,dt){
       tell(a,`${teamOf(a.side)} +${a.lighter}점`);a.lighter=0;}}
   else if(L.kind==='bill'){ /* the bills go round once most people are up */
     if(!L.dealt&&L.t<=22){L.dealt=true;const n=up.length<2?0:Math.max(1,Math.round(up.length/4));
-      for(const a of up.slice().sort(()=>Math.random()-.5).slice(0,n)){a.bill=true;a.billT=G.t;pop(ROOF,a.x,a.y-54,'계산서 받음!','#cf3626');tell(a,'계산서를 받았다! 서류로 다른 사람을 맞혀 넘기세요',true);}
+      for(const a of up.slice().sort(()=>Math.random()-.5).slice(0,n)){a.bill=true;a.hadBill=true;a.billT=G.t;pop(ROOF,a.x,a.y-54,'계산서 받음!','#cf3626');tell(a,'계산서를 받았다! 서류로 다른 사람을 맞혀 넘기세요',true);}
       if(n)roofTell(`계산서 ${n}장이 돌기 시작했다 · 끝날 때 들고 있으면 점심 쏨`,true);}}
   else if(L.kind==='meal'){
     if(L.spot===0&&L.t<=15){L.spot=1;L.zone=mealSpot(L.zone);roofTell('배식대가 옮겨졌다!',true);}
@@ -92,15 +92,17 @@ function endRoofLunch(L,up){
   if(L.kind==='lighter'){
     /* the team with more lighters lit wins 고과 (whoever of them is still standing); 고과 lost up here is not given back */
     const{L:l,R:r}=L.score,win=l>r?'L':r>l?'R':null;
-    for(const a of alive())if(a.side&&a.side===win){gain(a,LUNCH.win);tell(a,`${teamOf(win)} 승리! 고과 +${LUNCH.win}`);}
+    for(const a of alive())if(a.side&&a.side===win){gain(a,LUNCH.win);a.lunchWin=true;tell(a,`${teamOf(win)} 승리! 고과 +${LUNCH.win}`);}
     sub=()=>win?`${teamOf(win)} 승리 · 라이터 ${l} : ${r}`:`무승부 · 라이터 ${l} : ${r}`;
   }else if(L.kind==='bill'){
     const pay=up.filter(a=>a.bill);
+    for(const a of up)if(a.hadBill&&!a.bill)a.lunchWin=true;   // got a bill and passed it on: a lunch won (성과)
     for(const a of up){if(a.bill){a.g=Math.max(1,a.g-LUNCH.bill.pay);pop(ROOF,a.x,a.y-34,`점심 쏨 -${LUNCH.bill.pay}`,'#cf3626');tell(a,`계산서를 들고 끝났다: 오늘 점심은 내가 쏜다 -${LUNCH.bill.pay}`,true);}
       else if(pay.length){gain(a,LUNCH.bill.treat,true);pop(ROOF,a.x,a.y-34,`얻어먹음 +${LUNCH.bill.treat}`,'#2f7d4f');}}
     sub=v=>pay.length?`오늘 점심은 ${pay.map(a=>a===v?'나':a.name+'님').join(', ')}이 쏩니다`:'계산서 없이 끝';
   }else if(L.kind==='meal'){
     const top=up.filter(a=>a.meal>=.3).sort((p,q)=>q.meal-p.meal).slice(0,3);
+    if(top[0])top[0].lunchWin=true;   // 특식 1등 (성과)
     top.forEach((a,i)=>{const n=LUNCH.meal.prize[i];gain(a,n);pop(ROOF,a.x,a.y-34,`특식 ${i+1}등 +${n}`,'#2f7d4f');tell(a,`특식 ${i+1}등! 고과 +${n}`,true);});
     sub=v=>top.length?top.map((a,i)=>`${i+1}등 ${a===v?'나':a.name}`).join(' · '):'아무도 특식을 못 먹었다';
   }

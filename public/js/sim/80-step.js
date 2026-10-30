@@ -41,7 +41,7 @@ function step(dt){
     if(m>.15)me.face=Math.atan2(vy,vx);
     if(me.chan&&m>.35){me.chan=null;tell(me,'층 이동 취소');}
     if(me.sit&&m>.35&&!me.desk)stand(me);
-    if(me.wc&&wcLeave(me,m)){if(!me.wc.res)tell(me,'폰 내려놓음');me.wc=null;}
+    if(me.wc&&wcLeave(me,m)){if(!me.wc.res)tell(me,'폰 내려놓음');me.wc=null;me.wcCd=WC.cd;}
     me.sprint=inp.run&&m>.15&&!me.sit&&!me.chan;
     if(!me.chan&&!me.sit&&!me.wc)drive(me,vx,vy,dt);
     if(me.sprint&&me.f>=0){

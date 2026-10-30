@@ -4,7 +4,7 @@
    how far the next one is.
    인사관리 reads the career the server keeps per 사원코드 (server/src/career.js, GET /api/career) and links devices:
    다른 기기에서 이어하기 shows a 10-minute 연동 번호, 사원증 불러오기 takes 사원코드 + 연동 번호 from another device. */
-const CR={tab:'wear',view:null,pinT:null,note:''};
+const CR={tab:'wear',view:null,pinT:null,note:'',open:new Set(),doneOpen:false};   // open: the 성과 cards showing their rewards
 const careerURL=(what='')=>rankURL('',what?'career/'+what:'career'); // same server rule as the ranking
 function idTab(t){
   CR.tab=t;$('home').dataset.idtab=t;for(const b of $('idTabs').children)b.classList.toggle('on',b.dataset.t===t);
@@ -19,22 +19,43 @@ $('paneCareer').addEventListener('focusin',e=>{if(e.target.matches('input'))setT
 function careerLoad(){
   if(!CR.view)$('crBox').innerHTML='<p class="awmsg">불러오는 중…</p>';
   if(!CR.view)awardRender();
-  fetch(careerURL()+`?uid=${rankUid()}`).then(r=>r.json()).then(v=>{if(!v||!v.career)throw 0;CR.view=v;if(v.code)store.set('or-code',v.code);profApply(v.prof);if(v.code&&!v.prof&&store.get('or-profAt'))profPush();careerRender();awardRender();})
+  fetch(careerURL()+`?uid=${rankUid()}`).then(r=>r.json()).then(v=>{if(!v||!v.career)throw 0;CR.view=v;rwPrune();rwLentCheck();newsAdd(v.news);newsCheck();if(v.code)store.set('or-code',v.code);profApply(v.prof);if(v.code&&!v.prof&&store.get('or-profAt'))profPush();careerRender();awardRender();if(typeof PZ!=='undefined'&&PZ.dress&&CR.tab==='wear')dressRender();})
     .catch(()=>{if(!CR.view){$('crBox').innerHTML='<p class="awmsg">사원증 서버에 연결하지 못했어요.</p>';$('awList').innerHTML='<li class="awmsg">사원증 서버에 연결하지 못했어요.</li>';}});
 }
 /* 성과: one row each — name, what it counts, the 5 step chips (reached ones filled) and a bar to the next goal */
-const AW_STEPS=['인턴','사원','대리','팀장','임원'];
+/* what one 성과 step gives (public/js/shared/rewards.js): its 칭호 and the 옷장 pieces, each with how to picture it */
+const AW_PIC={shades:['eyes','face'],eyebags:['faceK','face'],goldBadge:['badgeK','badge'],dragon:['gear','dragon'],cig:['gear','face'],coffee:['gear','cup'],crown:['gear','crown'],sash:['gear','sash'],trophy:['gear','trophy'],halo:['gear','halo'],watch:['gear','wrist'],tissue:['gear','tail'],pillow:['gear','neck'],postit:['gear','note']},AW_FX={gold:'✨',paper:'📄',wind:'💨',smoke:'🚬',escort:'🕴️'},AW_THR={plane:'✈️',sticky:'🟨',trophy:'🏆',keyboard:'⌨️',mug:'☕'};
+const AW_KIND={top:['top','chest'],hair:['hair','head'],eye:['eye','face'],face:['faceK','face'],shoe:['shoe','feet'],bottom:['bottom','legs']},AW_COL={topC:'chest',bottomC:'legs',shoeC:'feet',hairC:'head',tie:'chest'};
+function awRewards(aw,st){const R=REWARDS,out=[],at=r=>r.aw===aw&&r.st===st;
+  for(const[kind,[k,view]]of Object.entries(AW_KIND))for(const[id,r]of Object.entries(R[kind]))if(at(r))out.push({n:r.n,fit:[k,id],view});
+  for(const[id,r]of Object.entries(R.gear))if(at(r)){const[k,view]=AW_PIC[id]||['gear','chest'];out.push({n:r.n,fit:[k,id],view});}
+  for(const[id,r]of Object.entries(R.color))if(at(r))out.push({n:r.n,fit:[r.key,id],view:AW_COL[r.key]||'chest'});
+  for(const[id,r]of Object.entries(R.fx))if(at(r))out.push({n:`이펙트: ${r.n}`,icon:AW_FX[id]});
+  for(const[id,r]of Object.entries(R.thr))if(at(r))out.push({n:r.n,icon:AW_THR[id]});
+  return{title:(R.titles[aw]||[])[st-1]||null,items:out};}
 /* until the server opens them (career.js AWARDS_ON) the tab just says they're coming */
 function awardRender(){if(!CR.view||!CR.view.awards){$('awList').innerHTML='<li class="awsoon"><b>🏅 성과 준비 중</b><small>보상과 함께 곧 열려요!</small></li>';return;}
-  const v=CR.view;if(!v||!v.awards)return;const got=v.awards.reduce((s,a)=>s+a.step,0);
+  const v=CR.view;if(!v||!v.awards)return;const jobs=[],doneN=v.awards.filter(a=>a.step>=a.at.length).length;let doneSeen=false;
   const fmt=(a,x)=>a.names?a.names[a.at.indexOf(x)]:`${x.toLocaleString()}${a.unit}`;
-  $('awList').innerHTML=`<li class="awsum">성과 단계 <b>${got}</b> / ${v.awards.length*5}</li>`+v.awards.map(a=>{
-    const done=a.step>=a.at.length,next=a.at[a.step],prev=a.step?a.at[a.step-1]:0,pct=done?100:Math.max(4,Math.min(100,(a.val-prev)/(next-prev)*100));
-    return`<li class="aw${a.step?' got':''}"><div class="awh"><b>${esc(a.n)}</b><span class="awrk">${a.step?(a.names||AW_STEPS)[a.step-1]:'—'}</span></div>
-      <small>${esc(a.d)} · 지금 ${a.names?(a.names[a.val-1]||'인턴'):a.val.toLocaleString()+a.unit}</small>
-      <div class="awsteps">${a.at.map((x,i)=>`<i class="${i<a.step?'on':''}" title="${AW_STEPS[i]}: ${fmt(a,x)}">${a.names?a.names[i]:AW_STEPS[i]}</i>`).join('')}</div>
-      <div class="awbar"><span style="width:${pct}%"></span><em>${done?'모든 단계 달성!':a.names?`다음: ${fmt(a,next)} 달성`:`다음 ${AW_STEPS[a.step]}: ${fmt(a,next)}`}</em></div></li>`;}).join('');
+  /* a step's reward as a tile: a picture of the default outfit wearing it (as in the 옷장), or an icon for a trail */
+  const tile=r=>{if(r.icon)return`<figure><b>${r.icon}</b><figcaption>${esc(r.n)}</figcaption></figure>`;
+    const f=rwShotFit(r.fit[0],r.fit[1]),url=shotKnown(f,r.view);if(!url)jobs.push([f,r.view]);
+    return`<figure><img alt="" ${url?`src="${url}"`:`data-j="${jobs.length-1}"`}><figcaption>${esc(r.n)}</figcaption></figure>`;};
+  /* opened card: every step with its goal and what it gives */
+  const detail=a=>`<div class="awdet">${a.at.map((x,i)=>{const r=awRewards(a.id,i+1),on=i<a.step;
+    return`<div class="awr${on?' on':''}"><span class="awg">${fmt(a,x)}</span><div class="awi">${r.title?`<em class="tstamp">${esc(r.title)}</em>`:''}${r.items.length?`<div class="awt">${r.items.map(tile).join('')}</div>`:''}</div><i aria-label="${on?'받음':'아직'}">${on?'✓':'🔒'}</i></div>`;}).join('')}</div>`;
+  const nextTxt=a=>{const r=awRewards(a.id,a.step+1);return[r.title&&`<i class="tstamp">${esc(r.title)}</i>`,...r.items.map(x=>esc(x.n))].filter(Boolean).join(' · ');};
+  $('awList').innerHTML=`<li class="awsum"><small>쉬움 난이도는 집계되지 않아요<br>자세한 보상은 각 성과를 눌러보세요!</small><span>달성한 성과 <b>${doneN}</b> / ${v.awards.length}</span></li>`+[...v.awards].sort((x,y)=>(x.step>=x.at.length)-(y.step>=y.at.length)).map(a=>{
+    const done=a.step>=a.at.length,next=a.at[a.step],prev=a.step?a.at[a.step-1]:0,pct=done?100:Math.max(4,Math.min(100,(a.val-prev)/(next-prev)*100)),now=a.names?(a.names[a.val-1]||'인턴'):a.val.toLocaleString(),open=CR.open.has(a.id);   // 지금 값 / 다음 목표
+    const last=awRewards(a.id,a.at.length),lastPic=last.items[0],lastT=REWARDS.titles[a.id].filter(Boolean).pop();   // the top reward shows without opening the card
+    const first=done&&!doneSeen;if(done)doneSeen=true;   // finished ones go last, folded under one line
+    return`${first?`<li class="awdonebar" id="awDone">달성한 성과 ${doneN}개 <span>${CR.doneOpen?'접기 ▴':'펼치기 ▾'}</span></li>`:''}<li class="aw${a.step?' got':''}${open?' open':''}${done?' done':''}"${done&&!CR.doneOpen?' hidden':''} data-aw="${a.id}"><div class="awtop"><div class="awm"><div class="awh"><b>${esc(a.n)}</b><span class="awrk">${now} / ${done?fmt(a,a.at[a.at.length-1]):fmt(a,next)}</span></div>
+      <small>${esc(a.d)}</small>
+      <div class="awsteps">${a.at.map((x,i)=>`<i class="${i<a.step?'on':''}">${fmt(a,x)}</i>`).join('')}</div>
+      ${done?'':`<div class="awbar"><span style="width:${pct}%"></span><em>${nextTxt(a)?`다음 보상: ${nextTxt(a)}`:`다음 목표: ${fmt(a,next)}`}</em></div>`}</div><div class="awfin${done?' on':''}">${lastPic?tile(lastPic):`<figure><b class="tt"><span class="tstamp">${esc(lastT)}</span></b><figcaption>칭호</figcaption></figure>`}</div></div>${open?detail(a):''}</li>`;}).join('');
+  shotQ=[...$('awList').querySelectorAll('img[data-j]')].map(img=>[img,...jobs[+img.dataset.j]]);if(shotQ.length)setTimeout(shotPump,0);
 }
+$('awList').addEventListener('click',e=>{if(e.target.closest('#awDone')){CR.doneOpen=!CR.doneOpen;awardRender();return;}const li=e.target.closest('.aw');if(!li)return;const id=li.dataset.aw;if(!CR.open.delete(id))CR.open.add(id);awardRender();});
 /* 근무 N일째: KST calendar days from 입사 to today, counting both (a game is an 출근, counted separately) */
 const workDays=ms=>{const k=t=>Math.floor((t+9*3600e3)/864e5);return k(Date.now())-k(ms)+1;};
 const ymd=ms=>{const d=new Date(ms+9*3600e3);return`${d.getUTCFullYear()}.${d.getUTCMonth()+1}.${d.getUTCDate()}`;};
@@ -89,3 +110,14 @@ function careerJoin(){
 }
 /* a device with a 사원코드 picks up outfit / name changes made on its other devices when the page opens */
 if(store.get('or-code'))fetch(careerURL()+`?uid=${rankUid()}`).then(r=>r.json()).then(v=>{if(v&&v.code)profApply(v.prof);}).catch(()=>{});
+/* 성과 달성: after a solo game a big 도장 comes down on the result (the server answered there), then the list stays. A match, or a result left too soon: a note back in the lobby */
+const NEWS={shown:new Set(),wait:[]},newsKey=x=>`${x.aw}:${x.st}`;
+function newsRows(list){const row=x=>{const r=awRewards(x.aw,x.st),f=r.items[0],pic=f?(f.icon?`<b>${f.icon}</b>`:`<img alt="" src="${charShot(rwShotFit(f.fit[0],f.fit[1]),f.view)}">`):'<b>🏅</b>';
+    return`<div class="nwr">${pic}<p>${esc(REWARDS.awards[x.aw])} ${esc(x.goal)}<small>${[r.title&&`<i class="tstamp">${esc(r.title)}</i>`,...r.items.map(i=>esc(i.n))].filter(Boolean).join(' · ')}</small></p></div>`;};
+  return`<h5>새로 달성한 성과 ${list.length}개</h5>${list.slice(0,3).map(row).join('')}${list.length>3?`<p class="nwm">외 ${list.length-3}개</p>`:''}`;}
+function resultNews(list){const b=$('rBang');b.innerHTML=`성과 달성<small>${esc(REWARDS.awards[list[0].aw])} ${esc(list[0].goal)}${list.length>1?` 외 ${list.length-1}개`:''}</small>`;b.hidden=false;if(typeof SFX!=='undefined')SFX.promote();
+  setTimeout(()=>{b.hidden=true;if($('result').hidden)return;for(const x of list)NEWS.shown.add(newsKey(x));$('rNews').innerHTML=newsRows(list);$('rNews').hidden=false;},1300);}
+function newsAdd(l){for(const x of l||[])if(!NEWS.shown.has(newsKey(x))&&!NEWS.wait.some(y=>newsKey(y)===newsKey(x)))NEWS.wait.push(x);}
+function newsCheck(){if(!NEWS.wait.length||!PZ.on||!$('rankWin').hidden)return;const list=NEWS.wait.splice(0);for(const x of list)NEWS.shown.add(newsKey(x));
+  $('rankWinH').textContent='성과 달성!';$('rankWinS').textContent='';$('rankWinList').innerHTML=newsRows(list);$('rankWinList').hidden=false;$('rankWin').hidden=false;if($('nameStep').hidden&&!PZ.dress)homeClose(true);}
+if(PZ.on)careerLoad();   // 후광 and 소지품 from the moment the lobby opens

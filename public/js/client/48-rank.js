@@ -21,7 +21,7 @@ function weekLabel(w){const mon=Date.parse(w+'T00:00:00+09:00'),end=mon+7*864e5,
   return `${d(mon)}(월) ~ ${d(end-1)}(일) · ${dd?dd+'일 ':''}${hh}시간 뒤 초기화`;}
 /* called from showResult in solo games */
 function rankSubmit(win){
-  const g=G,me=G.me,e={uid:rankUid(),name:store.get('or-name')||'신입',diff:G.diff||'normal',place:win?1:me.place,rank:win?'CEO':me.rank,real:me.rank,kills:me.kills||0,tasks:me.tasksDone||0,time:Math.round(me.alive?G.t:me.outT??G.t),lunch:G.lunchKind||'',branch:me.branch||''};
+  const g=G,me=G.me,e={uid:rankUid(),name:store.get('or-name')||'신입',diff:G.diff||'normal',place:win?1:me.place,rank:win?'CEO':me.rank,real:me.rank,kills:me.kills||0,tasks:me.tasksDone||0,time:Math.round(me.alive?G.t:me.outT??G.t),lunch:G.lunchKind||'',branch:me.branch||'',lunchWin:!!me.lunchWin,wcGo:me.wcGo||0};
   const ranked=e.diff===RANKED,sc=soloScore(e);
   if(ranked){$('rScore').textContent=`${sc.toLocaleString()}점`;for(const el of document.querySelectorAll('#result .rsc'))el.hidden=false;} // only 어려움 is ranked
   fetch(rankURL('','game'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(e)}).then(r=>r.json()).then(r=>{
@@ -31,7 +31,7 @@ function rankSubmit(win){
     $('rScore').textContent=`${sc.toLocaleString()}점${k.me?` · 이번 주 ${k.me.pos}위`:''}${k.best?'':' (최고 기록 아님)'}`;}).catch(()=>{});
 }
 /* the server answers with this device's 사원코드 (it is made by the first finished game) */
-function careerNews(c){if(c&&c.code)store.set('or-code',c.code);}
+function careerNews(c){if(c&&c.code)store.set('or-code',c.code);if(c&&c.news&&c.news.length)resultNews(c.news);}
 function rankOpen(){$('rankSheet').hidden=false;rankLoad();}
 const RK_COL={CEO:'#c08a1e',임원:'#1f52c8',팀장:'#3d6cc4',대리:'#5f80b4',사원:'#7a8ea6',인턴:'#8a929a'};
 const rkChip=e=>`<i class="rkchip" style="background:${RK_COL[e.rank]||'#8a929a'}">${e.rank==='CEO'?'CEO 입성':e.rank}</i>`;

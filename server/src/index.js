@@ -26,6 +26,7 @@ export class Room extends DurableObject {
       if (!this.api) { const stats = new StatsCore(store); this.api = { rank: new RankCore(store), stats, career: new CareerCore(store, stats), feedback: new FeedbackCore(store) }; }
       if (url.pathname === '/admin') return new Response(await adminHTML(this.api.stats, url.searchParams, this.api.career, this.api.feedback), { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
       if (url.pathname === '/internal/games') { await recordMatch(this.api, await request.json()); return new Response('ok'); }
+      if (url.pathname === '/internal/own') return Response.json(await this.api.career.ownOf(url.searchParams.get('uid') || ''));
       const r = await apiHTTP(this.api, request.method, url, request.method === 'POST' ? (await request.text()).slice(0, 4096) : '');
       return Response.json(r.json, { status: r.status, headers: { 'Cache-Control': 'no-store' } });
     }
@@ -37,18 +38,23 @@ export class Room extends DurableObject {
     // Plain accept (not the Hibernation API): the room keeps its lobby and match in memory while anyone is connected.
     server.accept();
     const peer = { ws: server };
-    let joined = false;
-    server.addEventListener('message', ev => {
+    /* what this person owns, from the career in '__rank', so nobody walks in wearing what they haven't got. Unreachable: nothing owned */
+    const ownOf = uid => stats().fetch('https://stats/internal/own?uid=' + encodeURIComponent(uid)).then(r => r.json()).catch(() => []).then(l => new Set(l));
+    let joined = false, hello = false, closed = false;
+    server.addEventListener('message', async ev => {
       let msg; try { msg = JSON.parse(typeof ev.data === 'string' ? ev.data : ''); } catch { return; }
       if (!joined) {
-        if (msg.t !== 'hello') return;
-        const err = this.core.join(peer, msg.name, msg.fit, msg.uid, msg.resume);
+        if (msg.t !== 'hello' || hello) return;
+        hello = true;
+        const own = await ownOf(typeof msg.uid === 'string' ? msg.uid : '');
+        if (closed) return;
+        const err = this.core.join(peer, msg.name, msg.fit, msg.uid, msg.resume, own);
         if (err) { server.send(JSON.stringify({ t: 'err', m: err })); server.close(1000, 'full'); return; }
         joined = true; return;
       }
       this.core.message(peer, msg);
     });
-    const gone = () => { if (joined) this.core.leave(peer); joined = false; };
+    const gone = () => { closed = true; if (joined) this.core.leave(peer); joined = false; };
     server.addEventListener('close', gone);
     server.addEventListener('error', gone);
     return new Response(null, { status: 101, webSocket: client });

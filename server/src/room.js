@@ -25,7 +25,7 @@ export class RoomCore {
 
   /* returns an error string, or null when the peer joined. resume: the token a peer got in its roster; a match takes
      the new socket in place of the old one (which may not even have noticed it's dead yet) */
-  join(peer, name, fit, uid, resume) {
+  join(peer, name, fit, uid, resume, own) {
     const old = typeof resume === 'string' && resume && this.peers.find(p => p.token === resume);
     if (old) {
       Object.assign(peer, { key: old.key, name: old.name, inGame: old.inGame, fit: old.fit, uid: old.uid, token: old.token, away: false });
@@ -36,7 +36,7 @@ export class RoomCore {
       return null;
     }
     if (this.peers.length >= MAX_PLAYERS) return '방이 꽉 찼어요 (최대 10명)';
-    peer.key = 'p' + (++this.seq); peer.name = cleanName(name, this.peers); peer.inGame = false; peer.fit = cleanFit(fit); peer.uid = typeof uid === 'string' && /^[a-z0-9]{8,32}$/.test(uid) ? uid : null;
+    peer.key = 'p' + (++this.seq); peer.name = cleanName(name, this.peers); peer.inGame = false; peer.fit = cleanFit(fit, own); peer.uid = typeof uid === 'string' && /^[a-z0-9]{8,32}$/.test(uid) ? uid : null;
     peer.token = crypto.randomUUID(); peer.away = false;
     this.peers.push(peer); this.broadcastRoster(); return null;
   }
