@@ -12,7 +12,9 @@ function idTab(t){
   if(t==='award'||t==='career')careerLoad();
 }
 $('idTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)idTab(b.dataset.t);});
-/* phones: the on-screen keyboard covers the 기기 연동 inputs, so bring the one being typed in into view */
+/* phones: the on-screen keyboard covers the 기기 연동 inputs. The card follows the visible height (iOS doesn't shrink the
+   page for the keyboard, visualViewport does) and the input being typed in is brought into view */
+if(window.visualViewport){const vv=()=>document.documentElement.style.setProperty('--vvh',visualViewport.height+'px');visualViewport.addEventListener('resize',vv);vv();}
 $('paneCareer').addEventListener('focusin',e=>{if(e.target.matches('input'))setTimeout(()=>e.target.scrollIntoView({block:'center'}),300);});
 function careerLoad(){
   if(!CR.view)$('crBox').innerHTML='<p class="awmsg">불러오는 중…</p>';
