@@ -1,0 +1,78 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "office-royale",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8080",
+        "--directory",
+        "public"
+      ],
+      "port": 8080
+    },
+    {
+      "name": "office-royale-8090",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8090",
+        "--directory",
+        "public"
+      ],
+      "port": 8090
+    },
+    {
+      "name": "office-royale-multi",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/dev-server.mjs",
+        "8095"
+      ],
+      "port": 8095
+    },
+    {
+      "name": "office-royale-rank",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/dev-server.mjs",
+        "8096"
+      ],
+      "port": 8096
+    },
+    {
+      "name": "hotfix-check",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8098",
+        "--directory",
+        "C:/Users/SHK/AppData/Local/Temp/claude/C--Users-SHK-Documents-HK-workspace-office-royale/f93e9d99-3967-4c75-9083-53ab9f4f47d3/scratchpad/hotfix2/public"
+      ],
+      "port": 8098
+    },
+    {
+      "name": "office-royale-8097",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/dev-server.mjs",
+        "8097"
+      ],
+      "port": 8097
+    },
+    {
+      "name": "admin-demo",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/dev-server.mjs",
+        "8099",
+        "--demo"
+      ],
+      "port": 8099
+    }
+  ]
+}

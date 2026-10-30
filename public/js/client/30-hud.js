@@ -189,7 +189,7 @@ let lastQ='';
 function questList(me){
   const Q=[];
   if(running&&me.alive&&!G.plaza){
-    if(!isTouch&&!me.branch&&!G.lunch&&!G.tutorial&&me.jobs){ // phones: the list is small, so no team preview thereconst j=me.jobs,l=leadTeam(me);
+    if(!isTouch&&!me.branch&&!G.lunch&&!G.tutorial&&me.jobs){const j=me.jobs,l=leadTeam(me); // phones: the list is small, so no team preview there
       Q.push({c:'#8a949c',h:'부서 발령',n:'사원 승진 때',t:`업무 ${j.dev} · 명중 ${j.mkt} · 응대 ${j.hr}`,bar:0,r:l?`→ ${teamShort(l)}팀`:''});}
     if(me.lighter>0)Q.push({c:'#e0603d',h:'라이터',t:`${me.lighter}개 → 우리 재떨이`,bar:me.lighter/LUNCH.carry,r:`+${me.lighter}점`});
     if(me.carry)Q.push({c:'#e0b52a',h:'배달',t:'출력물 → 결재함',bar:1,r:'+12'});
@@ -209,10 +209,10 @@ function phoneHud(me){
   if(!w){if(!el.hidden){el.hidden=true;PH.trail=[];}return;}
   el.hidden=false;
   const m=w.m??2,crash=w.res==='crash',cash=w.res==='cash',g=wcGain(m),sg=v=>v>=0?`+${v}`:`${v}`;
-  $('pMult').textContent=crash?'폭락':`×${m.toFixed(2)}`;$('pMult').className=crash||m<1?'bad':cash?'ok':'';
+  $('pMult').textContent=crash?'상장폐지':`×${m.toFixed(2)}`;$('pMult').className=crash||m<1?'bad':cash?'ok':'';
   $('pGain').textContent=crash?`고과 -${WC.crash}`:cash?`${w.gain>=0?'익절':'손절'} ${sg(w.gain)}`:`지금 팔면 ${sg(g)}`;
   $('pTime').textContent=w.res?'':`${w.t.toFixed(1)}초`;
-  $('pRes').textContent=crash?'떡락… 존버는 실패':cash?(w.gain>=0?'수익 실현! 퇴근각':'손절… 다음엔 존버'):'';$('pRes').className='pres '+(crash?'bad':cash&&w.gain>=0?'ok':cash?'bad':'');
+  $('pRes').textContent=crash?'상장폐지… 존버는 실패':cash?(w.gain>=0?'수익 실현! 퇴근각':'손절… 다음엔 존버'):w.sq?'출렁출렁… 곧 터진다!':'';$('pRes').className='pres '+(crash?'bad':cash&&w.gain>=0?'ok':cash||w.sq?'bad':'');
   $('pCash').disabled=!!w.res;
   /* chart: the price as it came in (the rules move it every 0.1 s; online it arrives with the snapshots),
      a dashed ×1 line below which selling is a loss, and a crash drops the line off the bottom in red */
@@ -230,6 +230,42 @@ function phoneHud(me){
 /* desk work screen: shown while the rules say I'm at my desk (the camera goes first-person in render) */
 let lastDesk='';
 const DK={U:'▲',D:'▼',L:'◀',R:'▶'};
+/* (서류 심사 shows its hiring bar on the card between 반려 and 합격, so it has no rule line)
+   the monitor looks like the job (2026-10-29): plain arrows, a code editor (버그 수정), a spreadsheet (지표 보고), a cover
+   letter (서류 심사). Only the look changes, every one still takes ▲▼◀▶ in the order the rules hold */
+const DESK_APP={arrow:'사내 업무 시스템',bug:'bugfix.js — 사내 IDE',kpi:'매출보고.xlsx',hr:'채용관리 · 서류전형'};
+const CV_SUR='김이박최정강조윤장임한오서신',CV_GIV=['민준','서연','도윤','하은','지호','수아','예준','지유','현우','채원','시우','다인'],
+  CV_LINE=['열정 하나는 자신 있습니다','엑셀은 Ctrl+C, V까지 합니다','야근도 즐겁게 하겠습니다','회식 분위기 메이커입니다','커피를 잘 탑니다',
+    '전 직장 팀장님이 울면서 붙잡았습니다','MBTI는 J입니다','주말 출근 환영합니다','끈기 하나로 버텨 왔습니다','시키는 건 다 합니다'];
+const CV_DEPT=['영업','마케팅','개발','디자인','총무','재무','인사','기획'],CV_HAIR=['#2b2320','#4a3426','#1d1d24','#6b4a2f','#8a5a3a'],CV_SUIT=['#2f3b4c','#3b4a3a','#4b3b52','#24324a','#4a4038'];
+/* the 증명사진: a head-and-shoulders silhouette, hair and suit picked from the same seed as the name */
+const cvPhoto=h=>`<svg viewBox="0 0 40 50" aria-hidden="true"><rect width="40" height="50" fill="#dde5ee"/><path d="M5 50q0-13 15-13t15 13z" fill="${CV_SUIT[(h>>>24)%CV_SUIT.length]}"/><path d="M17 37l3 7 3-7z" fill="#fff"/><circle cx="20" cy="22" r="8.5" fill="#f2d4b8"/><path d="M11.3 21.5a8.7 8.7 0 0 1 17.4 0q-1.5-6-8.7-6t-8.7 6z" fill="${CV_HAIR[(h>>>20)%CV_HAIR.length]}"/></svg>`;
+const cvSeed=(d,i)=>{let h=Math.imul(i+1,2654435761);for(const c of d.seq+d.bar)h=Math.imul(h^c.charCodeAt(0),16777619);h=Math.imul(h^h>>>13,0x5bd1e995);return(h^h>>>15)>>>0;}; // each field reads its own bits
+function deskCells(d){
+  const st=i=>i<d.pos?'done':i===d.pos?'cur':'',show=d.show||[...d.seq],n=d.seq.length;
+  if(d.kind==='bug')return'<div class="code">'+show.map((v,i)=>{const red=v.length>1,k=i<d.pos?d.seq[i]:v[0];
+    return`<div class="ln ${st(i)}${red?' red':''}"><i>${i+1}</i><code>cursor.<b>move</b>(<em>${DK[k]}</em>);</code>${i<d.pos?'<s>✓</s>':red?'<u>// 🐞 반대로</u>':''}</div>`;}).join('')+'</div>';
+  if(d.kind==='kpi'){const col=c=>String.fromCharCode(66+c),m=c=>`${c+1}월`;
+    /* the two months being compared (month and 매출 cells) sit inside one green frame (2026-10-30: people weren't sure what to compare) */
+    const p=Math.min(d.pos,n-1),G2='#217346',fr=(c,row)=>c!==p&&c!==p+1?'':` fr" style="box-shadow:inset ${c===p?'3px':'-3px'} 0 0 ${G2},inset 0 ${row===1?'3px':'-3px'} 0 ${G2}`; // inset shadows: table borders would break the frame
+    let h='<table class="xl"><tr><th></th><th>A</th>'+show.map((_,c)=>`<th>${col(c)}</th>`).join('')+'</tr>';
+    h+='<tr><th>1</th><td class="lb">항목</td>'+show.map((_,c)=>`<td class="lb${fr(c,1)}">${m(c)}</td>`).join('')+'</tr>';
+    h+='<tr><th>2</th><td class="lb">매출</td>'+show.map((v,c)=>`<td class="v${fr(c,2)}">${v}</td>`).join('')+'</tr>';
+    h+='<tr><th>3</th><td class="lb">증감</td><td class="na">-</td>'+show.slice(1).map((_,i)=>`<td class="${st(i)}${i<d.pos?(d.seq[i]==='U'?' up':' dn'):''}">${i<d.pos?DK[d.seq[i]]:i===d.pos?'?':''}</td>`).join('')+'</tr>';
+    return h+'</table>';}
+  if(d.kind==='hr'){const i=Math.min(d.pos,n-1),h=cvSeed(d,i);
+    return`<div class="cv"><div class="cvh"><b>입사지원서</b><span class="cvno">No. ${i+1} / ${n}</span></div>
+      <div class="cvg"><div class="ph">${cvPhoto(h)}</div><table class="cvf">
+        <tr><th>성명</th><td>${CV_SUR[h%CV_SUR.length]}${CV_GIV[(h>>>15)%CV_GIV.length]}</td></tr>
+        <tr><th>지원 분야</th><td>${CV_DEPT[(h>>>5)%CV_DEPT.length]}</td></tr>
+        <tr class="ex"><th>경력</th><td><b>${show[i]}</b> 년</td></tr></table></div>
+      <div class="cvs"><em>자기소개</em>${CV_LINE[(h>>>10)%CV_LINE.length]}</div>
+</div>
+      <div class="cvm">채용 기준<b>경력 ${d.bar}년 이상</b></div>
+      <div class="cvb"><span class="no">◀ 반려</span><span class="ok">합격 ▶</span></div>
+      <div class="cvq">${show.map((v,j)=>`<span class="${st(j)}${j<d.pos?(d.seq[j]==='R'?' ok':' no'):''}">${j<d.pos?(d.seq[j]==='R'?'합격':'반려'):v+'년'}</span>`).join('')}</div>`;}
+  return show.map((v,i)=>`<span class="${st(i)}">${DK[i<d.pos?d.seq[i]:v[0]]}</span>`).join('');
+}
 function deskHud(me){
   const d=(running||G.plaza)&&me&&me.alive&&me.desk,el=$('desk');
   if(document.body.classList.contains('desking')!==!!d)document.body.classList.toggle('desking',!!d);
@@ -239,7 +275,8 @@ function deskHud(me){
   if(key!==lastDesk){lastDesk=key;
     $('dRound').textContent=`업무 ${Math.min(d.round+1,DESK.rounds)}/${DESK.rounds} · 성공 ${d.ok}`;
     $('dJob').textContent=d.seq?d.job:d.round>=DESK.rounds?'오늘 업무 끝!':d.round?'다음 업무 불러오는 중…':'업무 시스템 접속 중…';
-    $('dSeq').innerHTML=d.seq?[...d.seq].map((k,i)=>`<span class="${i<d.pos?'done':i===d.pos?'cur':''}">${DK[k]}</span>`).join(''):'';
+    $('dRule').innerHTML=d.seq&&d.kind!=='hr'?esc(d.rule||'').replace('올랐으면 ▲','<b class="up">올랐으면 ▲</b>').replace('내렸으면 ▼','<b class="dn">내렸으면 ▼</b>'):'';el.dataset.kind=d.seq?d.kind||'arrow':'';$('dApp').textContent=DESK_APP[d.seq&&d.kind]||DESK_APP.arrow;
+    $('dSeq').innerHTML=d.seq?deskCells(d):'';
     const r=$('dRes');r.className='res '+(recent?d.res:'');r.textContent=recent?(d.res==='ok'?`완료! +${DESK.rew[d.round-1]}`:'반려… (틀렸거나 시간 초과)'):'';
   }
   $('dTm').style.width=(d.seq?Math.max(0,d.t/d.max)*100:0)+'%';

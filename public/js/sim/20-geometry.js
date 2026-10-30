@@ -6,7 +6,13 @@ function freeCell(bl,gx,gy){
   return[gx,gy];
 }
 const prev=new Int32Array(GW*GH);
-function findPath(f,sx,sy,tx,ty){
+/* shut=true: also keep out of shut doors (NPCs; people open doors themselves) */
+function findPath(f,sx,sy,tx,ty,shut){
+  if(!shut)return pathOn(f,sx,sy,tx,ty);
+  const bl=FLOORS[f].blocked,cs=FLOORS[f].shut.filter(i=>!bl[i]);for(const i of cs)bl[i]=1;
+  try{return pathOn(f,sx,sy,tx,ty);}finally{for(const i of cs)bl[i]=0;}
+}
+function pathOn(f,sx,sy,tx,ty){
   const bl=FLOORS[f].blocked;
   const[a0,a1]=freeCell(bl,...cellOf(sx,sy)),[b0,b1]=freeCell(bl,...cellOf(tx,ty));
   const s=a1*GW+a0,t=b1*GW+b0;if(s===t)return[{x:tx,y:ty}];
@@ -34,6 +40,7 @@ function shotLos(f,x1,y1,x2,y2,pad=0){for(const o of obsOf(f))if(segHits(x1,y1,x
 function sightLos(f,x1,y1,x2,y2){for(const o of obsOf(f))if(o.sight&&segHits(x1,y1,x2,y2,o,0))return false;return true;}
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const angDiff=(a,b)=>{let d=a-b;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;return d;};
+const bendTo=(want,base,lim)=>Math.max(-lim,Math.min(lim,angDiff(want,base))); // want's offset from base, clamped to ±lim
 const inRect=(p,z)=>p.x>z.x&&p.x<z.x+z.w&&p.y>z.y&&p.y<z.y+z.h;
 function randFree(f,margin=40){
   const bl=FLOORS[f].blocked;

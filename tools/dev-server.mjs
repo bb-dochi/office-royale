@@ -1,5 +1,6 @@
 // Local server for solo + online play without Cloudflare: serves public/ and runs match rooms over WebSocket.
-// Usage: node tools/dev-server.mjs [port=8787]   → http://localhost:8787 (friends on the same Wi-Fi use this PC's IP)
+// Usage: node tools/dev-server.mjs [port=8787] [--demo]   → http://localhost:8787 (friends on the same Wi-Fi use this PC's IP)
+// --demo fills the play stats with a month of made-up games so /admin has something to show.
 // No dependencies: the WebSocket handshake and framing below cover what the game needs (text frames, ping, close).
 import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
@@ -9,14 +10,16 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { RoomCore } from '../server/src/room.js';
 import { PlazaCore } from '../server/src/plaza.js';
-import { RankCore, apiHTTP } from '../server/src/rank.js';
+import { RankCore, apiHTTP, recordMatch } from '../server/src/rank.js';
+import { CareerCore } from '../server/src/career.js';
+import { FeedbackCore } from '../server/src/feedback.js';
 import { StatsCore, adminHTML } from '../server/src/stats.js';
 
-const PORT = +(process.argv[2] || process.env.PORT || 8787);
+const PORT = +(process.argv.slice(2).find(a => /^\d+$/.test(a)) || process.env.PORT || 8787);
 const PUB = fileURLToPath(new URL('../public/', import.meta.url));
 const SIM = join(PUB, 'js', 'sim');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.webp': 'image/webp' };
+  '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.jpg': 'image/jpeg', '.webp': 'image/webp' };
 
 /* each room gets its own copy of the rules (they keep state in globals) */
 function createSim() {
@@ -36,12 +39,25 @@ function roomFor(code) {
 
 /* weekly ranking and play stats, kept in memory (gone when the dev server stops); /admin needs no key here */
 const mem = new Map(), memStore = { get: k => mem.get(k), put: (k, v) => mem.set(k, v) };
-const api = { rank: new RankCore(memStore), stats: new StatsCore(memStore) };
-const recordGame = rs => { for (const r of rs) api.stats.record({ ...r, mode: 'multi' }); };
+const statsCore = new StatsCore(memStore), api = { rank: new RankCore(memStore), stats: statsCore, career: new CareerCore(memStore, statsCore), feedback: new FeedbackCore(memStore) };
+const recordGame = rs => recordMatch(api, rs).catch(e => console.error('stats', e));
+if (process.argv.includes('--demo')) await seedDemo(statsCore);
+async function seedDemo(stats) {
+  const names = ['김대리', '박과장', '이사원', '최부장', '정인턴', '한팀장', '오주임', '윤차장'], ranks = ['인턴', '사원', '주임', '대리', '과장', '차장', '부장', 'CEO'];
+  const realNow = Date.now, end = realNow(); let at = end - 29.5 * 864e5;
+  try {
+    Date.now = () => at; // write() stamps games with Date.now
+    for (let i = 0; at < end - 6e4; i++, at += Math.random() * 864e5 / 10) {
+      const u = Math.floor(Math.random() ** 1.6 * names.length), place = 1 + Math.floor(Math.random() * 12);
+      await stats.write({ uid: 'demo-' + u, name: names[u], mode: Math.random() < .7 ? 'solo' : 'multi', diff: ['easy', 'normal', 'hard'][i % 3], place, rank: ranks[Math.max(0, 7 - Math.floor(place / 1.6))],
+        kills: Math.floor(Math.random() * 6), tasks: Math.floor(Math.random() * 12), time: 180 + Math.floor(Math.random() * 150), lunch: ['lighter', 'bill', 'meal', 'ladder', ''][i % 5], room: i % 6 ? undefined : 'DEMO', branch: place > 9 ? '' : ['dev', 'mkt', 'hr'][u % 3] });
+    }
+  } finally { Date.now = realNow; }
+}
 
 const server = createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
-  if (url.pathname === '/admin') { adminHTML(api.stats, url.searchParams).then(h => res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }).end(h)); return; }
+  if (url.pathname === '/admin') { adminHTML(api.stats, url.searchParams, api.career, api.feedback).then(h => res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }).end(h)); return; }
   if (url.pathname.startsWith('/api/')) {
     let body = ''; req.on('data', d => { if (body.length < 4096) body += d; });
     req.on('end', async () => { const r = await apiHTTP(api, req.method, url, body);

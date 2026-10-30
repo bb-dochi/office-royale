@@ -38,7 +38,7 @@ function leadAim(a,ang,sp,rng){
   if(!best||locked(best)||best.sit)return ang;
   const vx=best.vx||0,vy=best.vy||0;if(Math.hypot(vx,vy)<20)return ang;
   let t=dist(a,best)/sp;for(let i=0;i<2;i++)t=Math.hypot(best.x+vx*t-a.x,best.y+vy*t-a.y)/sp; // where it will be when the paper arrives
-  const want=Math.atan2(best.y+vy*t-a.y,best.x+vx*t-a.x),bend=Math.max(-AIM_BEND,Math.min(AIM_BEND,angDiff(want,ang)));
+  const want=Math.atan2(best.y+vy*t-a.y,best.x+vx*t-a.x),bend=bendTo(want,ang,AIM_BEND);
   return ang+bend;
 }
 function nearest(a,range,need){
@@ -76,7 +76,8 @@ function useSkill(a){
   if(!a.alive||a.f<0||locked(a)||a.sit||a.chan||!a.branch||!rankAt(a,'팀장')||a.skillCd>0)return false; // the Q skill opens at 팀장
   const B=BRANCH[a.branch];if(!B.cd)return false;const ex=a.rank==='임원';
   if(a.inRest&&(a.branch==='mkt'||a.branch==='hr')){restNo(a);return false;}
-  if(a.branch==='mkt'){const n=ex?14:10;for(let i=0;i<n;i++){const ang=i/n*Math.PI*2;G.proj.push({f:a.f,x:a.x+Math.cos(ang)*(R+4),y:a.y+Math.sin(ang)*(R+4),ox:a.x,oy:a.y,dx:Math.cos(ang),dy:Math.sin(ang),d:0,o:a,spin:Math.random()*6,flyer:true,sp:480,rng:ex?300:230});}
+  /* 마케팅 전단지: a tight fan where you aim (2026-10-30: the all-round ring hit 0.8 times a use) */
+  if(a.branch==='mkt'){const n=ex?10:7,A=aimOf(a);for(let i=0;i<n;i++){const ang=A+(i/(n-1)-.5)*.52;G.proj.push({f:a.f,x:a.x+Math.cos(ang)*(R+4),y:a.y+Math.sin(ang)*(R+4),ox:a.x,oy:a.y,dx:Math.cos(ang),dy:Math.sin(ang),d:0,o:a,spin:Math.random()*6,flyer:true,sp:480,rng:ex?300:230});}
     pop(a.f,a.x,a.y-44,ex?'전사 전단지 살포!':'전단지 살포!','#c08a1e');a.cloakT=0;for(const n of watchers(a))if(!immune(a,n)&&sees(n,a)){caught(a,n,'act');break;}}
   else if(a.branch==='design'){const t=ex?6:4;a.cloakT=t;pop(a.f,a.x,a.y-44,'위장','#8e5c8a');tell(a,`위장: ${t}초간 아무도 못 봄 (던지면 풀림)`);}
   else if(a.branch==='hr'){
@@ -219,20 +220,35 @@ function submitTask(a,t){
   if(t.by&&t.by!==a)return;
   const dbl=warnFloor(t.f)?2:1,v=t.reward*dbl;jobDone(a,'dev');gain(a,v);a.lastTaskT=G.t;a.tasksDone++;worked(a);
   pop(a.f,a.x,a.y-30,`+${v} ${t.name}${dbl>1?' (막판 실적 x2)':''}`,'#2f7d4f');
-  if(TASK_GAP(t.f))G.respawn.push({f:t.f,at:G.t+TASK_GAP(t.f)});
+  if(TASK_GAP(t.f))G.respawn.push({f:t.f,at:G.t+TASK_GAP(t.f)});taskRested(t);
   if(Math.random()<.3&&a.docs<2){a.docs++;tell(a,'결재 서류 획득: 부장님 근처에서 결재 올리기 +8');}
   G.tasks.splice(G.tasks.indexOf(t),1);
 }
 function inTaskRange(a,t){if(!a.alive||a.f!==t.f||a.transit)return false;return t.zone?inRect(a,t.zone):Math.hypot(a.x-t.x,a.y-t.y)<t.r;}
 /* ================= desk work: sitting at your own desk turns into a short monitor mini-game =================
    Nobody can touch you while you work, but 고과 only comes from rounds you clear. Each round is a key sequence
-   (U/D/L/R) to type before the timer runs out; the rules hold the sequence so the server can check it. */
+   (U/D/L/R) to type before the timer runs out; the rules hold the sequence so the server can check it.
+   The screen differs by kind, the keys never do (2026-10-29): arrow = type the arrows; bug (개발) = red arrows go the
+   other way; kpi (마케팅) = ▲ if the number went up from the one before, ▼ if down; hr (인사) = ▶ 합격 if 경력 meets
+   the bar, ◀ 반려 if not. With a team every round is its own kind; without one, any kind. */
 const DESK={rounds:3,len:[4,5,6],rew:[4,5,6],cd:30,gap:.7,
   jobs:['메일 답장','보고서 결재','엑셀 정리','기안 작성','회의록 정리','경비 처리']};
 const DESK_BOT={easy:.55,normal:.7,hard:.85};
+const FLIP={U:'D',D:'U',L:'R',R:'L'},rkey=()=>'UDLR'[Math.floor(Math.random()*4)];
+const DESK_KIND={
+  arrow:{t:.35,make:n=>{const s=Array.from({length:n},rkey);return{seq:s,show:s,job:pick(DESK.jobs),rule:''};}},
+  bug:{t:.8,make:n=>{const s=Array.from({length:n},rkey),red=s.map(()=>Math.random()<.4);if(!red.includes(true))red[Math.floor(Math.random()*n)]=true;
+    return{seq:s.map((k,i)=>red[i]?FLIP[k]:k),show:s.map((k,i)=>red[i]?k+'!':k),job:'버그 수정',rule:'🐞 표시된 줄은 반대 방향으로 고치기'};}},
+  kpi:{t:.8,make:n=>{const v=[Math.round(rnd(40,90))];for(let i=0;i<n;i++){const s=Math.random()<.5?-1:1;v.push(Math.max(1,v[i]+s*Math.round(rnd(3,25))));if(v[i+1]===v[i])v[i+1]++;}
+    return{seq:v.slice(1).map((x,i)=>x>v[i]?'U':'D'),show:v,job:'지표 보고',rule:'지난달보다 올랐으면 ▲ · 내렸으면 ▼'};}},
+  hr:{t:.8,make:n=>{const bar=Math.round(rnd(2,5)),y=Array.from({length:n},()=>Math.max(0,bar+Math.round(rnd(-3,3))));
+    if(y.every(x=>x>=bar)||y.every(x=>x<bar)){const i=Math.floor(Math.random()*n);y[i]=y[i]>=bar?Math.max(0,bar-1-Math.floor(Math.random()*2)):bar+Math.floor(Math.random()*3);} // both answers in every round
+    return{seq:y.map(x=>x>=bar?'R':'L'),show:y,job:'서류 심사',rule:`채용 기준: 경력 ${bar}년 이상`,bar};}}};
+const TEAM_DESK={dev:'bug',mkt:'kpi',hr:'hr'};
+function deskKind(a){return TEAM_DESK[a.branch]||'arrow';} // a team always gets its own, interns the basic arrows (2026-10-30: 인사팀 got 마케팅 work, interns got all of them)
 function deskRound(a){
-  const d=a.desk,n=DESK.len[d.round];
-  d.seq=Array.from({length:n},()=>'UDLR'[Math.floor(Math.random()*4)]).join('');d.pos=0;d.max=d.t=1.1+n*.35;d.job=pick(DESK.jobs);d.wait=0;
+  const d=a.desk,kind=d.kind||deskKind(a),n=DESK.len[d.round]-(kind==='arrow'?0:1),K=DESK_KIND[kind],m=K.make(n); // team work: one fewer and 0.8 s each (2026-10-30: too hard at the arrows' pace)
+  d.kind=kind;d.seq=m.seq.join('');d.show=m.show;d.rule=m.rule;d.bar=m.bar;d.job=m.job;d.pos=0;d.max=d.t=1.1+n*K.t+(kind==='arrow'?0:.3);d.wait=0;
   if(!a.isPlayer)d.botAt=rnd(1.4,d.max*.85);
 }
 function startDesk(a){if(a.desk||a.deskCd>0)return;a.desk={round:0,ok:0,gain:0,res:'',resT:0,seq:'',pos:0,t:0,max:1,job:'',wait:.9};a.working=true;} // first round after the camera settles
@@ -259,34 +275,44 @@ function deskStepA(a,dt){
   if(d.t<=0)deskDone(a,false);
 }
 /* ================= 화캉스: the toilet stall's phone game =================
-   Sit on the toilet and a coin chart starts at ×2 and wanders up and down (a random walk, a little more up than down).
-   Cash out (E) whenever you like for what the price is then: selling at once pays only +1, ×4 +8, ×6 +15, below ×1 you
-   lose a little. It crashes at a random moment (-4) and cashes itself out at 8 s. Holding to about ×4-5 pays best,
-   about what the old climbing chart did (+3 a round), so there is a reason to sit through the swings. One round per visit, then the phone needs a rest.
+   Sit on the toilet and a coin chart starts at ×2 in a 상승장 or a 하락장 (it can turn every 1.2-2.5 s). Now and then
+   it goes flat and twitchy ("출렁", under a second) and then jumps at once: 떡상 (×1.5-2), 떡락 (×0.4-0.6, the round
+   goes on) or 상장폐지 (the round ends, -4). Cash out (E) whenever you like for what the price is then: selling at once
+   pays only +1, ×4 +8, ×6 +15, below ×1 you lose a little; at 8 s it sells itself. Simulated: holding for ×5 pays
+   about +3 a round on average but wins only ~40% of rounds, and riding it to the end loses. One round per visit,
+   then the phone needs a rest.
    You are in the restroom, so nobody can hit you meanwhile; the restroom's 10 s rule still applies. */
-const WC={cd:40,max:8,crash:4,wait:1.3,step:.1,drift:.01,vol:.15,lo:.5,hi:6};
+const WC={cd:40,max:8,crash:4,wait:1.3,step:.1,bull:.025,bear:-.035,vol:.12,turn:.35,sqGap:2.4,up:.35,down:.4,lo:.5,hi:6};
 const wcGain=m=>m<1?(m<.75?-2:-1):Math.min(15,Math.max(0,Math.round((m-1.7)*3.5))); // ×2 +1, ×4 +8, ×6 +15
 const gauss=()=>Math.sqrt(-2*Math.log(1-Math.random()))*Math.cos(2*Math.PI*Math.random());
 const wcSpot=a=>a.f>=0&&a.f!==ROOF?FLOORS[a.f].spots.toilet:null;
 function startWc(a){
   const sp=wcSpot(a);if(!sp||a.wc||a.wcCd>0||a.sit||G.actors.some(o=>o!==a&&o.wc&&o.f===a.f))return false;
   a.x=sp.x;a.y=sp.y;a.vx=a.vy=0;a.path=[];a.face=Math.PI/2;
-  a.wc={t:0,m:2,nx:WC.step,crashAt:1.5-Math.log(1-Math.random())*3,res:'',resT:0,gain:0,end:0,held:true};return true;
+  a.wc={t:0,m:2,nx:WC.step,tr:Math.random()<.5?WC.bull:WC.bear,turnAt:rnd(1.2,2.5),sq:0,sqAt:1-Math.log(1-Math.random())*WC.sqGap,res:'',resT:0,gain:0,end:0,held:true};return true;
 }
 /* moving (stick or WASD) puts the phone down, but not a push that was already held when the round began (a thumb
    resting on the stick while tapping the button): that one counts only once it has been let go, or after 1.2 s */
 function wcLeave(a,m){const w=a.wc;if(m<=.35){w.held=false;return false;}return !w.held||w.t>1.2;}
 function wcDone(a,res){const w=a.wc;w.res=res;w.resT=G.t;w.end=G.t+WC.wait;
   if(res==='cash'){w.gain=wcGain(w.m);if(w.gain>=0){gain(a,w.gain);pop(a.f,a.x,a.y-30,`+${w.gain} 익절!`,'#2f7d4f');}else{dmg(a,-w.gain,'wc');pop(a.f,a.x,a.y-30,`손절 ${w.gain}`,'#cf3626');}}
-  else if(res==='crash'){dmg(a,WC.crash,'wc');pop(a.f,a.x,a.y-30,`폭락 -${WC.crash}`,'#cf3626');}}
+  else if(res==='crash'){dmg(a,WC.crash,'wc');pop(a.f,a.x,a.y-30,`상장폐지 -${WC.crash}`,'#cf3626');}}
 function cashWc(a){if(a.wc&&!a.wc.res)wcDone(a,'cash');}
 function endWc(a){if(!a.wc)return;const w=a.wc;a.wc=null;if(w.res)a.wcCd=WC.cd;}
 function wcStep(a,dt){
   const w=a.wc,sp=wcSpot(a);if(!sp||!a.inRest){a.wc=null;return;}
   a.x=sp.x;a.y=sp.y;
   if(w.res){if(G.t>=w.end)endWc(a);return;}
-  w.t+=dt;while(w.t>=w.nx){w.nx+=WC.step;w.m=Math.max(WC.lo,Math.min(WC.hi,w.m*Math.exp(WC.drift+WC.vol*gauss())));}
-  if(w.t>=w.crashAt)wcDone(a,'crash');else if(w.t>=WC.max)wcDone(a,'cash');
+  w.t+=dt;
+  while(w.t>=w.nx&&!w.res){w.nx+=WC.step;const t=w.nx;
+    if(t>=w.turnAt){if(Math.random()<WC.turn)w.tr=w.tr>0?WC.bear:WC.bull;w.turnAt=t+rnd(1.2,2.5);} // 상승장 ↔ 하락장
+    if(!w.sq&&t>=w.sqAt)w.sq=t+rnd(.6,1); // 출렁: flat and twitchy until w.sq, then a jump
+    if(w.sq){w.m*=Math.exp(.02*gauss());
+      if(t>=w.sq){const x=Math.random();w.sq=0;w.sqAt=t-Math.log(1-Math.random())*WC.sqGap;
+        if(x<WC.up)w.m*=rnd(1.5,2);else if(x<WC.up+WC.down)w.m*=rnd(.4,.6);else{wcDone(a,'crash');return;}}} // 떡상 / 떡락 / 상장폐지
+    else w.m*=Math.exp(w.tr+WC.vol*gauss());
+    w.m=Math.max(WC.lo,Math.min(WC.hi,w.m));}
+  if(!w.res&&w.t>=WC.max)wcDone(a,'cash');
 }
 /* ================= player commands (shared by the browser and the room server) ================= */
 function useFloor(a,dir){if(a.sit)return;const p=padOf(a);if(!a.alive||!p)return;if(startChan(a,p,dir))tell(a,`${PADS[p].n} → ${FLOORS[a.f+dir].name}`);}

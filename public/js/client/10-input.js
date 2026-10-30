@@ -66,7 +66,7 @@ $('dPad').addEventListener('pointerdown',e=>{const b=e.target.closest('button');
 $('pills').addEventListener('pointerdown',e=>{const b=e.target.closest('button');if(!b)return;e.preventDefault();e.stopPropagation();
   const a=b.dataset.a;if(a==='up')ACT.floor(1);else if(a==='down')ACT.floor(-1);else if(a==='act')doInteract();});
 $('callOpts').addEventListener('pointerdown',e=>{const b=e.target.closest('button');if(!b)return;e.preventDefault();e.stopPropagation();if(G&&G.me.call)ACT.answer(b.dataset.k);});
-document.addEventListener('touchmove',e=>{if(!e.target.closest('.sheet'))e.preventDefault();},{passive:false});
+document.addEventListener('touchmove',e=>{if(!e.target.closest('.sheet,.idpane'))e.preventDefault();},{passive:false});
 
 function readInput(){
   if(!G||!G.me)return;const me=G.me;let vx=0,vy=0;

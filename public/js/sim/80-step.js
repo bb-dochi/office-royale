@@ -6,7 +6,7 @@ function step(dt){
     if(!G.lunch)G.nextClose-=dt;G.warn=G.nextClose<=WARN;
     if(G.nextClose<=0){
       const f=G.closed;G.closed++;G.nextClose=INTERVAL;G.warn=false;UI.shake(.35);
-      G.tasks=G.tasks.filter(t=>t.f>=G.closed);G.items=G.items.filter(t=>t.f>=G.closed);G.drops=G.drops.filter(t=>t.f>=G.closed);G.wet=G.wet.filter(t=>t.f>=G.closed);
+      G.tasks=G.tasks.filter(t=>t.f>=G.closed);G.items=G.items.filter(t=>t.f>=G.closed);G.drops=G.drops.filter(t=>t.f>=G.closed);G.comeback=G.comeback.filter(t=>t.f>=G.closed);G.wet=G.wet.filter(t=>t.f>=G.closed);
       const nf=G.closed+WIN-1;let msg='';
       if(nf<NF){assignSeats(nf);fillTasks(nf);for(let i=0;i<itemQuota(nf);i++)spawnItem(nf);msg=`${FLOORS[nf].name} 개방`;for(const h of hs){const s=h.seats[nf];if(h.alive)tell(h,`인사 발령: ${FLOORS[nf].name} ${s?s.name:'자리 없음'}`);}}
       for(const b of G.actors)if(!b.isPlayer)b.pref=Math.min(topOpen(),G.closed+prefRoll());
@@ -26,7 +26,7 @@ function step(dt){
   // spawns
   G.fillT-=dt;if(G.fillT<=0){G.fillT=1.5;for(let f=G.closed;f<=topOpen();f++)fillTasks(f);}
   G.itemT-=dt;
-  if(G.itemT<=0){G.itemT=6;for(let f=G.closed;f<=topOpen();f++){if(G.items.filter(i=>i.f===f).length<itemQuota(f))spawnItem(f);fillTasks(f);}}
+  if(G.itemT<=0){G.itemT=6;for(let f=G.closed;f<=topOpen();f++){if(!roofLunch()&&G.items.filter(i=>i.f===f).length<itemQuota(f))spawnItem(f);fillTasks(f);}}
   for(let f=0;f<NF;f++)for(const d of FLOORS[f].doors){if(!d.open)continue;d.t+=dt;if(d.t>10&&!G.actors.some(a=>a.alive&&a.f===f&&Math.hypot(a.x-(d.x+d.w/2),a.y-(d.y+d.h/2))<60))toggleDoor(f,d,false);}
   for(const w of G.wet)w.t+=dt;G.wet=G.wet.filter(w=>w.t<18);
   // transit
@@ -138,7 +138,7 @@ function step(dt){
         t.prog+=rate*dt;
         if(t.prog>=1){
           if(t.kind==='print'){const w=work.filter(a=>!a.carry).sort((a,b)=>dist(a,t)-dist(b,t))[0];
-            if(w){w.carry=true;pop(w.f,w.x,w.y-30,'출력 완료: 결재함으로','#1d2328');tell(w,'출력물을 들었다: 결재함으로 배달 (맞으면 떨어뜨림)');G.tasks.splice(i,1);}else t.prog=1;}
+            if(w){w.carry=true;pop(w.f,w.x,w.y-30,'출력 완료: 결재함으로','#1d2328');tell(w,'출력물을 들었다: 결재함으로 배달 (맞으면 떨어뜨림)');taskRested(t);G.tasks.splice(i,1);}else t.prog=1;}
           else{t.ready=true;t.prog=1;}
         }
       }else if(!t.by)t.prog=Math.max(0,t.prog-dt*.1);

@@ -51,7 +51,7 @@ function newGame(opts={}){
   const nb=opts.bots??TOTAL-hs.length;
   for(let i=0;i<nb;i++){const b=mk(NAMES[i],false,TYPES[i],SHIRTS[i],pickPos());b.pref=prefRoll();actors.push(b);}
   G={t:0,actors,me,proj:[],items:[],traps:[],tasks:[],drops:[],wet:[],pops:[],dings:[],bursts:[],closed:0,nextClose:INTERVAL,warn:false,final:false,finalT:0,over:false,itemT:0,winner:null,
-     npcs:[],doors:[],events:[],notice:null,ceo:null,blackout:null,cake:null,fire:0,star:null,audit:null,taskId:0,fillT:0,lunch:null,airdrops:[],respawn:[],smokes:[]};
+     npcs:[],doors:[],events:[],notice:null,ceo:null,blackout:null,cake:null,fire:0,star:null,audit:null,taskId:0,fillT:0,lunch:null,airdrops:[],respawn:[],smokes:[],taskRest:{},comeback:[]};
   for(let f=0;f<NF;f++){
     const w=FLOORS[f].wp;
     G.npcs.push(Object.assign(mkNpc('boss',f,w[0][0],w[0][1]),{wp:1,slot:0,senior:f>=4})); // 5F+ : a 전무 instead of a 부장
@@ -80,7 +80,7 @@ function newGame(opts={}){
   UI.reset();
 }
 /* the top open floor has little work early on, so nobody can run ahead and keep a whole floor of tasks to themself */
-const taskQuota=f=>!isOpen(f)?0:(G.closed>=NF-1?5:f===topOpen()?(G.closed<2?1:2):4);
+const taskQuota=f=>!isOpen(f)?0:(G.closed>=NF-1?6:f===topOpen()?(G.closed<2?1:2):5); // 5 per floor (6 on the last): spare spots so the 5s rest never leaves a floor short (2026-10-30, was 4/5)
 const itemQuota=f=>!isOpen(f)?0:(G.closed>=NF-1?3:f===G.closed?4:f===topOpen()?2:3);
 /* a handed-in task leaves a gap for a while before another one turns up (the lobby's few desks stay empty longer) */
 const TASK_GAP=f=>f===0?15:0;
@@ -88,28 +88,46 @@ const TASK_GAP=f=>f===0?15:0;
    take real work (고과 itself is not affected) */
 const PROMO_K={사원:.5,대리:.17,팀장:.14};
 const IDLE=45,IDLE_DRAIN=.35; // seconds without doing anything before 고과 leaks, and how fast
-function fillTasks(f){let n=0;const gaps=G.respawn.filter(r=>r.f===f&&r.at>G.t).length;while(G.tasks.filter(t=>t.f===f).length+gaps<taskQuota(f)&&n++<10)spawnTask(f);}
-function spawnTask(f){
-  const fl=FLOORS[f],have=k=>G.tasks.some(t=>t.f===f&&t.kind===k);
+function fillTasks(f){
+  const cnt=()=>G.tasks.filter(t=>t.f===f).length+G.respawn.filter(r=>r.f===f&&r.at>G.t).length;
+  for(const c of G.comeback.filter(c=>c.f===f&&c.at<=G.t)){if(G.t>c.at+30){G.comeback.splice(G.comeback.indexOf(c),1);continue;}
+    if(cnt()>=taskQuota(f))break;G.comeback.splice(G.comeback.indexOf(c),1);spawnTask(f,c.k);}
+  let n=0;while(cnt()<taskQuota(f)&&n++<10)spawnTask(f);
+}
+/* a task just done at a spot (a meeting room, the printer…) rests there for 5 s, so the same one doesn't pop up again
+   the moment it's done (2026-10-30: people stood in one spot doing it 2-3 times). 13-20 s cost bots ~10% of their
+   업무 (most floors have one meeting room, printer and copier). 보고서 작성 isn't tied to a spot and never rests.
+   When the rest is over the spot goes first in line (G.comeback): the next free slot on the floor brings that task back,
+   instead of a random pick that often left it away for 10-17 s (2026-10-30). The slot is not held during the rest:
+   holding it cut bot 업무 by ~15%. Not in the lobby, which has its own 15 s gap.
+   The printer no longer waits for the last print to be delivered (it was what kept it away longest) */
+const TASK_REST=[5,5],taskSpot=(f,k,x,y)=>`${f}|${k}|${Math.round(x)}|${Math.round(y)}`;
+const resting=(f,k,p)=>(G.taskRest[taskSpot(f,k,p.x,p.y)]||0)>G.t,meetMid=z=>({x:z.x+z.w/2,y:z.y+z.h/2});
+function taskRested(t){if(t.kind==='report')return;const at=G.t+rnd(...TASK_REST);G.taskRest[taskSpot(t.f,t.kind,t.x,t.y)]=at;if(t.f>0)G.comeback.push({f:t.f,k:t.kind,at});}
+/* seat work goes by many names; it is the same 보고서-kind task underneath */
+const SEAT_JOBS=['보고서 작성','메일 답장','기획서 작성','회의록 정리','주간 보고','엑셀 정리','결재 올리기','경비 정산'];
+function spawnTask(f,want){
+  const fl=FLOORS[f],have=k=>G.tasks.some(t=>t.f===f&&t.kind===k),sp=fl.spots;
   const pool=['report','report'];
-  if(f>0&&!have('copy'))pool.push('copy');
-  if(!have('print')&&!G.actors.some(a=>a.carry&&a.f===f)&&!G.drops.some(d=>d.f===f))pool.push('print');
-  if(fl.meet.length&&G.tasks.filter(t=>t.f===f&&t.kind==='meet').length<fl.meet.length)pool.push('meet','meet');
-  if(fl.spots.server&&!have('server'))pool.push('server');
-  if(fl.recep.length&&G.tasks.filter(t=>t.f===f&&t.kind==='recep').length<fl.recep.length)pool.push('recep','recep');
-  if(f===0){pool.length=0;pool.push('recep','recep');if(!have('badge'))pool.push('badge');}
+  if(f>0&&!have('copy')&&!resting(f,'copy',sp.copier))pool.push('copy');
+  if(!have('print')&&sp.printer&&!resting(f,'print',sp.printer))pool.push('print');
+  const meets=fl.meet.filter(z=>!G.tasks.some(t=>t.zone===z)&&!resting(f,'meet',meetMid(z)));if(meets.length)pool.push('meet','meet');
+  if(sp.server&&!have('server')&&!resting(f,'server',sp.server))pool.push('server');
+  const receps=fl.recep.filter(s=>!G.tasks.some(t=>t.kind==='recep'&&t.spot===s)&&!resting(f,'recep',s));if(receps.length)pool.push('recep','recep');
+  if(f===0){pool.length=0;if(receps.length)pool.push('recep','recep');if(!have('badge')&&!resting(f,'badge',sp.badge))pool.push('badge');if(!pool.length)return;}
+  if(want){if(!pool.includes(want))return;pool.length=0;pool.push(want);}
   const k=pick(pool),T={id:++G.taskId,f,kind:k,prog:0,ready:false,react:{},by:null,awayT:0};
   if(k==='report'){
     const used=new Set(G.tasks.filter(t=>t.seat).map(t=>t.seat));
-    const cands=fl.seats.filter(s=>!used.has(s));if(!cands.length)return;
-    const s=pick(cands);Object.assign(T,{seat:s,x:s.x,y:s.y,r:26,need:2.2,reward:8,name:'보고서 작성'});
+    const cands=fl.seats.filter(s=>!used.has(s)&&!s.npc);if(!cands.length)return; // not where a seat worker sits
+    const s=pick(cands);Object.assign(T,{seat:s,x:s.x,y:s.y,r:26,need:2.2,reward:8,name:pick(SEAT_JOBS)});
   }else if(k==='copy')Object.assign(T,{x:fl.spots.copier.x,y:fl.spots.copier.y,r:K(58),need:1.5,reward:6,name:'복사'});
   else if(k==='print')Object.assign(T,{x:fl.spots.printer.x,y:fl.spots.printer.y,r:K(58),need:1.2,reward:12,name:'출력물 배달'});
-  else if(k==='meet'){const used=G.tasks.filter(t=>t.zone).map(t=>t.zone);const z=pick(fl.meet.filter(m=>!used.includes(m)));if(!z)return;
+  else if(k==='meet'){const z=pick(meets);if(!z)return;
     Object.assign(T,{zone:z,x:z.x+z.w/2,y:z.y+z.h/2,need:3,reward:10,name:'회의 참석'});}
   else if(k==='server')Object.assign(T,{x:fl.spots.server.x,y:fl.spots.server.y,r:30,need:4,reward:15,name:'서버 재부팅'});
   else if(k==='badge')Object.assign(T,{x:fl.spots.badge.x,y:fl.spots.badge.y,r:34,need:2.2,reward:8,name:'출입증 발급'});
-  else if(k==='recep'){const used=G.tasks.filter(t=>t.kind==='recep').map(t=>t.spot);const s=pick(fl.recep.filter(p=>!used.includes(p)));if(!s)return;
+  else if(k==='recep'){const s=pick(receps);if(!s)return;
     Object.assign(T,{spot:s,x:s.x,y:s.y,r:34,need:2.2,reward:8,name:'방문객 응대'});}
   G.tasks.push(T);
 }

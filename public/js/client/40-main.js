@@ -29,6 +29,7 @@ function showResult(win){
   else if(me.cause==='sales')note='영업사원에게 문을 열어준 게 마지막이었습니다.';
   else note='고과 관리에 실패했습니다.';
   if(!win&&G.over&&G.winner)note+=` 최종 승자는 ${G.winner.name}님입니다.`;
+  if(!NETC.room&&!G.net&&!G.tutorial)note+=hardNote(win,me);
   $('rNote').textContent=note;
   Object.assign(RES,{win,title:$('rTitle').textContent,name:me.name==='나'?store.get('or-name')||'신입':me.name,place:$('rPlace').textContent,time:$('rTime').textContent,
     rank:$('rRank').textContent,perf:$('rPerf').textContent,note});
@@ -73,23 +74,25 @@ function startScreens(){paused=false;$('pause').hidden=true;plazaStop();if(typeo
 /* ---------- solo pause (Esc or the ❚❚ on the ID card): the rules stop, nothing else changes ---------- */
 let paused=false;
 function pauseOpen(on){paused=on;$('pause').hidden=!on;if(on){keys.clear();throwHeld=false;}}
-const canPause=()=>running&&G&&G.me&&G.me.alive&&!NETC.on&&!G.net&&!TUT.on&&$('result').hidden;
+const canPause=()=>running&&G&&G.me&&G.me.alive&&!NETC.on&&!G.net&&!(typeof TUT!=='undefined'&&TUT.on)&&$('result').hidden;
 addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(paused){e.preventDefault();pauseOpen(false);}else if(canPause()){e.preventDefault();pauseOpen(true);}});
 $('pauseBtn').addEventListener('click',e=>{e.stopPropagation();if(canPause())pauseOpen(true);});
 $('pResume').addEventListener('click',()=>pauseOpen(false));
 $('pRestart').addEventListener('click',()=>{pauseOpen(false);start();});
 $('pHome').addEventListener('click',()=>{pauseOpen(false);running=false;plazaStart();});
 /* solo: d is the difficulty picked on the 난이도 sheet; restarts (다시 출근, pause) reuse the last one */
-function start(d){netClose();if(DIFF[d])store.set('or-diff',d);$('diffSheet').hidden=true;
-  newGame({humans:[{key:'me',name:'나',fit:myFit()}],diff:store.get('or-diff')||'normal',lunch:nextLunch()});startScreens();}
+function start(d){if((d||store.get('or-diff'))===RANKED&&!hardOpen()){store.set('or-diff','normal');diffOpen();return;} // 어려움 still locked: show why
+  netClose();if(DIFF[d])store.set('or-diff',d);$('diffSheet').hidden=true;
+  newGame({humans:[{key:'me',name:'나',fit:myFit()}],diff:store.get('or-diff')||'normal',lunch:nextLunch()});
+  if(DEV_HOST&&store.get('or-devteam'))chooseBranch(G.me,store.get('or-devteam'));startScreens();}
 /* lunch events come from a shuffled deck kept in this browser, so all four turn up before any repeats */
 function nextLunch(){let bag=[];try{bag=JSON.parse(store.get('or-lunch')||'[]');}catch{}bag=Array.isArray(bag)?bag.filter(k=>LUNCH_KINDS.includes(k)):[];
   if(!bag.length)bag=[...LUNCH_KINDS].sort(()=>Math.random()-.5);const k=bag.shift();store.set('or-lunch',JSON.stringify(bag));return k;}
 const DIFF_TXT={easy:'봇이 굼뜨고 서류가 잘 빗나가요. 가만히 있어도 고과가 안 깎여요.',normal:'기본 난이도. 할 일을 안 하면 고과가 깎여요.',hard:'봇이 빠르고 정확하게 던져요. 놀면 고과가 깎여요.'};
 function diffOpen(){
   const last=store.get('or-diff')||'normal';
-  $('diffOpts').innerHTML=Object.entries(DIFF).map(([k,v],i)=>`<button data-d="${k}" class="${k===last?'last':''}">
-    <em aria-hidden="true">${'●'.repeat(i+1)}${'○'.repeat(2-i)}</em><b>${v.n}${k===RANKED?'<i class="rk">🏆 주간 랭킹 기록</i>':''}${k===last?'<i>지난번</i>':''}</b><span>${DIFF_TXT[k]}</span></button>`).join('');
+  $('diffOpts').innerHTML=Object.entries(DIFF).map(([k,v],i)=>{const lock=k===RANKED&&!hardOpen();return`<button data-d="${k}" class="${k===last?'last':''}"${lock?' disabled':''}>
+    <em aria-hidden="true">${'●'.repeat(i+1)}${'○'.repeat(2-i)}</em><b>${v.n}${k===RANKED?'<i class="rk">🏆 주간 랭킹 기록</i>':''}${k===last?'<i>지난번</i>':''}</b><span>${lock?HARD_LOCK:DIFF_TXT[k]}</span></button>`;}).join('');
   $('diffSheet').hidden=false;
 }
 $('diffOpts').addEventListener('click',e=>{const b=e.target.closest('button');if(b)start(b.dataset.d);});
@@ -101,6 +104,24 @@ $('againBtn').addEventListener('click',()=>{if(NETC.room)showLobby();else start(
 
 /* ---------- online lobby ---------- */
 const store={get:k=>{try{return localStorage.getItem(k);}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}}};
+/* local testing only (localhost): pick the team you start a solo game in, to try each team's desk work right away */
+const DEV_HOST=/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+if(DEV_HOST){const s=document.createElement('select');s.id='devTeam';s.title='개발자: 혼자 하기 시작 부서';
+  s.innerHTML=[['','🛠 부서: 인턴'],['dev','🛠 개발팀'],['mkt','🛠 마케팅팀'],['hr','🛠 인사팀'],['design','🛠 디자인팀']].map(([v,t])=>`<option value="${v}">${t}</option>`).join('');
+  s.value=store.get('or-devteam')||'';s.addEventListener('change',()=>store.set('or-devteam',s.value));document.body.appendChild(s);}
+/* 어려움 (the ranked level) opens once you have reached 팀장 in a 보통 game (2026-10-30: was also top 10), so newcomers learn the
+   office before the ranking (most first-day 어려움 games ended in under a minute). People who played before this rule
+   (a name is already saved here) keep it open. After two quick 어려움 knock-outs in a row the result suggests 보통 */
+const HARD_LOCK='🔒 보통 난이도에서 팀장을 달면 열려요.';
+if(store.get('or-hard')==null)store.set('or-hard',store.get('or-name')?'1':'');
+const hardOpen=()=>store.get('or-hard')==='1';
+function hardNote(win,me){
+  const d=G.diff||'normal';
+  if(d==='normal'&&!hardOpen()&&(win||rankAt(me,'팀장'))){store.set('or-hard','1');return ' 🏆 어려움(랭킹전)이 열렸어요!';}
+  if(d!==RANKED)return '';
+  const quick=!win&&G.t<60,n=quick?+(store.get('or-hardfast')||0)+1:0;store.set('or-hardfast',String(n));
+  return n>=2?' 보통 난이도에서 먼저 손을 풀고 오는 것도 방법이에요.':'';
+}
 const roomParam=()=>(new URLSearchParams(location.search).get('room')||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
 function lobbyNote(t,err){const n=$('lobbyNote');n.textContent=t||'';n.classList.toggle('err',!!err);}
 /* no room yet: a sheet to create or join (an invite link narrows it to one join button).
@@ -200,7 +221,7 @@ function frameBody(now){
   let sdt=dt;if(hitStop>0){hitStop-=dt;if(!NETC.on&&!reduceMotion)sdt=dt*.08;}
   if(running&&G&&!paused){readInput();if(NETC.on){netSendInput();netFrame(dt);}else if(!G.net)step(sdt);}
   else if(PZ.on){readInput();plazaFrame(dt);}
-  if(TUT.on)tutFrame(dt);
+  if(typeof TUT!=='undefined'&&TUT.on)tutFrame(dt); // the loop can start before 46-tutorial.js has loaded
   juiceFrame(dt);
   render(dt);hud(dt);keybar();countdown();specHud();unstick(dt);
   {const pb=$('pauseBtn'),h=!canPause();if(pb.hidden!==h)pb.hidden=h;}

@@ -44,15 +44,23 @@ function updEvents(dt){
   if(G.notice){G.notice.t-=dt;if(G.notice.t<=0){G.notice=null;UI.noticeEnd();}}
 }
 /* ================= lunch (see the lunch notes in 50-actions) ================= */
+/* 특식 counter: a random open spot on the roof (2026-10-30, was always the same two). Most of the ring has to be clear
+   floor, it isn't on top of a stair exit, and the second one is well away from the first */
+function mealSpot(from){const bl=FLOORS[ROOF].blocked,r=LUNCH.meal.r,ex=[{x:K(135),y:K(380)},{x:K(965),y:K(380)}];
+  for(let i=0;i<200;i++){const p=randFree(ROOF,r+40);
+    if(ex.some(e=>dist(p,e)<r+90)||(from&&dist(p,from)<K(300)))continue;
+    let ok=0;for(let k=0;k<8;k++){const a=k*Math.PI/4,[gx,gy]=cellOf(p.x+Math.cos(a)*r*.7,p.y+Math.sin(a)*r*.7);if(!bl[gy*GW+gx])ok++;}
+    if(ok>=7)return p;}
+  return{...LUNCH.meal.spots[from?1:0]};}
 function startLunch(){
   const kind=G.lunchKind||'lighter',I=LUNCH_INFO[kind];
   for(const a of G.actors){a.bill=false;a.billFrom=null;a.meal=0;a.lad=null;}
   if(kind==='ladder'){G.lunch={kind,t:LUNCH.lad.pick+LUNCH.lad.show+2,phase:'pick'};startLadder(G.lunch);
     showCine('점심시간!',I.s,1.6);feed('점심 커피 내기: 사다리 번호를 고르세요',true);return;}
   G.lunch={kind,t:30,dropT:.5,score:{L:0,R:0}};
-  if(kind==='meal'){G.lunch.spot=0;G.lunch.zone={...LUNCH.meal.spots[0]};G.lunch.crowd=0;}
+  if(kind==='meal'){G.lunch.spot=0;G.lunch.zone=mealSpot(null);G.lunch.crowd=0;}
   G.airdrops=[];G.smokes=[];for(const b of G.actors)if(!b.isPlayer){b.lunchGo=Math.random()<(kind==='lighter'?.7:.75);}
-  showCine('점심시간!',I.s,2);feed('점심시간: 부장님 부재 · 업무·구조조정 일시정지',true);
+  showCine('점심시간!',I.s,2);feed('점심시간: 업무·구조조정 일시정지 · 층엔 비품 보급 없이 부장님만 순찰',true);
 }
 const roofTell=(msg,hot)=>{for(const h of humans())if(h.alive&&h.f===ROOF)tell(h,msg,hot);};
 function roofStep(L,dt){
@@ -69,7 +77,7 @@ function roofStep(L,dt){
       for(const a of up.slice().sort(()=>Math.random()-.5).slice(0,n)){a.bill=true;a.billT=G.t;pop(ROOF,a.x,a.y-54,'계산서 받음!','#cf3626');tell(a,'계산서를 받았다! 서류로 다른 사람을 맞혀 넘기세요',true);}
       if(n)roofTell(`계산서 ${n}장이 돌기 시작했다 · 끝날 때 들고 있으면 점심 쏨`,true);}}
   else if(L.kind==='meal'){
-    if(L.spot===0&&L.t<=15){L.spot=1;L.zone={...LUNCH.meal.spots[1]};roofTell('배식대가 옮겨졌다!',true);}
+    if(L.spot===0&&L.t<=15){L.spot=1;L.zone=mealSpot(L.zone);roofTell('배식대가 옮겨졌다!',true);}
     /* everyone in the ring shares the counter: alone it fills twice as fast, in a crowd it crawls */
     const inz=up.filter(a=>Math.hypot(a.x-L.zone.x,a.y-L.zone.y)<LUNCH.meal.r);L.crowd=inz.length;
     for(const a of inz)a.meal+=dt*(inz.length===1?2:1/inz.length);}
@@ -107,7 +115,10 @@ function ladderStep(L,dt){
   const S=LUNCH.lad,ins=alive().filter(a=>a.lad!=null);
   for(const a of ins){if(a.sit||a.desk)stand(a);a.chan=null;a.wc=null;a.lockT=Math.max(a.lockT,.2);a.lockWhy='사다리타기';a.inv=Math.max(a.inv,.2);a.vx=a.vy=0;}
   if(L.phase==='pick'){
-    for(const a of ins)if(!a.isPlayer&&Math.random()<dt*.6)pickLane(a,-1);
+    /* once every person has picked, the bots hurry (about 4 a second), and the moment everyone has a lane it's revealed (2026-10-30) */
+    const picked=a=>L.groups[a.lad]&&L.groups[a.lad].lane.includes(a.id),rush=ins.filter(a=>a.isPlayer).every(picked);
+    for(const a of ins)if(!a.isPlayer&&Math.random()<dt*(rush?4:.6))pickLane(a,-1);
+    if(L.t>S.show+2&&ins.every(picked))L.t=S.show+2;
     if(L.t<=S.show+2){for(const a of ins)pickLane(a,-1);L.phase='show';}
   }else if(L.phase==='show'&&L.t<=2){L.phase='done';
     for(const g of L.groups){if(g.ids.length<2)continue;

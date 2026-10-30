@@ -165,12 +165,8 @@ function plazaFrame(dt){
 }
 
 /* ---------- menu ---------- */
-/* PC greets with keys 1-4; touch screens get a small speech button that opens the four lines */
+/* PC greets with keys 1-5 and E; phones have no greeting button (the lobby's 상호작용 button uses things) */
 const plazaSayRandom=()=>plazaSay(Math.floor(Math.random()*EMOTES.length));
-/* phones: the same five lines plus one that picks any of the ten */
-$('emotePop').innerHTML=EMOTES.slice(0,5).map((t,i)=>`<button data-i="${i}">${t}</button>`).join('')+'<button data-i="rnd" class="rnd">아무 말이나</button>';
-$('emotePop').addEventListener('click',e=>{const b=e.target.closest('button');if(b){if(b.dataset.i==='rnd')plazaSayRandom();else plazaSay(+b.dataset.i);$('emotePop').hidden=true;}});
-$('emoteBtn').addEventListener('click',()=>{$('emotePop').hidden=!$('emotePop').hidden;}); // using things is the 상호작용 button (#greetBtn)
 addEventListener('keydown',e=>{if(!PZ.on||($('home').hidden&&!$('lobby').classList.contains('dock'))||(e.target.closest&&e.target.closest('input')))return;
   if(G&&G.plaza&&G.me.desk){const k={KeyW:'U',ArrowUp:'U',KeyS:'D',ArrowDown:'D',KeyA:'L',ArrowLeft:'L',KeyD:'R',ArrowRight:'R'}[e.code];if(k){e.preventDefault();deskKey(G.me,k);return;}}
   const n=/^(?:Digit|Numpad)([1-5])$/.exec(e.code);if(n)plazaSay(+n[1]-1);
@@ -258,7 +254,7 @@ function dressOpen(){if(!PZ.on)return;PZ.dress=true;$('home').classList.add('dre
    let best=spots[start]||{x:FW/2,y:K(300)};
    for(let i=0;i<n;i++){const p=spots[(start+i)%n];if(!others.some(a=>Math.hypot(a.x-p.x,a.y-p.y)<60)){best=p;break;}}
    G.me.x=best.x;G.me.y=best.y;}
-  G.me.vx=G.me.vy=0;cam={x:G.me.x,y:G.me.y};$('homeMenu').hidden=true;$('dress').hidden=false;dressRender();}
+  G.me.vx=G.me.vy=0;cam={x:G.me.x,y:G.me.y};$('homeMenu').hidden=true;$('dress').hidden=false;dressRender();idTab('wear');}
 function dressClose(){PZ.dress=false;$('home').classList.remove('dressing');$('homeMenu').hidden=false;$('dress').hidden=true;
   if(PZ.dressFromDock){PZ.dressFromDock=false;homeClose(true);}} // opened from the tabs: go back to the tabs
 $('dressRows').addEventListener('click',e=>{const b=e.target.closest('button');if(b)dressSet(b.dataset.k,b.dataset.v||null);});

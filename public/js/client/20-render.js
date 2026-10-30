@@ -628,6 +628,7 @@ function bakeParts(group,mat){
   geo.setAttribute('color',new THREE.BufferAttribute(col,3));geo.setIndex(new THREE.BufferAttribute(idx,1));geo.computeBoundingSphere();
   const mesh=new THREE.Mesh(geo,mat);mesh.castShadow=true;group.add(mesh);
 }
+let dressCardEl=null;const dressCard=()=>dressCardEl||(dressCardEl=document.querySelector('#home .homecard'));
 /* ---------- dressing room choices (also sent to the server, which cleans them the same way: server/src/outfit.js) ---------- */
 const FIT={hair:['short','side','long','bun','bald'],top:['shirt','jacket','cardigan','vest'],bottom:['pants','skirt'],
   hairC:['#1f1b1a','#3a2d28','#6b3e2e','#8a5a3a','#c9a25a','#9a9aa0','#cf6f8a','#2b6cb0'],skin:['#ffe4cc','#fbd8bb','#f3c7a4','#e6b48f','#c98d6a'],
@@ -638,6 +639,19 @@ function cleanFit(f){
   if(!f||typeof f!=='object')return null;const col=v=>typeof v==='string'&&/^#[0-9a-fA-F]{6}$/.test(v)?v.toLowerCase():null,pk=(v,l)=>l.includes(v)?v:l[0];
   return{hair:pk(f.hair,FIT.hair),hairC:col(f.hairC)||'#3a2d28',skin:col(f.skin)||'#fbd8bb',top:pk(f.top,FIT.top),topC:col(f.topC)||'#2b6cb0',shirtC:col(f.shirtC)||'#f4f6f8',
     tie:col(f.tie),badge:!!f.badge,glasses:!!f.glasses,bottom:pk(f.bottom,FIT.bottom),bottomC:col(f.bottomC)||'#2f3540'};
+}
+/* the 인사기록카드 photo: my character from the chest up, drawn once per outfit by a small renderer of its own */
+let photoGL=null;const photoCache=new Map();
+function charPhoto(fit){
+  const key=JSON.stringify(fit);if(photoCache.has(key))return photoCache.get(key);
+  const W=120,H=146;
+  if(!photoGL){photoGL=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});photoGL.setPixelRatio(2);photoGL.setSize(W,H,false);
+    photoGL.toneMapping=gl.toneMapping;photoGL.toneMappingExposure=gl.toneMappingExposure;}
+  const sc=new THREE.Scene();sc.background=new THREE.Color('#e9e6dc');sc.add(new THREE.HemisphereLight(0xdfe9f5,0x7a6a5c,1.3));
+  const sunP=new THREE.DirectionalLight(0xfff1dc,1.8);sunP.position.set(1.5,3,4);sc.add(sunP);
+  const m=makeChar('#2b6cb0',null,1,fitToOutfit(fit));sc.add(m);
+  const c=new THREE.PerspectiveCamera(24,W/H,.1,20);c.position.set(0,1.02,3.1);c.lookAt(0,.98,0);
+  photoGL.render(sc,c);const url=photoGL.domElement.toDataURL('image/png');photoCache.set(key,url);return url;
 }
 function myFit(){try{return cleanFit(JSON.parse(localStorage.getItem('or-fit')))||{...DEFAULT_FIT};}catch{return{...DEFAULT_FIT};}}
 function fitToOutfit(c){
@@ -743,7 +757,6 @@ function makeChar(color,kind,seed,outfit){
     if(H.style==='bun')add(head,CG.ball,hc,0,HY+.32,-.2,.13,.13,.13);
     if(H.style==='updo'){add(head,CG.ball,hc,0,HY+.42,-.1,.14,.12,.14);add(head,CG.ring,'#cf6f8a',0,HY+.36,-.08,.1,.1,.2).rotation.x=Math.PI/2+.25;}}   // hair tied up in a top knot
   /* role props */
-  if(kind==='ceo'){const cr=new THREE.Mesh(new THREE.TorusGeometry(.33,.04,8,24),new THREE.MeshLambertMaterial({color:'#c08a1e',emissive:'#c08a1e',emissiveIntensity:.4}));cr.rotation.x=Math.PI/2;cr.position.y=.6;inner.add(cr);mats.push(cr.material);}
   if(kind==='courier'){const bxm=new THREE.Mesh(GEO.box,lam('#c8955a'));bxm.scale.set(.42,.32,.32);bxm.position.set(0,.72,.36);bxm.castShadow=true;inner.add(bxm);}
   if(kind==='cart'){const ct=new THREE.Group();const b=new THREE.Mesh(GEO.box,lam('#7a4b2a'));b.scale.set(.75,.55,.5);b.position.y=.42;b.castShadow=true;ct.add(b);
     const tp=new THREE.Mesh(GEO.box,lam('#e8e2d3'));tp.scale.set(.78,.04,.53);tp.position.y=.72;ct.add(tp);
@@ -836,10 +849,10 @@ function poseRig(u,mode,dt,carry,sitY=SIT_CHAIR){
 
 /* ---------- dynamic pools ---------- */
 const actorM=new Map(),npcM=new Map(),coneM=new Map(),OTHER_HUMAN='#7b4fd6'; /* other people in an online room */
-function syncSet(map,list,make,upd){
+function syncSet(map,list,make,upd,drop){
   const seen=new Set();
   for(const o of list){let m=map.get(o);if(!m){m=make(o);if(!m)continue;map.set(o,m);scene.add(m);}seen.add(o);upd(o,m);}
-  for(const[o,m]of map)if(!seen.has(o)){scene.remove(m);map.delete(o);}
+  for(const[o,m]of map)if(!seen.has(o)){scene.remove(m);map.delete(o);if(drop)drop(m);}
 }
 const smokeM=new Map(),itemM=new Map(),trapM=new Map(),wetM=new Map(),taskM=new Map(),dropM=new Map(),projM=new Map(),burstM=new Map(),airM=new Map();
 const cubeGeo=new THREE.BoxGeometry(.42,.42,.42),haloGeo=new THREE.SphereGeometry(.5,16,12);
@@ -1015,11 +1028,14 @@ function nameTag(x,y,name,a,bg,fg){
   ctx.font=F(800,12);ctx.fillStyle=fg;ctx.fillText(name,l+cw+(w-cw)/2,y+4*s);ctx.textAlign='left';
 }
 function outlined(t,x,y,font,color){ctx.font=font;x=edgeX(x,ctx.measureText(t).width+6);ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='rgba(251,250,246,.95)';ctx.strokeText(t,x,y);ctx.fillStyle=color;ctx.fillText(t,x,y);ctx.textAlign='left';}
+const bubbleMemo=new Map(); // text+UIS -> {lines,w}: wrap + width don't change frame to frame
 function bubble(text,x,y,color,alpha){
-  ctx.font=F(800,13);let lines=[text];
-  if(ctx.measureText(text).width>220*UIS){const sp=[...text.matchAll(/ /g)].map(m=>m.index);   // long lines break at the space nearest the middle
-    if(sp.length){const i=sp.reduce((b,v)=>Math.abs(v-text.length/2)<Math.abs(b-text.length/2)?v:b);lines=[text.slice(0,i),text.slice(i+1)];}}
-  const w=Math.min(240*UIS,Math.max(...lines.map(l=>ctx.measureText(l).width))+20),h=(lines.length*16+10)*UIS,c=color&&color!=='#1d2328'?color:'#3d4a54';
+  ctx.font=F(800,13);const key=text+'|'+UIS;let memo=bubbleMemo.get(key);
+  if(!memo){let lines=[text];
+    if(ctx.measureText(text).width>220*UIS){const sp=[...text.matchAll(/ /g)].map(m=>m.index);   // long lines break at the space nearest the middle
+      if(sp.length){const i=sp.reduce((b,v)=>Math.abs(v-text.length/2)<Math.abs(b-text.length/2)?v:b);lines=[text.slice(0,i),text.slice(i+1)];}}
+    if(bubbleMemo.size>200)bubbleMemo.clear();bubbleMemo.set(key,memo={lines,w:Math.max(...lines.map(l=>ctx.measureText(l).width))+20});}
+  const lines=memo.lines,w=Math.min(240*UIS,memo.w),h=(lines.length*16+10)*UIS,c=color&&color!=='#1d2328'?color:'#3d4a54';
   const ax=x;x=edgeX(x,w); // the tail stays over the speaker
   ctx.globalAlpha=alpha;ctx.fillStyle='rgba(255,255,255,.97)';rr(x-w/2,y-h,w,h,12);ctx.fill();ctx.strokeStyle=c;ctx.lineWidth=2;ctx.stroke();
   ctx.beginPath();ctx.moveTo(ax-7,y-1);ctx.lineTo(ax,y+8);ctx.lineTo(ax+7,y-1);ctx.closePath();ctx.fill();
@@ -1055,11 +1071,13 @@ function render(dt){
     cam3.position.lerp(fpEye,e);fpQ.set(cam.x*U,0,cam.y*U-.4).lerp(fpLook,e);cam3.lookAt(fpQ);}
   else cam3.lookAt(cam.x*U,0,cam.y*U-.4);
   followSun(cam.x*U,cam.y*U-1,(9+5*VW/VH)*zoom);
-  /* dressing room: a close look at me, framed above the menu card */
-  /* (the view offset slides the picture so I stand in the free space above the card) */
-  /* wide screens: the dressing card sits on the right and I stand left of it, whole body in view; phones keep the card below */
-  if(G.plaza&&typeof PZ!=='undefined'&&PZ.dress){const n=VW<700,side=VW>=900;cam3.position.set(me.x*U,n?2.6:2.1,me.y*U+(n?6.2:4.0));cam3.lookAt(me.x*U,.75,me.y*U);
-    if(side)cam3.setViewOffset(VW,VH,VW*.2,0,VW,VH);else cam3.setViewOffset(VW,VH,0,VH*(n?.3:.2),VW,VH);}
+  /* dressing room: a close look at me in the free space beside the 사원증 card, measured from where the card really is
+     (2026-10-30: phones cut my feet under the card, PC stood me far from it). Card on the right: I stand in the middle of the space left of it.
+     Card below: the camera backs off until my whole body (with the name tag) fits the space above it */
+  if(G.plaza&&typeof PZ!=='undefined'&&PZ.dress){const c=dressCard().getBoundingClientRect(),side=c.left>VW*.4;
+    if(side){cam3.position.set(me.x*U,2.1,me.y*U+4.0);cam3.lookAt(me.x*U,.75,me.y*U);cam3.setViewOffset(VW,VH,VW/2-c.left/2,0,VW,VH);}
+    else{const H=Math.max(120,c.top),d=Math.min(10,Math.max(3.5,VH*2.1/(2*Math.tan(cam3.fov*Math.PI/360)*.78*H)));
+      cam3.position.set(me.x*U,.95+d*.29,me.y*U+d*.96);cam3.lookAt(me.x*U,.95,me.y*U);cam3.setViewOffset(VW,VH,0,VH/2-H/2,VW,VH);}}
   else if(G.plaza&&typeof PZ!=='undefined'&&PZ.cardH>0)cam3.setViewOffset(VW,VH,0,Math.min(VH*.3,PZ.cardH/2),VW,VH);
   else if(cam3.view&&cam3.view.enabled)cam3.clearViewOffset();
   const onFloor=me.alive&&me.f===f&&!me.transit;
@@ -1109,7 +1127,7 @@ function render(dt){
   /* items, traps, wet, tasks, drops */
   syncSet(itemM,G.items.filter(i=>i.f===f),makeItem,(it,m)=>{m.position.set(it.x*U,.5+Math.sin(G.t*4+it.x)*.07,it.y*U);m.children[0].rotation.y+=dt*1.4;m.children[1].scale.setScalar(1+Math.sin(G.t*4+it.x)*.14);});
   syncSet(trapM,G.traps.filter(t=>t.f===f),()=>flatDisc('#6b4a2e',.6),(t,m)=>{m.scale.set(26*U,17*U,1);m.position.set(t.x*U,.025,t.y*U);});
-  syncSet(wetM,G.wet.filter(w=>w.f===f),puddle,(w,m)=>{const k=Math.min(1,.55+w.t*1.5)*120*U;m.scale.set(k,k,1);m.position.set(w.x*U,.022,w.y*U);m.material.opacity=Math.min(1,(18-w.t)/3)*.75;}); // spreads out as it lands
+  syncSet(wetM,G.wet.filter(w=>w.f===f),puddle,(w,m)=>{const k=Math.min(1,.55+w.t*1.5)*120*U;m.scale.set(k,k,1);m.position.set(w.x*U,.022,w.y*U);m.material.opacity=Math.min(1,(18-w.t)/3)*.75;},m=>m.material.dispose()); // spreads out as it lands
   syncSet(taskM,G.tasks.filter(t=>t.f===f),makeTask,(t,m)=>{const c=t.by===me?(t.ready?'#2f9e57':'#4f93e0'):t.by?'#9aa3ab':t.ready?'#2f9e57':'#f3d77a';for(const ch of m.children)ch.material.color.set(c);});
   syncSet(dropM,G.drops.filter(d=>d.f===f),()=>{const m=new THREE.Mesh(GEO.box,lam('#fbfaf6'));m.scale.set(.32,.05,.42);m.castShadow=true;return m;},(d,m)=>{m.position.set(d.x*U,.04,d.y*U);m.rotation.y=.3;});
   if(G.cake&&G.cake.f===f){if(!cakeM){cakeM=new THREE.Group();const b=new THREE.Mesh(GEO.cyl,lam('#f6d3dc'));b.scale.set(.38,.32,.38);b.position.y=.16;b.castShadow=true;cakeM.add(b);

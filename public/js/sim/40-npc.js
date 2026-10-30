@@ -4,7 +4,8 @@ function npcActive(n){
   if(G.tutorial&&!n.tut)return false; // the tutorial switches NPCs on one at a time
   if(n.kind==='ceo')return true;
   if(!isOpen(n.f))return false;
-  if(n.kind!=='cleaner'&&G.lunch)return false;
+  /* roof lunch: 부장님 stay down on the floors (greet first as usual), so sitting the lunch out there isn't free; everyone else is out */
+  if(n.kind!=='cleaner'&&G.lunch&&!(n.kind==='boss'&&roofLunch()))return false;
   if(n.kind==='courier'&&!n.on)return false;
   if(n.kind==='boss'){if(G.final)return false;if(n.slot===1&&!(n.f===topOpen()&&G.closed<NF-1))return false;}
   return true;
@@ -35,18 +36,23 @@ function caught(a,n,why){
   else{const l=n.senior?15:10;dmg(a,l,'boss');pop(a.f,a.x,a.y-34,`현장 적발 -${l}`,'#cf3626');tell(a,`${t}: "${line}" 현장 적발 -${l}`,true);UI.shake(.2,a);}
   a.flash=.3;a.hitBy=0;
 }
-/* ---------- seat workers' favours: fetch something on the same floor and bring it back ---------- */
-const ERRANDS=[{spot:'coffee',ask:'커피 한 잔만 사다 줄래요?',go:'탕비실 커피',r:8},{spot:'printer',ask:'출력물 좀 가져다줄래요?',go:'프린터 출력물',r:8},
-  {spot:'box',ask:'이 서류 결재함에 좀 넣어 줄래요?',go:'결재함에 서류 넣기',r:6},{spot:'cooler',ask:'정수기 물 한 잔만요…',go:'정수기 물',r:6}];
+/* ---------- seat workers' favours: fetch something on the same floor and bring it back ----------
+   Pay follows the walk from this desk (the same 정수기 is next door for one desk and across the floor for another):
+   5 + 1 per 110 px one way, 7-20: one-way walks are 190-1810 px, average about +14. Per second of walking that is a
+   little under-to-over the 업무 (they get ×2 on a closing floor, favours never do). Briefly 6-13 on 2026-10-30: too low
+   A desk asks again 40-60 s after its favour is taken, 25-40 s after one nobody took (2026-10-30: the same desk asked too often) */
+const ERRANDS=[{spot:'coffee',ask:'커피 한 잔만 사다 줄래요?',go:'탕비실 커피'},{spot:'printer',ask:'출력물 좀 가져다줄래요?',go:'프린터 출력물'},
+  {spot:'box',ask:'이 서류 결재함에 좀 넣어 줄래요?',go:'결재함에 서류 넣기'},{spot:'cooler',ask:'정수기 물 한 잔만요…',go:'정수기 물'}];
+function errandPay(n,sp){let L=0,x=n.x,y=n.y;for(const q of findPath(n.f,n.x,n.y,sp.x,sp.y)){L+=Math.hypot(q.x-x,q.y-y);x=q.x;y=q.y;}return Math.max(7,Math.min(20,Math.round(5+L/110)));}
 function deskStep(n){
-  if(!n.ask){if(G.t>=n.askT){const ok=ERRANDS.filter(e=>FLOORS[n.f].spots[e.spot]);n.job=pick(ok);n.ask=true;n.askEnd=G.t+25;n.called=false;}return;}
-  if(G.t>n.askEnd){n.ask=false;n.askT=G.t+rnd(15,35);return;}
+  if(!n.ask){if(G.t>=n.askT){const ok=ERRANDS.filter(e=>FLOORS[n.f].spots[e.spot]),e=pick(ok);n.job={...e,r:errandPay(n,FLOORS[n.f].spots[e.spot])};n.ask=true;n.askEnd=G.t+25;n.called=false;}return;}
+  if(G.t>n.askEnd){n.ask=false;n.askT=G.t+rnd(25,40);return;}
   if(!n.called&&humans().some(h=>h.alive&&h.f===n.f&&!h.errand&&dist(h,n)<170)){n.called=true;say(n,n.job.ask,'#3f6f99');}
 }
 function acceptErrand(a,n){
   const e=n.job,sp=FLOORS[n.f].spots[e.spot];if(!n.ask||!sp||a.errand)return;
   a.errand={go:e.go,f:n.f,step:0,tx:sp.x,ty:sp.y,bx:n.x,by:n.y,t:40,max:40,r:e.r};
-  n.ask=false;n.askT=G.t+rnd(25,45);say(a,'네, 다녀올게요!');tell(a,`부탁: ${e.go} · 40초 안에 다녀오기`);
+  n.ask=false;n.askT=G.t+rnd(40,60);say(a,'네, 다녀올게요!');tell(a,`부탁: ${e.go} · 40초 안에 다녀오기`);
 }
 function errandStep(a,dt){
   const e=a.errand;e.t-=dt;
@@ -115,6 +121,21 @@ const HAWAWA={
   thanks:[c=>`와아~ ${c}니임 최고예요오~!`,()=>'감사합니다아~ 역시 선배니임~'],
   sulk:[()=>'히잉… 바쁘시구나아…',()=>'하와와… 혼자 해볼게요오…'],
 };
+function bossPrey(n){let best=null,bd=1e9;
+  for(const a of G.actors){if(!a.alive||a.f!==n.f||a.transit||immune(a,n)||G.t-(a.met[n.id]??-99)<20)continue;const d=dist(a,n);if(d<bd){bd=d;best=a;}}
+  return best;}
+/* 어려움: now and then the 옆팀 팀장 picks a person on the floor and comes over for a chat (12 s, every 25-40 s) */
+function busyHunt(n){
+  const h=n.hunt;if(h&&(G.t>h.until||!h.a.alive||h.a.f!==n.f||h.a.inRest||h.a.chatCd>G.t)){n.hunt=null;n.path=[];}
+  if(!n.hunt&&G.t>(n.huntAt??=G.t+rnd(15,30))){n.huntAt=G.t+rnd(25,40);const hs=humans().filter(a=>a.alive&&a.f===n.f&&!a.inRest&&!a.transit&&!(a.chatCd>G.t));if(hs.length)n.hunt={a:pick(hs),until:G.t+12};}
+  if(n.hunt&&G.t>(n.rp||0)){n.path=findPath(n.f,n.x,n.y,n.hunt.a.x,n.hunt.a.y,true);n.rp=G.t+1;n.pause=0;}
+}
+/* talking needs a clear way through: glass walls and shut glass doors let the boss see you, but not chat to you */
+/* NPCs and doors: paths keep out of shut doors, so nobody walks through one. An NPC only opens a door when it has to
+   (shut in a room, or the door was shut across its way) and never to reach a person (hunts, the boss's lunch search,
+   신입 인턴): those stop and look for another way, so a shut door still keeps them out */
+const shutWay=(f,x1,y1,x2,y2)=>FLOORS[f].doors.find(d=>!d.open&&segHits(x1,y1,x2,y2,d,4));
+function talkLos(f,x1,y1,x2,y2){for(const o of obsOf(f))if((o.sight||o.k==='glass'||(o.glass&&!o.open))&&segHits(x1,y1,x2,y2,o,0))return false;return true;}
 function updNpcs(dt){
   for(const n of G.npcs){if(n.kind!=='courier')continue;
     if(!n.on){n.cd-=dt;if(n.cd<=0&&isOpen(n.f)&&!G.lunch){n.on=true;n.left=24;n.dropT=3;n.x=PADS.elev.x;n.y=PADS.elev.y-20;n.path=[];say(n,'택배 왔습니다!','#b5651d');for(const h of humans())if(h.alive&&h.f===n.f)tell(h,'택배 기사 등장: 따라다니면 아이템 상자가 떨어져요');}}
@@ -132,27 +153,42 @@ function updNpcs(dt){
       const follow=G.ceo&&G.ceo.f===n.f?G.ceo:null;
       if(follow){const tx=follow.x-Math.cos(follow.face)*40+(n.slot?30:-30),ty=follow.y-Math.sin(follow.face)*40,dx=tx-n.x,dy=ty-n.y,d=Math.hypot(dx,dy);
         if(d>4){const sp=Math.min(d,90*dt);n.x+=dx/d*sp;n.y+=dy/d*sp;}n.face+=angDiff(follow.face,n.face)*Math.min(1,dt*4);continue;}
+      /* roof lunch: go looking for whoever stayed on the floor (not someone already met in the last 20 s), then
+         walk back onto the round by a found path, since the round itself goes in straight lines */
+      const prey=roofLunch()?bossPrey(n):null;
+      if(prey||n.back){
+        if(G.t>(n.rp||0)){const w=fl.wp.at(n.wp),to=prey||{x:w[0],y:w[1]};n.path=findPath(n.f,n.x,n.y,to.x,to.y,true);
+          if(!prey&&!n.path.length)n.path=findPath(n.f,n.x,n.y,to.x,to.y);n.rp=G.t+1;n.back=!prey;} // shut in: the way back may go through a door
+        const p=n.path.at(0);if(!p){n.back=false;continue;}
+        const sd=shutWay(n.f,n.x,n.y,p.x,p.y);if(sd){if(prey){n.path=[];continue;}toggleDoor(n.f,sd,true);}
+        const dx=p.x-n.x,dy=p.y-n.y,d=Math.hypot(dx,dy);if(d<6){n.path.shift();if(!n.path.length&&!prey)n.back=false;continue;}
+        const sp=Math.min(d,80*dt);n.x+=dx/d*sp;n.y+=dy/d*sp;n.face+=angDiff(Math.atan2(dy,dx),n.face)*Math.min(1,dt*5);continue;}
       if(n.pause>0){n.pause-=dt;n.face+=Math.sin(n.pause*3.2)*dt*2.2;continue;}
       const w=fl.wp.at(n.wp),dx=w[0]-n.x,dy=w[1]-n.y,d=Math.hypot(dx,dy);
       if(d<3){n.wp=(n.wp+1)%fl.wp.length;n.pause=1.6;continue;}
       const sp=Math.min(d,72*dt);n.x+=dx/d*sp;n.y+=dy/d*sp;n.face+=angDiff(Math.atan2(dy,dx),n.face)*Math.min(1,dt*5);
     }else{
-      const speed=n.kind==='cleaner'?55:n.kind==='busy'?65:n.kind==='newbie'?95:n.kind==='courier'?90:n.kind==='cart'?38:50;
+      if(n.kind==='busy'&&G.diff==='hard')busyHunt(n);
+      const speed=n.kind==='cleaner'?55:n.kind==='busy'?(n.hunt?85:65):n.kind==='newbie'?95:n.kind==='courier'?90:n.kind==='cart'?38:50;
       if(n.kind==='newbie'){
         if(n.att){const a=n.att;if(!a.alive||a.f!==n.f||!a.quest){n.att=null;n.cool=G.t+10;n.path=[];}
-          else{const dx=a.x-n.x,dy=a.y-n.y,d=Math.hypot(dx,dy);if(d>30){const sp=Math.min(d-28,120*dt);n.x+=dx/d*sp;n.y+=dy/d*sp;}n.face=Math.atan2(dy,dx);continue;}}
+          else{const dx=a.x-n.x,dy=a.y-n.y,d=Math.hypot(dx,dy);if(d>30&&!shutWay(n.f,n.x,n.y,a.x,a.y)){const sp=Math.min(d-28,120*dt);n.x+=dx/d*sp;n.y+=dy/d*sp;}n.face=Math.atan2(dy,dx);continue;}}
         else if(G.t>(n.cool||0)){let best=null,bd=230;
           for(const a of G.actors){if(!a.alive||a.f!==n.f||a.inRest||a.transit||a.desk||a.quest||(a.questCd||0)>G.t)continue;const d=dist(a,n);if(d<bd&&sightLos(n.f,n.x,n.y,a.x,a.y)){bd=d;best=a;}}
           if(best){if(bd<36){n.att=best;best.quest={n,t:5,max:5,botT:rnd(.8,1.8)};say(n,isHawawa(n)?pick(HAWAWA.ask)(hwCall(best)):pick(['저 이거 어떻게 해요?','선배님 질문 있어요!','엑셀 함수 뭐 써요?','회의실 예약 어떻게 해요?']),'#3f8f5f');
               tell(best,'신입 인턴의 질문 공세: 느려짐 · E로 답해주면 +2',true);continue;}
-            if(!n.rp||G.t>n.rp){n.path=findPath(n.f,n.x,n.y,best.x,best.y);n.rp=G.t+.8;n.pause=0;}}}
+            if(!n.rp||G.t>n.rp){n.path=findPath(n.f,n.x,n.y,best.x,best.y,true);n.rp=G.t+.8;n.pause=0;}}}
       }
       if(n.pause>0){n.pause-=dt;continue;}
       if(!n.path.length){
         let p;if(n.kind==='ceo'){const a=n.area;for(let i=0;i<20;i++){p=randFree(n.f);if(Math.hypot(p.x-a.x,p.y-a.y)<240)break;}}else p=randFree(n.f);
-        n.path=findPath(n.f,n.x,n.y,p.x,p.y);n.pause=rnd(.6,2);continue;
+        n.path=findPath(n.f,n.x,n.y,p.x,p.y,true);n.pause=rnd(.6,2);
+        if(!n.path.length&&!n.hunt&&(n.stuck=(n.stuck||0)+1)>=3){n.stuck=0;n.path=findPath(n.f,n.x,n.y,p.x,p.y);} // shut in a room: walk out through the door
+        else if(n.path.length)n.stuck=0;continue;
       }
       const p=n.path.at(0),dx=p.x-n.x,dy=p.y-n.y,d=Math.hypot(dx,dy);
+      const sd=shutWay(n.f,n.x,n.y,p.x,p.y);
+      if(sd){if(n.hunt||n.kind==='newbie'){n.path=[];n.rp=0;n.pause=rnd(.4,1);continue;}toggleDoor(n.f,sd,true);} // a door shut on the way: open it (chasers turn back)
       if(d<6){n.path.shift();continue;}
       const sp=Math.min(d,speed*dt);n.x+=dx/d*sp;n.y+=dy/d*sp;n.face+=angDiff(Math.atan2(dy,dx),n.face)*Math.min(1,dt*5);
       if(n.kind==='cleaner'){G.traps=G.traps.filter(t=>!(t.f===n.f&&Math.hypot(t.x-n.x,t.y-n.y)<34));n.dropT-=dt;if(n.dropT<=0){n.dropT=rnd(3,4.5);G.wet.push({f:n.f,x:n.x,y:n.y,t:0});}}
@@ -193,7 +229,7 @@ function updNpcs(dt){
     if(a.contact)continue;
     for(const n of G.npcs){
       if(n.kind!=='busy'||n.f!==a.f||!npcActive(n)||a.chatCd>G.t)continue;
-      if(sees(n,a)){a.chatCd=G.t+25;a.lockT=3;a.lockWhy='옆팀 팀장 잡담';stand(a);say(n,pick(['주말에 뭐 했어?','점심 뭐 먹지?','요즘 바빠?']),'#5d666e');tell(a,'옆팀 팀장에게 붙잡혔다 (3초)');break;}
+      if(sees(n,a)&&talkLos(n.f,n.x,n.y,a.x,a.y)){a.chatCd=G.t+25;n.hunt=null;a.lockT=3;a.lockWhy='옆팀 팀장 잡담';stand(a);say(n,pick(['주말에 뭐 했어?','점심 뭐 먹지?','요즘 바빠?']),'#5d666e');tell(a,'옆팀 팀장에게 붙잡혔다 (3초)');break;}
     }
   }
 }

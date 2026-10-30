@@ -4,7 +4,8 @@
 // turns away impossible ones. Each device (uid) keeps only its best score of the week.
 export const DIFFS = ['easy', 'normal', 'hard'], RANKED = 'hard';
 const KEEP = 100, SHOW = 50, GAP = 20e3, TOTAL = 20;
-const RANKS = ['인턴', '사원', '대리', '팀장', '임원', 'CEO'], RANK_PT = [0, 50, 100, 200, 300, 500];
+export const RANKS = ['인턴', '사원', '대리', '팀장', '임원', 'CEO'];
+const RANK_PT = [0, 50, 100, 200, 300, 500];
 
 /* same formula as soloScore() in public/js/client/48-rank.js. Until the week of NEW_SCORE a win counted as CEO (500)
    whatever rank you had; from then on a win is a CEO_BONUS on top of the rank you actually reached (e.real), so
@@ -66,18 +67,42 @@ export class RankCore {
 
 /* The game's HTTP API, the same for the dev server and the Durable Object:
    GET  /api/rank?uid=…  → this week's board
-   POST /api/game {uid,name,diff,place,rank,kills,tasks,time,lunch} → a finished solo game: play stats, plus the board if 어려움
+   POST /api/game {uid,name,diff,place,rank,kills,tasks,time,lunch,branch} → a finished solo game: play stats, plus the board if 어려움
    The host itself records online games (stats.record) and serves the admin page. */
-export async function apiHTTP({ rank, stats }, method, url, body) {
+const okUid = u => typeof u === 'string' && /^[a-z0-9]{8,32}$/.test(u);
+export async function apiHTTP({ rank, stats, career, feedback }, method, url, body) {
+  if (url.pathname === '/api/feedback' && method === 'GET') return { status: 200, json: await feedback.view(url.searchParams.get('uid') || '') }; // 사내 게시판 댓글 (feedback.js)
+  if ((url.pathname === '/api/feedback' || url.pathname === '/api/feedback/del') && method === 'POST') {
+    let m; try { m = JSON.parse(body); } catch { m = null; }
+    if (!m || !okUid(m.uid)) return { status: 400, json: { err: '잘못된 요청' } };
+    return { status: 200, json: url.pathname.endsWith('/del') ? await feedback.remove(m.uid, m.id) : await feedback.add(m.uid, m.name, m.post, m.text) };
+  }
   if (url.pathname === '/api/rank' && method === 'GET') return { status: 200, json: await rank.top(url.searchParams.get('uid') || '') };
+  if (url.pathname === '/api/career' && method === 'GET') { // the 사원증 (server/src/career.js)
+    const uid = url.searchParams.get('uid');
+    return okUid(uid) ? { status: 200, json: await career.view(uid) } : { status: 400, json: { err: '잘못된 요청' } };
+  }
+  if ((url.pathname === '/api/career/pin' || url.pathname === '/api/career/join') && method === 'POST') { // 다른 기기에서 이어하기
+    let m; try { m = JSON.parse(body); } catch { m = null; }
+    if (!m || !okUid(m.uid)) return { status: 400, json: { err: '잘못된 요청' } };
+    return { status: 200, json: url.pathname.endsWith('/pin') ? await career.pin(m.uid) : await career.join(m.uid, m.code, m.pin) };
+  }
   if (url.pathname !== '/api/game' || method !== 'POST') return { status: 404, json: { err: 'not found' } };
   let m; try { m = JSON.parse(body); } catch { return { status: 400, json: { err: '잘못된 요청' } }; }
   const e = clean(m);
   if (!e) return { status: 400, json: { err: '기록을 확인할 수 없어요' } };
   const now = Date.now();
   if (now - (rank.last.get(e.uid) || 0) < GAP) return { status: 429, json: { err: '잠시 뒤에 다시 올려 주세요' } };
-  await stats.record({ ...e, mode: 'solo', lunch: typeof m.lunch === 'string' ? m.lunch.slice(0, 10) : '' });
+  await stats.record({ ...e, mode: 'solo', lunch: typeof m.lunch === 'string' ? m.lunch.slice(0, 10) : '', branch: m.branch });
   const r = e.diff === RANKED ? await rank.submit(e) : null;
   rank.last.set(e.uid, now);
-  return { status: 200, json: { rank: r && !r.err ? r : null } };
+  const c = await career.record(e.uid, e).catch(err => { console.error('career', err); return null; });
+  return { status: 200, json: { rank: r && !r.err ? r : null, career: c } };
+}
+
+/* an online match is over: play stats and careers for everyone who started it (the room's own rules wrote the results) */
+export async function recordMatch({ stats, career }, rs) {
+  for (const g of rs) {
+    try { await stats.record({ ...g, mode: 'multi' }); if (okUid(g.uid)) await career.record(g.uid, g); } catch (err) { console.error('career', err); } // one bad entry doesn't drop the others
+  }
 }

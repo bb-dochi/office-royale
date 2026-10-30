@@ -42,7 +42,7 @@ function think(b){
     if(b.mode!=='wander'||!b.goal||dist(b,b.goal)<20)setGoal(b,randFree(ROOF),'wander');return;
   }
   if(roofLunch()&&G.lunch.t>4&&b.lunchGo){goRoof(b);return;} // like people, bots head up from wherever they are
-  if(b.branch==='mkt'&&b.skillCd<=0&&G.actors.filter(o=>visibleTo(b,o)&&dist(o,b)<200).length>=2&&!watchers(b).some(n=>!immune(b,n)&&sees(n,b)))useSkill(b);
+  if(b.branch==='mkt'&&b.skillCd<=0&&G.actors.some(o=>o!==b&&o.alive&&visibleTo(b,o)&&dist(o,b)<220)&&!watchers(b).some(n=>!immune(b,n)&&sees(n,b)))useSkill(b);
   if(b.branch==='design'&&b.skillCd<=0&&b.g<35&&G.t-b.lastHitT<2)useSkill(b);
   if(b.branch==='hr'&&b.skillCd<=0&&G.t-b.lastHitT<3&&G.actors.some(o=>o!==b&&visibleTo(b,o)&&dist(o,b)<150))useSkill(b);
   if(b.branch==='dev'&&b.skillCd<=0&&G.tasks.some(t=>t.f===b.f&&!t.ready&&dist(t,b)<50))useSkill(b);
@@ -121,13 +121,14 @@ function moveSk(b){if(b.moveSk==null){const r=Math.random(),t=diff().move.find(t
    weave out of every paper in a volley */
 function dodgeCheck(b){
   if(G.t<(b.dodgeCd||0))return;
+  const D=diff();
   for(const p of G.proj){
-    if(p.f!==b.f||p.o===b||b.dodged===p||p.d<p.sp*diff().see)continue;
+    if(p.f!==b.f||p.o===b||b.dodged===p||p.d<p.sp*D.see)continue;
     const rx=b.x-p.x,ry=b.y-p.y,ahead=rx*p.dx+ry*p.dy,side=ry*p.dx-rx*p.dy;
     if(ahead<=0||ahead>p.sp*.4||ahead>p.rng-p.d||Math.abs(side)>R+10)continue;
     b.dodged=p;
-    if(Math.random()>(diff().dodge+(G.t-(b.lastHitT??-9)<4?diff().guard:0))*(.4+.6*moveSk(b)))continue;
-    const s=side>=0?1:-1;b.dodge={x:-p.dy*s,y:p.dx*s,t:.3};b.dodgeCd=G.t+rnd(...diff().dodgeCd);return;
+    if(Math.random()>(D.dodge+(G.t-(b.lastHitT??-9)<4?D.guard:0))*(.4+.6*moveSk(b)))continue;
+    const s=side>=0?1:-1;b.dodge={x:-p.dy*s,y:p.dx*s,t:.3};b.dodgeCd=G.t+rnd(...D.dodgeCd);return;
   }
 }
 /* bots lead a moving target too, by part of the way (diff().lead: 쉬움 30%, 보통 60%, 어려움 85%), so strafing
@@ -137,7 +138,7 @@ function botLead(b,t){
   const a0=Math.atan2(t.y-b.y,t.x-b.x),vx=t.svx||0,vy=t.svy||0;if(Math.hypot(vx,vy)<20||locked(t)||t.sit||t.chan)return a0;
   const sp=b.ammo>0?720:560,k=diff().lead,tt=dist(b,t)/sp,px=t.x+vx*tt*k,py=t.y+vy*tt*k;
   if(!shotLos(b.f,b.x,b.y,px,py))return a0;
-  const L=15*Math.PI/180;return a0+Math.max(-L,Math.min(L,angDiff(Math.atan2(py-b.y,px-b.x),a0)));
+  const L=15*Math.PI/180;return a0+bendTo(Math.atan2(py-b.y,px-b.x),a0,L);
 }
 function updBot(b,dt){
   b.think-=dt;if(b.think<=0){b.think=.22+Math.random()*.12;think(b);}
@@ -165,8 +166,8 @@ function updBot(b,dt){
     b.face=Math.atan2(t.y-b.y,t.x-b.x);
     if(b.cd<=0&&b.react<=0&&d<330&&see){b.face=botLead(b,t);
       const careful=b.type!=='폭주'&&!G.final;
-      const risky=watchers(b).some(n=>!immune(b,n)&&(sees(n,b)||dist(n,t)<VIS[n.kind].sound*.8));
-      if(!(careful&&risky)){if(throwPaper(b,b.face+(Math.random()-.5)*(b.type==='폭주'?.5:.3)*diff().aim))b.throwT=rnd(...diff().plant);b.react=Math.max(.08,.15+Math.random()*.45+diff().react);}
+      const D=diff(),risky=watchers(b).some(n=>!immune(b,n)&&(sees(n,b)||dist(n,t)<VIS[n.kind].sound*.8));
+      if(!(careful&&risky)){if(throwPaper(b,b.face+(Math.random()-.5)*(b.type==='폭주'?.5:.3)*D.aim))b.throwT=rnd(...D.plant);b.react=Math.max(.08,.15+Math.random()*.45+D.react);}
     }
   }else{if(b.mode==='fight')b.mode='idle';[vx,vy]=follow(b);if(vx||vy)b.face=Math.atan2(vy,vx);}
   b.stuckT+=dt;

@@ -8,7 +8,9 @@
 import { DurableObject } from 'cloudflare:workers';
 import { RoomCore } from './room.js';
 import { PlazaCore } from './plaza.js';
-import { RankCore, apiHTTP } from './rank.js';
+import { RankCore, apiHTTP, recordMatch } from './rank.js';
+import { CareerCore } from './career.js';
+import { FeedbackCore } from './feedback.js';
 import { StatsCore, adminHTML } from './stats.js';
 import { createSim, PLAZA_VER } from './sim.gen.js';
 
@@ -21,9 +23,9 @@ export class Room extends DurableObject {
     const url = new URL(request.url);
     if (url.pathname.startsWith('/api/') || url.pathname === '/admin' || url.pathname === '/internal/games') {
       const store = { get: k => this.ctx.storage.get(k), put: (k, v) => this.ctx.storage.put(k, v) };
-      this.api ||= { rank: new RankCore(store), stats: new StatsCore(store) };
-      if (url.pathname === '/admin') return new Response(await adminHTML(this.api.stats, url.searchParams), { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
-      if (url.pathname === '/internal/games') { for (const g of await request.json()) await this.api.stats.record({ ...g, mode: 'multi' }); return new Response('ok'); }
+      if (!this.api) { const stats = new StatsCore(store); this.api = { rank: new RankCore(store), stats, career: new CareerCore(store, stats), feedback: new FeedbackCore(store) }; }
+      if (url.pathname === '/admin') return new Response(await adminHTML(this.api.stats, url.searchParams, this.api.career, this.api.feedback), { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
+      if (url.pathname === '/internal/games') { await recordMatch(this.api, await request.json()); return new Response('ok'); }
       const r = await apiHTTP(this.api, request.method, url, request.method === 'POST' ? (await request.text()).slice(0, 4096) : '');
       return Response.json(r.json, { status: r.status, headers: { 'Cache-Control': 'no-store' } });
     }
@@ -62,7 +64,7 @@ export default {
       return env.ROOM.get(env.ROOM.idFromName(m ? m[1] : '__plaza-' + PLAZA_VER)).fetch(request);
     }
     if (url.pathname === '/admin' && !adminOK(request, env)) return new Response('관리자 비밀번호가 필요해요', { status: 401, headers: { 'WWW-Authenticate': 'Basic realm="office-royale admin", charset="UTF-8"' } });
-    if (url.pathname === '/api/rank' || url.pathname === '/api/game' || url.pathname === '/admin') return env.ROOM.get(env.ROOM.idFromName('__rank')).fetch(request);
+    if (url.pathname === '/api/rank' || url.pathname === '/api/game' || url.pathname.startsWith('/api/career') || url.pathname.startsWith('/api/feedback') || url.pathname === '/admin') return env.ROOM.get(env.ROOM.idFromName('__rank')).fetch(request);
     return env.ASSETS.fetch(request);
   },
 };

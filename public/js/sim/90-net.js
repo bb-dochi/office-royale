@@ -33,8 +33,8 @@ function serA(a,full,fixed){
     o.killer=idOf(a.killer);o.stampNpc=idOf(a.stampNpc);
     o.errand=a.errand?{...a.errand}:null;
     o.jobs={...a.jobs};
-    o.wc=a.wc?{t:r2(a.wc.t),m:r2(a.wc.m),res:a.wc.res,resT:a.wc.resT,gain:a.wc.gain}:null; // never the crash time
-    o.desk=a.desk?{round:a.desk.round,ok:a.desk.ok,seq:a.desk.seq,pos:a.desk.pos,t:r2(a.desk.t),max:a.desk.max,job:a.desk.job,wait:r2(a.desk.wait),res:a.desk.res,resT:a.desk.resT}:null;
+    o.wc=a.wc?{t:r2(a.wc.t),m:r2(a.wc.m),sq:a.wc.sq?1:0,res:a.wc.res,resT:a.wc.resT,gain:a.wc.gain}:null; // never the crash time
+    o.desk=a.desk?{round:a.desk.round,ok:a.desk.ok,seq:a.desk.seq,kind:a.desk.kind,show:a.desk.show,rule:a.desk.rule,bar:a.desk.bar,pos:a.desk.pos,t:r2(a.desk.t),max:a.desk.max,job:a.desk.job,wait:r2(a.desk.wait),res:a.desk.res,resT:a.desk.resT}:null;
   }
   return o;
 }
@@ -117,7 +117,7 @@ NET.cmd=function(key,m){const a=byKey(key);if(!a||!a.isPlayer||G.over)return;
   }};
 /* how one player's match went, for the play stats (server/src/stats.js) */
 NET.result=function(key){const a=byKey(key);if(!a)return null;const win=G.winner===a;
-  return{place:win?1:a.place||aliveCount(),rank:win?'CEO':a.rank,kills:a.kills||0,tasks:a.tasksDone||0,time:Math.round(a.alive?G.t:a.outT??G.t),diff:G.diff,lunch:G.lunchKind};};
+  return{place:win?1:a.place||aliveCount(),rank:win?'CEO':a.rank,kills:a.kills||0,tasks:a.tasksDone||0,time:Math.round(a.alive?G.t:a.outT??G.t),diff:G.diff,lunch:G.lunchKind,branch:a.branch||''};};
 /* every person in the match is out (or gone): the room doesn't wait for the bots to finish it */
 NET.humansOut=()=>!!G&&!humans().some(a=>a.alive);
 /* a player who drops mid-match is handed to the bot brain so the match keeps its numbers */

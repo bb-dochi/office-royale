@@ -128,9 +128,6 @@ body{background:var(--void);color:var(--ink);font-family:var(--body);overflow:hi
 .slot.on{border-color:var(--ic);box-shadow:0 3px 0 var(--ic),0 0 12px var(--ic)}
 .slot .n{position:absolute;top:-6px;left:-6px;font:800 10px/1 var(--body);background:var(--ink);color:var(--paper);border-radius:4px;padding:2px 4px}
 .slot .gl{width:28px;height:28px;font-size:13px}
-#itemBtn.has{border-color:var(--ic);box-shadow:0 4px 0 var(--ic),0 0 16px 3px var(--ic)}
-#itemBtn{width:62px;height:62px;border-radius:16px;right:calc(max(16px,env(safe-area-inset-right,0px)) + 112px);bottom:calc(env(safe-area-inset-bottom,0px) + 96px);background:var(--paper);font-size:18px;display:grid;place-items:center}
-#itemBtn small{display:block;font-family:var(--body);font-size:9px;font-weight:700;margin-top:2px;max-width:58px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .gl{display:grid;place-items:center;width:30px;height:30px;border-radius:8px;color:var(--paper);font-size:14px;margin:0 auto;font-style:normal}
 /* 상호작용: a dark pill like the HUD panels; yellow when there is something to do, green when it is ready to hand in,
    faded when there is nothing (no dashed outline) */
@@ -168,14 +165,6 @@ body.pc #spec .who small::after{content:' · ←/→ · Esc'}
 body.plaza .hud,body.plaza #keybar,body.plaza #throwBtn,body.plaza #pills,body.plaza #countdown{display:none!important}
 body.plaza #greetBtn:disabled{display:none!important} /* lobby: only while there is something to use */
 body.plaza #greetBtn{right:calc(max(16px,env(safe-area-inset-right,0px)) + 4px)}
-/* touch screens: a small speech button in the top right of the lobby opens the four greetings */
-#emoteBtn{display:none;position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:calc(env(safe-area-inset-right,0px) + 14px);z-index:4;width:46px;height:46px;border-radius:50%;
-  border:2px solid var(--ink);background:var(--paper);font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.3)}
-body.plaza:not(.pc) #emoteBtn{display:block}
-#emotePop{position:fixed;top:calc(env(safe-area-inset-top,0px) + 68px);right:calc(env(safe-area-inset-right,0px) + 14px);z-index:6;display:grid;grid-template-columns:1fr 1fr;gap:6px;max-width:calc(100vw - 28px)}
-#emotePop[hidden],body.pc #emotePop{display:none}
-#emotePop .rnd{background:var(--lit)}
-#emotePop button{font:800 13px var(--body);white-space:nowrap;border:2px solid var(--ink);background:var(--paper);border-radius:999px;padding:8px 14px;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.25)}
 /* lobby menu: the same paper memo as the notices; bottom centre on PC, along the bottom on phones */
 #home{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);z-index:4;display:flex;justify-content:center;pointer-events:none}
 body.pc #home{left:50%;right:auto;transform:translateX(-50%);bottom:18px;width:min(500px,calc(100vw - 32px))}
@@ -205,6 +194,7 @@ body.plaza #home.closed:not([hidden]) + #dock{display:flex}
 #dock button:active{transform:translateX(-2px)}
 #dock button.pri{min-width:114px;background:var(--ink);color:var(--paper);border-left-color:var(--lit);font:900 14px var(--display)}
 #dock button[data-go=guide]{border-left-color:var(--stamp)}
+#dock button.gap{margin-top:12px}
 /* NEW! on the 사내 게시판 tab and link while a post is unread */
 .newmark{display:inline-block;margin-left:6px;padding:1px 5px 2px;border-radius:3px;background:var(--stamp);color:#fff;font:900 10px/1.2 var(--body);font-style:normal;letter-spacing:.02em;vertical-align:1px;text-decoration:none;animation:newmark 1.6s ease-in-out infinite}
 .newmark[hidden]{display:none}
@@ -223,7 +213,7 @@ body.plaza #home.closed:not([hidden]) + #dock{display:flex}
 .homecard .namechip .pencil{width:13px;height:13px;fill:none;stroke:var(--muted);stroke-width:1.6;stroke-linejoin:round;align-self:center}
 .homecard .namechip:hover .pencil{stroke:var(--ink)}
 @media (max-width:700px){.homecard .rules{font-size:12.5px;line-height:1.45;margin-bottom:6px}#home .homecard .items{margin:14px 0 14px}.homecard .items span{display:none}#home .homecard .keys{gap:5px 10px;margin-bottom:12px;padding-top:12px;font-size:12px}.homecard .subj{margin-bottom:6px}}
-@media (max-width:700px){#home.dressing .memo-head,#home.dressing .stampmark{display:none}#home.dressing .homecard h1{font-size:20px;margin:0}.homecard h1{font-size:24px;margin-top:4px}.homecard .stampmark{width:64px;height:64px;top:42px;font-size:14px}#dress .rows{max-height:30vh}#dress .row{grid-template-columns:58px 1fr}}
+@media (max-width:700px){#home.dressing .memo-head,#home.dressing .stampmark{display:none}#home.dressing .homecard h1{font-size:20px;margin:0}.homecard h1{font-size:24px;margin-top:4px}.homecard .stampmark{width:64px;height:64px;top:42px;font-size:14px}#dress .row{grid-template-columns:58px 1fr}}
 #pzCount{color:var(--ok);font-weight:800}
 .mutebtn{pointer-events:auto;border:0;background:none;padding:0 2px;margin:0 0 0 auto;font-size:13px;line-height:1;cursor:pointer;opacity:.75}.mutebtn:hover{opacity:1}
 .memo-head .mutebtn{margin-left:8px}.idcard .mutebtn{margin-right:6px}
@@ -235,6 +225,7 @@ body.plaza #home.closed:not([hidden]) + #dock{display:flex}
 .diffopts{display:flex;flex-direction:column;margin-top:12px;border-top:1.5px solid var(--ink)}
 .diffopts button{display:grid;grid-template-columns:44px 1fr;grid-template-rows:auto auto;column-gap:10px;align-items:center;text-align:left;padding:12px 4px;border:0;border-bottom:1px solid rgba(29,35,40,.18);background:none;cursor:pointer;font:inherit;color:var(--ink)}
 .diffopts button:hover,.diffopts button:focus-visible{background:rgba(29,35,40,.05)}
+.diffopts button:disabled{cursor:default;background:none}.diffopts button:disabled b,.diffopts button:disabled em{opacity:.45}
 .diffopts em{grid-row:1/3;font-style:normal;font-size:11px;letter-spacing:1px;color:var(--ink)}
 .diffopts b{display:flex;align-items:center;gap:8px;font:900 17px var(--display)}
 .diffopts span{grid-column:2;font-size:12.5px;line-height:1.45;color:var(--muted)}
@@ -262,8 +253,55 @@ body.plaza #home.closed:not([hidden]) + #dock{display:flex}
 #home #homeGuide{margin:4px 0 14px;border-bottom:1px solid rgba(29,35,40,.14)}
 #home .homecard .btns{margin-bottom:0}
 @media (max-width:520px){#home .sec .keys{grid-template-columns:1fr 1fr;gap:6px 8px}#home .sec .keys kbd{font-size:10.5px;padding:3px 5px}#home .sec .keys li{white-space:nowrap;font-size:12px}}
+/* 사원증 (the dressing room card): tabs 옷장 / 상장 / 커리어 (51-career.js) */
+.idtabs{display:flex;gap:4px;margin:6px 0 8px;border-bottom:1.5px solid var(--ink)}
+.idtabs button{flex:1;border:0;background:none;padding:7px 0 6px;font:900 14px var(--body);color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1.5px;position:relative}
+.idtabs button.on{color:var(--ink);border-bottom-color:var(--ink)}
+.idtabs .newmark{position:absolute;top:-2px;right:4px}
+.idpane{max-height:min(46vh,380px);overflow:auto;overscroll-behavior:contain;margin-bottom:12px;touch-action:pan-y;-webkit-overflow-scrolling:touch}
+.awmsg{margin:16px 0;text-align:center;color:var(--muted);font-size:13px}
+.awlist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.awsum{font-size:12px;font-weight:700;color:var(--muted);padding:0 2px 2px}.awsum b{color:var(--ink);font-size:14px}
+.awlist .aw{border:1.5px solid #cfcabd;border-radius:8px;background:#fff;padding:9px 11px}
+.awlist .aw:not(.got){background:#f7f6f1}.awlist .aw:not(.got) .awh b{color:var(--muted)}
+.awh{display:flex;justify-content:space-between;align-items:baseline}.awh b{font:900 14.5px var(--body)}
+.awrk{font:900 12px var(--body);color:#a0661a}.aw:not(.got) .awrk{color:#b9b5aa}
+.awlist small{display:block;margin-top:1px;font-size:11.5px;color:var(--muted)}
+.awsteps{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin:7px 0 5px}
+.awsteps i{font:800 10.5px var(--body);font-style:normal;text-align:center;padding:2px 0;border-radius:3px;background:#eeece4;color:#a3a097}
+.awsteps i.on{background:#c08a1e;color:#fff}
+.awbar{position:relative;height:16px;border-radius:3px;background:#eeece4;overflow:hidden}
+.awbar span{position:absolute;inset:0 auto 0 0;background:#e9d29a}
+.awbar em{position:relative;display:block;font:700 10.5px/16px var(--body);font-style:normal;color:#6b5a32;padding-left:6px}
+/* 인사관리 (2026-10-30): 인사기록카드 + number grid + 기기 연동 boxes */
+.hrcard{border:1.5px solid #cfcabd;border-radius:8px;background:#fff}
+.hrh{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;color:var(--muted);letter-spacing:.06em;padding:6px 12px;border-bottom:1px solid #e6e2d6}
+.hrrk b{color:var(--ink)}
+.hrb{display:flex;gap:12px;align-items:center;padding:10px 12px}
+.hrph{flex:none;width:48px;height:58px;border:1px solid #cfcabd;border-radius:4px;background:#eeece4 center/cover no-repeat;display:grid;place-items:center;font:900 21px var(--display);color:var(--muted)}
+.hrn{font:900 18px var(--display)}.hrm{font-size:12px;color:var(--muted);margin-top:2px}
+.hrcode{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;margin-top:2px}.hrcode b{color:var(--ink);font-size:15px;letter-spacing:.05em}
+.hrcp{font:800 11px var(--body);border:1.5px solid #c9cdd0;background:#fff;border-radius:6px;padding:2px 7px;cursor:pointer}
+.hrcard.empty p{margin:0;padding:14px 12px;font-size:13px;line-height:1.6;color:var(--muted);text-align:center}.hrcard.empty b{color:var(--ink)}
+.hrgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0 2px}
+.hrgrid div{border:1px solid #d6d2c6;border-radius:3px;padding:7px 4px;text-align:center}
+.hrgrid b{display:block;font:900 16px var(--display)}.hrgrid span{font-size:11px;font-weight:700;color:var(--muted)}
+.hrsec{margin-top:18px;padding-top:14px;border-top:1.5px dashed #c9cdd0}
+.hrt{margin:0 0 4px;font:900 14px var(--body)}.hrsub{margin:0 0 10px;font-size:12px;color:var(--muted)}
+.hrbox{border:1px solid #d6d2c6;border-radius:3px;padding:12px 12px 10px;background:none;margin-bottom:10px}
+.hrbox .btn{margin-top:2px}
+.hrbox>b,.hrbox summary b{font-size:13.5px}.hrbox p{margin:3px 0 7px;font-size:12px;color:var(--muted);line-height:1.45}
+.hrbox summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between}.hrbox summary::after{content:'펼치기 ▾';font-size:11.5px;font-weight:700;color:var(--muted)}.hrbox[open] summary::after{content:'접기 ▴'}
+.hrbox summary::-webkit-details-marker{display:none}
+.crpin,.crmsg{margin:6px 0 0;font-size:13px;font-weight:700;min-height:1em}.crpin strong{font-size:18px;letter-spacing:.12em;color:var(--msg)}.crmsg{color:var(--stamp)}.crmsg.ok{color:var(--ok)}
+.crjoin{display:flex;flex-wrap:wrap;gap:6px}.crjoin input{flex:1 1 140px;min-width:0;font:700 14px var(--body);border:1.5px solid #c9cdd0;border-radius:8px;padding:7px 9px}
+/* phones: the card never takes more than the bottom part of the screen, so the whole character stays in view above
+   it (on short screens it used to cut the legs off); the tab's content scrolls inside */
+@media (max-width:700px){#home.dressing .homecard{height:calc(100dvh - 300px);max-height:calc(100dvh - 300px);box-sizing:border-box;display:flex;flex-direction:column}
+  #home.dressing #dress:not([hidden]){display:flex;flex-direction:column;min-height:0;flex:1}
+  #home.dressing .idpane{max-height:none;flex:1;min-height:0}#home.dressing #dress .rows{max-height:none}}
 /* dressing room rows */
-#dress .rows{display:grid;gap:7px;margin:8px 0 12px;max-height:min(46vh,380px);overflow:auto}
+#dress .rows{display:grid;gap:7px;margin:2px 0 0}
 #dress .row{display:grid;grid-template-columns:72px 1fr;align-items:center;gap:8px}
 #dress .row>span{font-size:12px;font-weight:800;color:var(--muted)}
 #dress .opts{display:flex;flex-wrap:wrap;gap:5px}
@@ -280,7 +318,10 @@ body.plaza #home.closed:not([hidden]) + #dock{display:flex}
 #tut b{display:block;font:900 20px var(--display);margin:4px 0 2px}
 #tut p{margin:0 0 8px;font-size:14px;line-height:1.5;font-weight:600}
 #tut .btns{justify-content:flex-end}
-@media (max-width:700px){#tut{top:calc(env(safe-area-inset-top,0px) + 172px)}}
+/* phones: over the top HUD (card and map; the tutorial never points at them) so the middle, where the camera keeps
+   me, stays clear; a little tighter so it covers less */
+@media (max-width:700px){#tut{top:calc(env(safe-area-inset-top,0px) + 8px);z-index:5;width:calc(100vw - 16px);padding:8px 12px}
+  #tut b{font-size:17px;margin:2px 0 1px}#tut p{font-size:13px;line-height:1.45;margin-bottom:6px}}
 /* what is affecting me right now: one chip per effect, coloured by item type, with time left */
 #fx{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 180px);display:flex;flex-wrap:wrap;justify-content:center;gap:6px;
   pointer-events:none;z-index:2;width:min(560px,calc(100vw - 32px))}
@@ -293,7 +334,6 @@ body.pc #fx{bottom:64px}
 .fx.bad{background:rgba(160,36,26,.92);border-color:#ff8f84}
 .fx.new{animation:fxin .35s ease-out}
 @keyframes fxin{from{transform:scale(1.35);opacity:.3}to{transform:scale(1);opacity:1}}
-#buffs{display:none}
 @media (prefers-reduced-motion:reduce){.fx.new{animation:none}}
 #callBox{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 196px);width:min(92vw,380px);background:var(--paper);border:3px solid var(--ink);border-radius:10px;padding:10px 10px 12px;z-index:4;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 #callBox .who{font-size:11px;font-weight:800;color:var(--stamp);letter-spacing:.04em}
@@ -404,6 +444,7 @@ body.pc .touch-only,body:not(.pc) .pc-only{display:none}
 #lobby .note:empty{margin:0;min-height:0}
 #lobby .note.err{color:var(--stamp);font-weight:800}
 #result .note{max-width:none}
+#result .award{margin:4px 0 10px;font-size:13px;font-weight:800;color:#a8741a;line-height:1.45;word-break:keep-all}
 #result .result-meta{grid-template-columns:auto 1fr auto 1fr;column-gap:14px}#result .result-meta dd{font-weight:800}#result .result-meta dd{white-space:nowrap}@media (max-width:420px){#result .result-meta{grid-template-columns:auto 1fr}}
 #result #rNote{margin:18px 0 0;padding-left:10px;border-left:3px solid var(--stamp);color:var(--ink);font-weight:600}
 @media (max-width:520px){#result .stampmark.big{width:62px;height:62px;top:40px;right:12px;font-size:13px}#result h1{font-size:30px;padding-right:70px}}
@@ -468,22 +509,83 @@ body.band .hud{padding-top:calc(env(safe-area-inset-top,0px) + 44px)}
 #desk .scr{background:linear-gradient(#f2f6fa,#dde6ee);border-radius:4px;padding:0 16px 12px;color:var(--ink);overflow:hidden}
 #desk .sbar{display:flex;justify-content:space-between;font-size:11px;font-weight:800;color:#fff;background:#2f6fb3;margin:0 -16px 10px;padding:6px 12px}
 #desk h3{font:900 21px var(--display);margin:4px 0 14px;text-align:center}
-#desk .seq{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;min-height:52px}
-#desk .seq span{width:50px;height:50px;border-radius:9px;display:grid;place-items:center;font-size:24px;font-weight:900;background:#fff;border:2px solid #b9c3cc;color:var(--ink);transition:transform .08s}
-#desk .seq span.done{background:#2f9e57;border-color:#2f9e57;color:#fff}
-#desk .seq span.cur{border-color:#2f6fb3;box-shadow:0 0 0 3px rgba(47,111,179,.35);transform:translateY(-3px)}
+#desk .seq{display:flex;gap:6px;justify-content:center;min-height:52px}
+#desk .seq>span{flex:0 1 50px;min-width:0;height:50px;border-radius:9px;display:grid;place-items:center;font-size:24px;font-weight:900;background:#fff;border:2px solid #b9c3cc;color:var(--ink);transition:transform .08s}
+#desk .seq>span.done{background:#2f9e57;border-color:#2f9e57;color:#fff}
+#desk .rule{text-align:center;font-size:13px;font-weight:800;color:#2f6fb3;margin:-8px 0 10px;min-height:17px}
+#desk .seq>span.flip:not(.done){color:var(--stamp);border-color:var(--stamp);background:#fdeceb}
+#desk .seq>span.num{font-size:17px}
+#desk .seq>span.base{background:#e4eaf0;border-style:dashed;color:var(--muted);font-size:17px}
+#desk .seq>span.cur{border-color:#2f6fb3;box-shadow:0 0 0 3px rgba(47,111,179,.35);transform:translateY(-3px)}
 #desk .tm{height:7px;border-radius:4px;background:#c9d3dc;margin:16px 0 8px;overflow:hidden}
 #desk .tm i{display:block;height:100%;background:#2f6fb3}
 #desk .res{text-align:center;font:900 18px var(--display);min-height:24px;margin:0}
 #desk .res.ok{color:#2f9e57}#desk .res.bad{color:var(--stamp)}
 #desk .help{text-align:center;font-size:12px;color:var(--muted);margin:6px 0 0}
 #desk .help kbd{font:800 10.5px/1 var(--body);background:var(--ink);color:var(--paper);border-radius:4px;padding:3px 5px;margin:0 1px}
-.dpad{pointer-events:auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+/* laid out as a cross so each arrow sits where it points (it used to be one row: ◀ ▲ ▼ ▶) */
+.dpad{pointer-events:auto;display:grid;grid-template-columns:repeat(3,64px);grid-template-areas:". u ." "l . r" ". d ." "q q q";gap:6px;justify-content:center}
+.dpad [data-k=U]{grid-area:u}.dpad [data-k=D]{grid-area:d}.dpad [data-k=L]{grid-area:l}.dpad [data-k=R]{grid-area:r}.dpad [data-k=Q]{grid-area:q;justify-self:center;height:44px;margin-top:4px}
 .dpad button{width:64px;height:58px;border-radius:12px;border:2.5px solid var(--ink);background:var(--paper);color:var(--ink);font-size:22px;font-weight:900;box-shadow:0 3px 0 var(--ink);touch-action:none;cursor:pointer}
 .dpad button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
 .dpad .quit{width:auto;font-size:13px;padding:0 14px}
 body.desking .hud,body.desking #hint,body.desking #keybar,body.desking .rbtn,body.desking #fx,body.desking #feed,body.desking #notice,body.desking #status{display:none!important}
-@media (max-width:560px){#desk h3{font-size:18px}#desk .seq span{width:40px;height:44px;font-size:20px}#desk .seq{gap:6px}}
+/* per-job screens */
+#desk[data-kind] .seq{min-height:0}
+#desk[data-kind=bug] .scr,#desk[data-kind=kpi] .scr,#desk[data-kind=hr] .scr{text-align:left}
+#desk[data-kind=bug] .seq,#desk[data-kind=kpi] .seq,#desk[data-kind=hr] .seq{display:block}
+#desk[data-kind=bug] .scr{background:#1e232c;color:#cdd6e4}
+#desk[data-kind=bug] .sbar{background:#2b313c;color:#9fb0c6}
+#desk[data-kind=bug] .help kbd{background:#3a4352;color:#e8eef6}#desk[data-kind=bug] h3{color:#e8eef6}#desk[data-kind=bug] .rule{color:#e0a458}
+#desk[data-kind=bug] .tm{background:#343b47}#desk[data-kind=bug] .tm i{background:#e0a458}
+#desk .code{font:600 14px/1 ui-monospace,Consolas,monospace;background:#171b22;border-radius:6px;padding:6px 0}
+#desk .code .ln{display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;border-left:3px solid transparent}
+#desk .code i{font-style:normal;color:#5c6779;width:14px;text-align:right}
+#desk .code b{color:#82aaff;font-weight:600}#desk .code em{font-style:normal;color:#ffcb6b;font-size:17px}
+#desk .code u{text-decoration:none;color:#ff6b6b;font-size:12px;margin-left:auto}
+#desk .code s{text-decoration:none;color:#5fd38d;margin-left:auto}
+#desk .code .red code{text-decoration:underline wavy #ff6b6b;text-underline-offset:5px}
+#desk .code .cur{background:#2a3242;border-left-color:#e0a458}
+#desk .code .done{opacity:.55}#desk .code .done code{text-decoration:none}
+#desk[data-kind=kpi] .sbar{background:#217346}#desk[data-kind=kpi] .rule{color:#217346}#desk[data-kind=kpi] .tm i{background:#217346}
+#desk[data-kind=kpi] .scr{background:#fff}
+#desk .xl td.fr{background:#eef8f2}#desk .xl td.lb.fr{color:#217346;font-weight:900}
+#desk .xl{border-collapse:collapse;width:100%;table-layout:fixed;font:700 13px var(--body);background:#fff}
+#desk .xl th{background:#eef0f2;color:#6b7480;font-weight:600;font-size:11px;border:1px solid #d4d8dd;height:20px}
+#desk .xl tr>th:first-child{width:20px}
+#desk .xl td{border:1px solid #d4d8dd;height:30px;text-align:center;color:var(--ink);padding:0}
+#desk .xl td.lb{color:#4b5560;font-weight:600;font-size:12px;background:#fafbfc}
+#desk .xl td.na{color:#aab}#desk .xl td.v{font:900 17px var(--display);height:38px}
+#desk .xl td.cur{outline:3px solid #217346;outline-offset:-2px;background:#e9f5ee;color:#217346;font-size:16px}
+#desk .xl td.up{color:#d03b2f;font-size:16px}#desk .xl td.dn{color:#2f6fb3;font-size:16px}
+#desk[data-kind=hr] .sbar{background:#5b4a3a}#desk[data-kind=hr] .rule{color:#5b4a3a}#desk[data-kind=hr] .tm i{background:#5b4a3a}
+/* 서류 심사: a paper 입사지원서 — title with a double rule, 증명사진, a ruled form, the 경력 row picked out */
+#desk .cv{background:#fffefa;border:1px solid #cfc6b4;border-radius:3px;padding:10px 12px;box-shadow:0 4px 10px rgba(60,40,20,.14),0 1px 0 #e6dfd0;text-align:left}
+#desk .cvh{position:relative;text-align:center;border-bottom:3px double #5b4a3a;padding-bottom:5px;margin-bottom:8px}
+#desk .cvh b{font:900 17px var(--display);letter-spacing:.4em;color:#3a2f25;padding-left:.4em}
+#desk .cvno{position:absolute;right:0;bottom:7px;font-size:10px;font-weight:700;color:#9a8e7d}
+#desk .cvg{display:flex;gap:8px;align-items:stretch}
+#desk .ph{flex:0 0 56px;border:1px solid #cfc6b4;padding:2px;background:#fff}#desk .ph svg{display:block;width:100%;height:100%}
+#desk .cvf{flex:1;border-collapse:collapse;font-size:13px}
+#desk .cvf th{width:58px;background:#f3eee4;color:#6b5d4b;font-weight:700;font-size:11px;border:1px solid #d9d0bf;padding:3px 4px;text-align:center;white-space:nowrap}
+#desk .cvf td{border:1px solid #d9d0bf;padding:3px 8px;font-weight:700;color:#2b2520}
+#desk .cvf .ex th{background:#5b4a3a;color:#fff;font-size:12px}#desk .cvf .ex td{background:#fff6d8;color:#5b4a3a}
+#desk .cvf .ex b{font:900 24px/1.1 var(--display);color:var(--ink)}
+#desk[data-kind=hr] .rule{display:none}
+#desk .cvs{margin-top:7px;font-size:12px;color:#5f564b;border:1px solid #e6dfd0;padding:0 8px;line-height:20px;background:repeating-linear-gradient(#fffefa 0 19px,#efe8da 19px 20px)}
+#desk .cvs em{font-style:normal;font-weight:800;color:#8a7c68;margin-right:6px;font-size:11px}
+/* the hiring bar is a memo above the form, the answers a pair of stamp-style labels below it: the form itself stays a clean document */
+#desk .cvm{display:flex;align-items:baseline;gap:8px;margin:8px 0 6px;padding:5px 10px;background:#fff4c4;border-left:4px solid #d9a92e;border-radius:2px;font-size:11.5px;font-weight:700;color:#8a6d1f}
+#desk .cvm b{font-size:14.5px;font-weight:900;color:#3a2f25}
+#desk .cvb{display:flex;justify-content:space-between;margin-top:9px}
+#desk .cvb span{font-size:13px;font-weight:900;padding:4px 12px;border:2px solid;border-radius:5px;letter-spacing:.05em}
+#desk .cvb .no{color:var(--stamp)}#desk .cvb .ok{color:#2f9e57}
+#desk .cvq{display:flex;gap:5px;justify-content:center;margin-top:8px}
+#desk .cvq span{flex:0 1 46px;font-size:12px;font-weight:800;text-align:center;padding:4px 0;border-radius:5px;background:#eee8dc;color:#8a7c68}
+#desk .cvq span.cur{background:#fff;box-shadow:0 0 0 2px #5b4a3a;color:var(--ink)}
+#desk .cvq span.ok{background:#2f9e57;color:#fff}#desk .cvq span.no{background:var(--stamp);color:#fff}
+@media (max-width:560px){#desk .xl{font-size:11.5px}#desk .xl td{height:26px}#desk .xl td.v{font-size:15px;height:34px}#desk .xl td.lb{font-size:10.5px}#desk .code .ln{height:26px}#desk .code u{font-size:10.5px}}
+@media (max-width:560px){#desk h3{font-size:18px}#desk .seq>span{flex-basis:40px;height:44px;font-size:20px}#desk .seq>span.num,#desk .seq>span.base{font-size:15px}#desk .seq{gap:5px}}
 .hud:has(.mapbox.big){z-index:7}
 
 /* ================= HUD layout (2026-10 rework) =================
@@ -764,7 +866,7 @@ body.desking #lunchBoard,body.phoning #lunchBoard{display:none!important}
 .tcard em{color:var(--ink)}
 
 /* dressing room on wide screens: the card moves to the right edge, vertically centred, so the whole character shows */
-@media (min-width:900px){#home.dressing,body.pc #home.dressing{top:0;bottom:0;left:auto;right:max(24px,5vw);width:auto;transform:none;align-items:center;justify-content:flex-end}
+@media (min-width:900px){#home.dressing,body.pc #home.dressing{top:0;bottom:0;left:auto;right:max(32px,11vw);width:auto;transform:none;align-items:center;justify-content:flex-end}
   #home.dressing .homecard{width:min(420px,38vw)}}
 #tut .perks i.gap{margin-top:8px}
 /* the game's subtitle under the name on the guide card: a second title, not a caption */
@@ -888,3 +990,33 @@ body.band2 .hud,body.band2 #lunchBoard,body.band2:not(.pc) #pdock .idcard{transl
 .boardlist .newchip{flex:none;padding:1px 5px 2px;border-radius:3px;background:var(--stamp);color:#fff;font:900 10px/1.2 var(--body);font-style:normal}
 .boardlist ul{margin:5px 0 0;padding-left:18px;font-size:13px;line-height:1.55}
 .boardlist li+li{margin-top:2px}
+.boardlist ul ul{margin-top:2px;padding-left:16px;font-size:12.5px;list-style:circle}
+.boardlist u{text-decoration-color:var(--stamp);text-decoration-thickness:2px;text-underline-offset:3px}
+/* 사내 게시판 = update notes + 사원 의견 (2026-10-30): two columns side by side on wide screens, two tabs on phones */
+.boardmemo:has(.bdcols){max-width:880px;width:100%}
+.bdtabs{display:none;gap:4px;margin:4px 0 8px;border-bottom:1.5px solid var(--ink)}
+.bdtabs button{flex:1;border:0;background:none;padding:7px 0 6px;font:900 14px var(--body);color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1.5px}
+.bdtabs button.on{color:var(--ink);border-bottom-color:var(--ink)}.bdtabs i{font-style:normal;font-size:11px;color:var(--muted)}
+.bdcols{display:grid;grid-template-columns:1.1fr 1fr;gap:18px;margin-top:6px}
+.bdcol{min-width:0;display:flex;flex-direction:column}
+.bdcol h3{margin:0 0 6px;padding-bottom:5px;border-bottom:1.5px solid var(--ink);font:900 14px var(--body)}
+.bdcol.fb{background:#fbfaf5;border:1px solid #e6e2d6;border-radius:10px;padding:10px 10px 6px}
+.bdcol.fb h3{border-bottom-color:#d6d2c6}
+.bdcol .boardlist,.bdcol .fblist{max-height:min(56vh,500px);overflow:auto;overscroll-behavior:contain}
+.fbsub{margin:0 0 6px;font-size:12.5px;color:var(--muted)}
+.fbform{display:flex;gap:6px}.fbform input{flex:1;min-width:0;font:600 14px var(--body);border:1.5px solid #c9cdd0;border-radius:8px;padding:8px 10px}
+.fbmsg{margin:4px 0 4px;font-size:12px;font-weight:700;color:var(--muted);min-height:16px}
+.fblist{list-style:none;margin:0;padding:0 2px;display:grid;gap:6px;align-content:start}
+.fblist li{background:#fff;border:1px solid #e3e5e7;border-radius:8px;padding:6px 9px}
+.fblist li div{display:flex;align-items:baseline;gap:6px;font-size:12px}.fblist li b{font-weight:900}
+.fblist time{font:600 11px var(--body);color:var(--muted)}
+.fblist p{margin:2px 0 0;font-size:13px;line-height:1.45;word-break:break-word}
+.fblist .fbnone{border-style:dashed;text-align:center;font-size:12.5px;color:var(--muted)}
+.fbdel{margin-left:auto;border:0;background:none;font:700 11px var(--body);color:var(--muted);cursor:pointer;text-decoration:underline}
+@media (max-width:760px){.bdtabs{display:flex}.bdcols{display:block;min-height:min(56vh,500px)}.bdcol h3{display:none}.bdcol.fb{background:none;border:0;padding:0}
+  .bdcols[data-p=notes] .bdcol.fb,.bdcols[data-p=fb] .bdcol.notes{display:none}}
+/* 지표 보고 rule: up red, down blue, like a stock chart */
+#dRule .up{color:#d0342c}#dRule .dn{color:#2b6cb0}
+/* localhost only: the team picker for testing (40-main.js) */
+#devTeam{position:fixed;left:8px;bottom:8px;z-index:9999;font:700 12px var(--body);padding:3px 6px;border:1.5px dashed #c08a1e;border-radius:6px;background:#fffaf0;opacity:.85}
+.awsoon{border:1.5px dashed #c9a25a;border-radius:8px;background:#fffaf0;padding:14px 12px;text-align:center}.awsoon b{display:block;font:900 15px var(--body)}.awsoon small{display:block;margin-top:3px;font-size:12.5px;color:var(--muted)}

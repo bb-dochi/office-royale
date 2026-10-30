@@ -8,6 +8,18 @@
 <meta property="og:title" content="오피스 로얄 · 인사평가 서바이벌">
 <meta property="og:description" content="같이 출근해요! 고과가 체력, 서류가 무기. 최후의 1인만 CEO실로.">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="오피스 로얄">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:url" content="https://office-royale.bb-dochi.workers.dev/">
+<!-- link previews (카카오톡, 슬랙, X …) need an absolute URL for the image -->
+<meta property="og:image" content="https://office-royale.bb-dochi.workers.dev/img/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="오피스 로얄 · 인사평가 서바이벌">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="192x192" href="img/icon-192.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <title>오피스 로얄</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
@@ -48,13 +60,14 @@
 <!-- desk work: the view goes first-person onto my monitor and this is what is on it -->
 <div id="desk" hidden>
   <div class="mon"><div class="scr">
-    <div class="sbar"><span>사내 업무 시스템</span><span id="dRound"></span></div>
+    <div class="sbar"><span id="dApp">사내 업무 시스템</span><span id="dRound"></span></div>
     <h3 id="dJob"></h3>
+    <p class="rule" id="dRule"></p>
     <div class="seq" id="dSeq"></div>
     <div class="tm"><i id="dTm"></i></div>
     <p class="res" id="dRes"></p>
-    <p class="help pc-only"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 또는 방향키로 순서대로 · <kbd>E</kbd> 일어나기</p>
-    <p class="help touch-only">아래 버튼을 순서대로 누르세요</p>
+    <p class="help pc-only"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 또는 방향키로 입력 · <kbd>E</kbd> 일어나기</p>
+    <p class="help touch-only">아래 버튼으로 입력하세요</p>
   </div></div>
   <div class="dpad touch-only" id="dPad"><button data-k="L" aria-label="왼쪽">◀</button><button data-k="U" aria-label="위">▲</button><button data-k="D" aria-label="아래">▼</button><button data-k="R" aria-label="오른쪽">▶</button><button class="quit" data-k="Q">일어나기</button></div>
 </div>
@@ -99,7 +112,6 @@
 <div id="cine" hidden><div class="box"><div class="tower" id="cineTower"></div><h2 id="cineT">1층 폐쇄</h2><p id="cineS"></p></div></div>
 
 <div id="pzRooms" hidden aria-live="polite"></div>
-<button id="emoteBtn" class="iconbtn" aria-label="인사하기">💬</button><div id="emotePop" hidden></div>
 <section id="home" hidden>
   <div class="memo homecard">
     <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span><span id="pzCount">로비 연결 중…</span><button class="mutebtn" aria-label="소리 끄기">🔊</button><button class="homeX" id="homeX" aria-label="닫기">✕</button></span></div>
@@ -137,11 +149,14 @@
       </ul></div></div>
       </div>
       <div class="btns"><button class="btn" id="hSolo">혼자 하기</button><button class="btn" id="hMulti">같이 하기</button></div>
-      <p class="foot"><button class="tlink" id="hRank">주간 랭킹</button><button class="tlink" id="hTut">튜토리얼</button><button class="tlink" id="hDress">옷 갈아입기</button><button class="tlink" id="hBoard">사내 게시판<i class="newmark" hidden>NEW!</i></button></p>
+      <p class="foot"><button class="tlink" id="hRank">주간 랭킹</button><button class="tlink" id="hDress">사원증</button><button class="tlink" id="hBoard">사내 게시판<i class="newmark" hidden>NEW!</i></button><button class="tlink" id="hTut">튜토리얼</button></p>
     </div>
     <div id="dress" hidden>
-      <h1>옷 갈아입기</h1>
-      <div class="rows" id="dressRows"></div>
+      <h1>사원증</h1>
+      <div class="idtabs" id="idTabs" role="tablist"><button data-t="wear" class="on">옷장</button><button data-t="award">성과</button><button data-t="career">인사 관리</button></div>
+      <div class="idpane" id="paneWear"><div class="rows" id="dressRows"></div></div>
+      <div class="idpane" id="paneAward" hidden><ul class="awlist" id="awList"></ul></div>
+      <div class="idpane" id="paneCareer" hidden><div id="crBox"></div></div>
       <div class="btns"><button class="btn" id="dressDone">완료</button><button class="btn ghost small" id="dressReset">기본 옷으로</button></div>
     </div>
   </div>
@@ -150,12 +165,12 @@
 <nav id="dock" aria-label="메뉴">
   <span id="dockCount"></span>
   <button data-go="guide">게임 안내</button>
-  <button data-go="board">사내 게시판<i class="newmark" hidden>NEW!</i></button>
+  <button data-go="dress">사원증</button>
   <button data-go="solo" class="pri">혼자 하기</button>
   <button data-go="multi" class="pri">같이 하기</button>
   <button data-go="rank">주간 랭킹</button>
+  <button data-go="board" class="gap">사내 게시판<i class="newmark" hidden>NEW!</i></button>
   <button data-go="tut">튜토리얼</button>
-  <button data-go="dress">옷 갈아입기</button>
 </nav>
 
 
@@ -206,12 +221,18 @@
   </div>
 </section>
 
+<!-- 사내 게시판: update notes and the 자유게시판 in one sheet — side by side on wide screens, two tabs on phones (49-board.js) -->
 <section class="sheet" id="boardSheet" hidden>
   <div class="memo boardmemo">
     <div class="memo-head"><span>(주)오피스로얄 경영지원팀</span><span>사내 게시판<button class="homeX" id="boardX" aria-label="닫기">✕</button></span></div>
     <h1>사내 게시판</h1>
-    <p class="subj">회사에 바뀐 점을 알려 드려요.</p>
-    <div class="boardlist" id="boardList"></div>
+    <div class="bdtabs" id="bdTabs"><button data-p="notes" class="on">📌 업데이트</button><button data-p="fb">💬 자유게시판 <i id="fbCount"></i></button></div>
+    <div class="bdcols" id="bdCols" data-p="notes">
+      <div class="bdcol notes"><h3>📌 업데이트 노트</h3><div class="boardlist" id="boardList"></div></div>
+      <div class="bdcol fb"><h3>💬 자유게시판</h3><p class="fbsub">게임 리뷰, 버그 제보, 바라는 점… 뭐든 남겨 주세요. 다 읽어요!</p>
+        <form class="fbform" id="fbForm"><input id="fbIn" maxlength="200" placeholder="의견 남기기 (200자)" autocomplete="off"><button class="btn small">남기기</button></form>
+        <p class="fbmsg" id="fbMsg"></p><ul class="fblist" id="fbList"></ul></div>
+    </div>
   </div>
 </section>
 
@@ -276,5 +297,6 @@
 <script defer src="js/client/47-share.js"></script>
 <script defer src="js/client/48-rank.js"></script>
 <script defer src="js/client/49-board.js"></script>
+<script defer src="js/client/51-career.js"></script>
 </body>
 </html>
