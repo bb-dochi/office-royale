@@ -82,10 +82,11 @@ export async function apiHTTP({ rank, stats, career, feedback }, method, url, bo
     const uid = url.searchParams.get('uid');
     return okUid(uid) ? { status: 200, json: await career.view(uid) } : { status: 400, json: { err: '잘못된 요청' } };
   }
-  if ((url.pathname === '/api/career/pin' || url.pathname === '/api/career/join') && method === 'POST') { // 다른 기기에서 이어하기
+  if (['/api/career/pin', '/api/career/join', '/api/career/profile'].includes(url.pathname) && method === 'POST') { // 다른 기기에서 이어하기, 옷장·사원명 연동
     let m; try { m = JSON.parse(body); } catch { m = null; }
     if (!m || !okUid(m.uid)) return { status: 400, json: { err: '잘못된 요청' } };
-    return { status: 200, json: url.pathname.endsWith('/pin') ? await career.pin(m.uid) : await career.join(m.uid, m.code, m.pin) };
+    const what = url.pathname.slice('/api/career/'.length);
+    return { status: 200, json: what === 'pin' ? await career.pin(m.uid) : what === 'join' ? await career.join(m.uid, m.code, m.pin) : await career.profile(m.uid, m) };
   }
   if (url.pathname !== '/api/game' || method !== 'POST') return { status: 404, json: { err: 'not found' } };
   let m; try { m = JSON.parse(body); } catch { return { status: 400, json: { err: '잘못된 요청' } }; }

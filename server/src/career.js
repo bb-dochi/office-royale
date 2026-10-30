@@ -7,6 +7,7 @@ export const AWARDS_ON = false;
 
 import { RANKS } from './rank.js';
 import { dayOf } from './stats.js';
+import { cleanFit } from './outfit.js';
 
 export const newCareer = () => ({ games: 0, sec: 0, ceo: 0, tasks: 0, kills: 0, bestRank: 0 });
 
@@ -39,7 +40,8 @@ const fromStats = p => ({ games: p.games || 0, sec: p.sec || 0, ceo: p.wins || 0
    starts from the device's play stats.
    다른 기기에서 이어하기: a device of the career asks for a 6-digit 연동 번호 (10 minutes, one use); the other device
    enters 사원코드 + 연동 번호 and from then on points at that career (its own, if it had one, is left behind).
-   Keys: e:u:<uid> → code, e:<code> → {code, joined, name, uids, c (career totals), pin, tries}. */
+   옷장·사원명 연동: `prof` {fit, name, at} — the newest change from any linked device wins (2026-10-30).
+   Keys: e:u:<uid> → code, e:<code> → {code, joined, name, uids, c (career totals), a (성과 totals), prof, pin, tries}. */
 const yymmdd = ms => dayOf(ms).slice(2).replace(/-/g, '');
 const PIN_LIFE = 10 * 60e3, TRIES = 5, DEVICES = 5;
 
@@ -76,9 +78,22 @@ export class CareerCore {
   async view(uid) {
     const e = (await this.find(uid)) || (await this.stats.person(uid) ? await this.run(async () => { const n = await this.load(uid); delete n.seeded; await this.store.put('e:' + n.code, n); return n; })
       : { code: null, joined: null, name: '', uids: [], c: newCareer() });
-    return { code: e.code, joined: e.joined, name: e.name, devices: e.uids.length, career: { ...newCareer(), ...e.c }, awards: AWARDS_ON ? judge({ ...newCareer(), ...e.a }) : null };
+    return { code: e.code, joined: e.joined, name: e.name, devices: e.uids.length, prof: e.prof || null, career: { ...newCareer(), ...e.c }, awards: AWARDS_ON ? judge({ ...newCareer(), ...e.a }) : null };
   }
   async codeOf(uid) { return this.store.get('e:u:' + uid); }
+
+  /* 옷장·사원명 연동: a device saves its outfit and name to its career (only if it has one); newer than what's kept wins */
+  profile(uid, m) {
+    return this.run(async () => {
+      const e = await this.find(uid); if (!e) return { err: '사원코드가 없어요' };
+      const at = Math.min(Number(m.at) || 0, Date.now()), fit = cleanFit(m.fit),
+        name = typeof m.name === 'string' ? m.name.replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 10) : '';
+      if (!fit || at <= ((e.prof && e.prof.at) || 0)) return { ok: true, prof: e.prof || null };
+      e.prof = { fit, name: name || (e.prof && e.prof.name) || e.name, at };
+      await this.store.put('e:' + e.code, e);
+      return { ok: true, prof: e.prof };
+    });
+  }
 
   /* 다른 기기에서 이어하기, on the device that has the career: a fresh 연동 번호 */
   pin(uid) {

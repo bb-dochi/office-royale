@@ -181,7 +181,7 @@ function nameStep(on){$('nameStep').hidden=!on;$('homeMenu').hidden=on;$('home')
 function nameSave(){
   const n=$('homeName').value.replace(/[\u0000-\u001f<>]/g,'').trim().slice(0,10);if(!n){$('homeName').focus();return;}
   const first=!store.get('or-name');
-  store.set('or-name',n);$('nameIn').value=n;$('myName').textContent=n;nameStep(false);if(first)tutAsk(true,n);
+  store.set('or-name',n);$('nameIn').value=n;$('myName').textContent=n;nameStep(false);if(first)tutAsk(true,n);if(!first)profSave();
   if(G&&G.plaza&&G.me)G.me.name=n;if(PZ.ws&&PZ.ws.readyState===1)PZ.ws.send(JSON.stringify({t:'pz-name',name:n}));
 }
 $('myName').textContent=store.get('or-name')||'신입';
@@ -242,7 +242,7 @@ function dressSet(k,v){
   if(k==='acc')f[v]=!f[v];else f[k]=k==='tie'&&!v?null:v;
   G.me.fit=cleanFit(f);try{localStorage.setItem('or-fit',JSON.stringify(G.me.fit));}catch{}
   dropMesh(G.me);dressRender();
-  clearTimeout(fitSendT);fitSendT=setTimeout(()=>{if(PZ.ws&&PZ.ws.readyState===1)PZ.ws.send(JSON.stringify({t:'pz-fit',fit:G.me.fit}));},600);
+  clearTimeout(fitSendT);fitSendT=setTimeout(()=>{if(PZ.ws&&PZ.ws.readyState===1)PZ.ws.send(JSON.stringify({t:'pz-fit',fit:G.me.fit}));},600);profSave();
 }
 function dressOpen(){if(!PZ.on)return;PZ.dress=true;$('home').classList.add('dressing');
   /* step into the open middle of the lobby so nothing stands between the camera and you */
@@ -261,7 +261,7 @@ $('dressRows').addEventListener('click',e=>{const b=e.target.closest('button');i
 $('hDress').addEventListener('click',dressOpen);
 $('dressDone').addEventListener('click',dressClose);
 $('dressReset').addEventListener('click',()=>{G.me.fit={...DEFAULT_FIT};try{localStorage.setItem('or-fit',JSON.stringify(G.me.fit));}catch{}dropMesh(G.me);dressRender();
-  if(PZ.ws&&PZ.ws.readyState===1)PZ.ws.send(JSON.stringify({t:'pz-fit',fit:G.me.fit}));});
+  if(PZ.ws&&PZ.ws.readyState===1)PZ.ws.send(JSON.stringify({t:'pz-fit',fit:G.me.fit}));profSave();});
 $('homeBtn').addEventListener('click',()=>{netClose();history.replaceState(null,'',location.pathname);plazaStart();});
 
 plazaStart();

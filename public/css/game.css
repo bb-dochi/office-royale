@@ -1020,3 +1020,5 @@ body.band2 .hud,body.band2 #lunchBoard,body.band2:not(.pc) #pdock .idcard{transl
 /* localhost only: the team picker for testing (40-main.js) */
 #devTeam{position:fixed;left:8px;bottom:8px;z-index:9999;font:700 12px var(--body);padding:3px 6px;border:1.5px dashed #c08a1e;border-radius:6px;background:#fffaf0;opacity:.85}
 .awsoon{border:1.5px dashed #c9a25a;border-radius:8px;background:#fffaf0;padding:14px 12px;text-align:center}.awsoon b{display:block;font:900 15px var(--body)}.awsoon small{display:block;margin-top:3px;font-size:12.5px;color:var(--muted)}
+/* phones: 성과 and 인사 관리 take the whole screen (no character above), so the card has room when the keyboard opens */
+@media (max-width:700px){#home.dressing:is([data-idtab=award],[data-idtab=career]) .homecard{height:calc(100dvh - 24px);max-height:calc(100dvh - 24px)}}

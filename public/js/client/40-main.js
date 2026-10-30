@@ -109,15 +109,13 @@ const DEV_HOST=/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 if(DEV_HOST){const s=document.createElement('select');s.id='devTeam';s.title='개발자: 혼자 하기 시작 부서';
   s.innerHTML=[['','🛠 부서: 인턴'],['dev','🛠 개발팀'],['mkt','🛠 마케팅팀'],['hr','🛠 인사팀'],['design','🛠 디자인팀']].map(([v,t])=>`<option value="${v}">${t}</option>`).join('');
   s.value=store.get('or-devteam')||'';s.addEventListener('change',()=>store.set('or-devteam',s.value));document.body.appendChild(s);}
-/* 어려움 (the ranked level) opens once you have reached 팀장 in a 보통 game (2026-10-30: was also top 10), so newcomers learn the
-   office before the ranking (most first-day 어려움 games ended in under a minute). People who played before this rule
-   (a name is already saved here) keep it open. After two quick 어려움 knock-outs in a row the result suggests 보통 */
+/* 어려움 (the ranked level) is open to everyone. A lock (reach 팀장 in 보통 first) was tried on 2026-10-30 and taken off the
+   same day: it is kept per browser, so players coming back on another device found it locked. To bring it back, make
+   hardOpen read or-hard again. After two quick 어려움 knock-outs in a row the result suggests 보통 */
 const HARD_LOCK='🔒 보통 난이도에서 팀장을 달면 열려요.';
-if(store.get('or-hard')==null)store.set('or-hard',store.get('or-name')?'1':'');
-const hardOpen=()=>store.get('or-hard')==='1';
+const hardOpen=()=>true;
 function hardNote(win,me){
   const d=G.diff||'normal';
-  if(d==='normal'&&!hardOpen()&&(win||rankAt(me,'팀장'))){store.set('or-hard','1');return ' 🏆 어려움(랭킹전)이 열렸어요!';}
   if(d!==RANKED)return '';
   const quick=!win&&G.t<60,n=quick?+(store.get('or-hardfast')||0)+1:0;store.set('or-hardfast',String(n));
   return n>=2?' 보통 난이도에서 먼저 손을 풀고 오는 것도 방법이에요.':'';
@@ -168,7 +166,7 @@ function lobbyNameShow(edit){const n=store.get('or-name')||'';$('lobbyName').tex
   $('nameIn').hidden=!edit;$('lobbyName').hidden=edit;$('lobbyNameEdit').hidden=edit;if(edit)setTimeout(()=>$('nameIn').focus(),30);}
 function lobbyNameSave(){
   const n=$('nameIn').value.replace(/[\u0000-\u001f<>]/g,'').trim().slice(0,10);
-  if(n&&n!==store.get('or-name')){store.set('or-name',n);$('myName').textContent=n;if(G&&G.plaza&&G.me)G.me.name=n;
+  if(n&&n!==store.get('or-name')){store.set('or-name',n);$('myName').textContent=n;if(G&&G.plaza&&G.me)G.me.name=n;profSave();
     if(PZ.ws&&PZ.ws.readyState===1)PZ.ws.send(JSON.stringify({t:'pz-name',name:n}));if(NETC.room)netSend({t:'name',name:n});}
   lobbyNameShow(!store.get('or-name'));
 }
