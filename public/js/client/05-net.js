@@ -90,7 +90,7 @@ function netApply(m){
     if(s.id!==meId)pushSamp(a,P.t,s,a.f!==a.lastF||!!a.transit);
     a.nx=s.x??0;a.ny=s.y??0;a.lastF=a.f;
     a.sit=seatAt(s.sit);a.transit=s.transit||null;a.chan=s.chan||null;a.call=s.call||null;return a;});
-  for(const s of P.N){const n=keep(NETC.byN,s.id,()=>({...s,samp:[],path:[]}));const jump=n.f!==s.f;Object.assign(n,{kind:s.kind,f:s.f,slot:s.slot,on:s.on,senior:!!s.sr,ask:s.ask>0,job:s.ask>0?{r:s.ask}:null});pushSamp(n,P.t,s,jump);}
+  for(const s of P.N){const n=keep(NETC.byN,s.id,()=>({...s,samp:[],path:[]}));const jump=n.f!==s.f;Object.assign(n,{kind:s.kind,f:s.f,slot:s.slot,on:s.on,senior:!!s.sr,ask:s.ask>0,job:s.ask>0?{r:s.ask}:null,caught:!!s.cg,sprint:s.kind==='late'});pushSamp(n,P.t,s,jump);}
   G.npcs=P.N.map(s=>NETC.byN.get(s.id));G.ceo=npcBy(P.ceo);
   G.tasks=P.T.map(s=>{const t=keep(NETC.byT,s.id,()=>({react:{}}));Object.assign(t,s);if('seat' in s)t.seat=seatAt(s.seat);t.by=actorBy(s.by);return t;});
   G.items=listFrom(P.I,'i',(o,s)=>Object.assign(o,s));

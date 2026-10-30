@@ -165,7 +165,7 @@ function plazaFrame(dt){
 }
 
 /* ---------- menu ---------- */
-/* PC greets with keys 1-5 and E; phones have no greeting button (the lobby's 상호작용 button uses things) */
+/* PC greets with keys 1-5 and E; phones with the 상호작용 button when there is nothing near to use (10-input.js) */
 const plazaSayRandom=()=>plazaSay(Math.floor(Math.random()*EMOTES.length));
 addEventListener('keydown',e=>{if(!PZ.on||($('home').hidden&&!$('lobby').classList.contains('dock'))||(e.target.closest&&e.target.closest('input')))return;
   if(G&&G.plaza&&G.me.desk){const k={KeyW:'U',ArrowUp:'U',KeyS:'D',ArrowDown:'D',KeyA:'L',ArrowLeft:'L',KeyD:'R',ArrowRight:'R'}[e.code];if(k){e.preventDefault();deskKey(G.me,k);return;}}

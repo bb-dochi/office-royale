@@ -38,7 +38,7 @@ function serA(a,full,fixed){
   }
   return o;
 }
-const serN=n=>({id:n.id,kind:n.kind,f:n.f,x:r1(n.x),y:r1(n.y),face:r2(n.face),slot:n.slot,on:n.on,sr:n.senior?1:0,ask:n.ask&&n.job?n.job.r:0});
+const serN=n=>({id:n.id,kind:n.kind,f:n.f,x:r1(n.x),y:r1(n.y),face:r2(n.face),slot:n.slot,on:n.on,sr:n.senior?1:0,ask:n.ask&&n.job?n.job.r:0,cg:n.caught?1:0});
 /* the ladder's rungs stay on the server until everyone has picked a lane */
 function lunchSnap(){const L=G.lunch;if(!L)return null;
   return{kind:L.kind,t:r2(L.t),score:L.score,phase:L.phase,dealt:L.dealt,zone:L.zone,crowd:L.crowd,

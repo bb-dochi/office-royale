@@ -47,7 +47,7 @@ const press=(el,fn)=>{const on=()=>running||!!(G&&G.plaza); // in a match, or wa
   el.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(on())fn();});el.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&on()){e.preventDefault();fn();}});};
 tb.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();throwHeld=true;if(running)ACT.throw(autoAim(G.me));});
 ['pointerup','pointercancel','pointerleave'].forEach(t=>tb.addEventListener(t,()=>throwHeld=false));
-press(gb,()=>{if(!running&&G&&G.plaza)pzUse();else doInteract();});
+press(gb,()=>{if(!running&&G&&G.plaza){if(!pzUse())plazaSayRandom();}else doInteract();}); // nothing to use in the lobby: says a random line, like E on PC
 let ibT=null,ibLong=false;
 $('slots').addEventListener('pointerdown',e=>{const b=e.target.closest('.slot');if(!b)return;e.preventDefault();e.stopPropagation();ibLong=false;});
 $('slots').addEventListener('pointerup',e=>{const b=e.target.closest('.slot');clearTimeout(ibT);if(!b)return;e.preventDefault();if(!ibLong&&running)ACT.item(+b.dataset.i);ibLong=true;});
@@ -56,7 +56,7 @@ press($('pCash'),()=>{if(!running&&G&&G.plaza)pzUse();else doInteract();});
 /* phones: the control guide's chips (keybar() in 40-main.js) are buttons */
 $('keybar').addEventListener('pointerdown',e=>{const b=e.target.closest('[data-a]');if(!b||!running)return;e.preventDefault();e.stopPropagation();
   const a=b.dataset.a;if(a==='down')ACT.floor(-1);else if(a==='skill')ACT.skill();});
-$('mapbox').addEventListener('pointerdown',e=>{if(e.target.closest('.msys button'))return;e.preventDefault();e.stopPropagation();toggleMap();});
+$('mapbox').addEventListener('pointerdown',e=>{if(e.target.closest('.msys button'))return;e.preventDefault();e.stopPropagation();if($('mapbox').classList.contains('folded'))mapFold(false);else toggleMap();}); // folded there is no map to enlarge: a tap anywhere unfolds it
 for(const b of document.querySelectorAll('.msys button'))b.addEventListener('pointerdown',e=>e.stopPropagation());
 /* phones: the map folds down to its title bar (remembered) */
 function mapFold(on){$('mapbox').classList.toggle('folded',on);$('mFold').textContent=on?'지도':'▴';$('mFold').setAttribute('aria-label',on?'지도 펴기':'지도 접기');try{localStorage.setItem('or-mapfold',on?'1':'');}catch{}}
