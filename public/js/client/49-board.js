@@ -3,7 +3,7 @@
    A post is new until the board has been opened once after it went up (or-board keeps the highest id seen);
    while one is new the tab, the link and the board itself say NEW!.
    Add a post at the TOP with the next id. Keep it short: what changed, in the players' words.
-   A line can be {t, s:[...]} for a heading with smaller lines under it; __words__ are underlined.
+   A line can be {t, s:[...]} for a heading with smaller lines under it; __words__ are bold (a <u> styled bold, no line).
    A post with `at` (a KST time) stays hidden until then, so a change that starts later can be posted ahead. */
 const BOARD_ALL=[
   {id:5,d:'11.02',at:'2026-11-02T00:00:00+09:00',t:'랭킹 점수 계산식이 바뀌었어요',b:['이제 1위도 마지막 직급대로 점수를 받아요(기존엔 모두 CEO 점수). 대신 1위 보너스가 생겼어요.']},

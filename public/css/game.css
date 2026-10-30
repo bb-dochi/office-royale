@@ -991,7 +991,7 @@ body.band2 .hud,body.band2 #lunchBoard,body.band2:not(.pc) #pdock .idcard{transl
 .boardlist ul{margin:5px 0 0;padding-left:18px;font-size:13px;line-height:1.55}
 .boardlist li+li{margin-top:2px}
 .boardlist ul ul{margin-top:2px;padding-left:16px;font-size:12.5px;list-style:circle}
-.boardlist u{text-decoration-color:var(--stamp);text-decoration-thickness:2px;text-underline-offset:3px}
+.boardlist u{text-decoration:none;font-weight:900}
 /* 사내 게시판 = update notes + 사원 의견 (2026-10-30): two columns side by side on wide screens, two tabs on phones */
 .boardmemo:has(.bdcols){max-width:880px;width:100%}
 .bdtabs{display:none;gap:4px;margin:4px 0 8px;border-bottom:1.5px solid var(--ink)}
