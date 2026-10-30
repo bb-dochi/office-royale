@@ -154,13 +154,15 @@
     <div id="dress" hidden>
       <h1>사원증</h1>
       <div class="idtabs" id="idTabs" role="tablist"><button data-t="wear" class="on">옷장</button><button data-t="award">성과</button><button data-t="career">인사 관리</button></div>
-      <div class="idpane" id="paneWear"><div class="rows" id="dressRows"></div></div>
+      <div class="idpane" id="paneWear"><div class="dtop"><div class="dcats" id="dressCats" role="tablist"></div></div><div class="rows" id="dressRows"></div><p class="dnote" id="dressNote" hidden></p></div>
       <div class="idpane" id="paneAward" hidden><ul class="awlist" id="awList"></ul></div>
       <div class="idpane" id="paneCareer" hidden><div id="crBox"></div></div>
       <div class="btns"><button class="btn" id="dressDone">완료</button><button class="btn ghost small" id="dressReset">기본 옷으로</button></div>
     </div>
   </div>
 </section>
+<!-- 옷장: turn the character round (placed under my feet by the renderer) -->
+<div id="dRot" hidden><button id="dRotL" aria-label="왼쪽으로 돌리기">◀</button><span>돌려 보기</span><button id="dRotR" aria-label="오른쪽으로 돌리기">▶</button></div>
 <!-- shown instead of the card once it is closed: index tabs sticking out of the right edge, like a binder -->
 <nav id="dock" aria-label="메뉴">
   <span id="dockCount"></span>
@@ -285,6 +287,7 @@
 <script defer src="js/sim/70-events.js"></script>
 <script defer src="js/sim/80-step.js"></script>
 <script defer src="js/sim/90-net.js"></script>
+<script defer src="js/shared/rewards.js"></script>
 <script defer src="js/client/00-env.js"></script>
 <script defer src="js/client/05-net.js"></script>
 <script defer src="js/client/10-input.js"></script>

@@ -7,20 +7,27 @@ export const AWARDS_ON = false;
 
 import { RANKS } from './rank.js';
 import { dayOf } from './stats.js';
-import { cleanFit } from './outfit.js';
+import { cleanFit } from './outfit.js'; // also loads globalThis.REWARDS (public/js/shared/rewards.js)
 
 export const newCareer = () => ({ games: 0, sec: 0, ceo: 0, tasks: 0, kills: 0, bestRank: 0 });
 
 /* 성과: each looks at one number and goes up a step (인턴 → 사원 → 대리 → 팀장 → 임원) at each goal */
 export const STEPS = ['인턴', '사원', '대리', '팀장', '임원'];
 export const AWARDS = [
-  { id: 'days', n: '근속일수', d: '출근한 날 (한 판 = 하루)', unit: '일', val: c => c.games, at: [1, 10, 30, 100, 300] },
-  { id: 'night', n: '야근 수당', d: '살아남은 시간', unit: '분', val: c => Math.floor(c.sec / 60), at: [10, 60, 180, 600, 1800] },
-  { id: 'promo', n: '승진의 길', d: '가장 높이 올라간 직급', unit: '', val: c => c.bestRank, at: [1, 2, 3, 4, 5], names: ['사원', '대리', '팀장', '임원', 'CEO'] },
-  { id: 'ceo', n: 'CEO 입성', d: '1위로 끝난 판', unit: '번', val: c => c.ceo, at: [1, 3, 10, 30, 100] },
-  { id: 'tasks', n: '회사의 기둥', d: '끝낸 업무', unit: '개', val: c => c.tasks, at: [20, 100, 300, 1000, 3000] },
-  { id: 'kills', n: '인사권자', d: '해고시킨 동료', unit: '명', val: c => c.kills, at: [1, 20, 80, 250, 800] },
+  { id: 'days', n: '근속일수', d: '출근한 날 (한 판 = 하루)', unit: '일', key: 'games', val: c => c.games, at: [1, 10, 30, 100, 300] },
+  { id: 'night', n: '야근 수당', d: '살아남은 시간', unit: '분', key: 'sec', per: 60, val: c => Math.floor(c.sec / 60), at: [10, 60, 180, 600, 1800] },
+  { id: 'promo', n: '승진의 길', d: '가장 높이 올라간 직급', unit: '', key: 'bestRank', val: c => c.bestRank, at: [1, 2, 3, 4, 5], names: ['사원', '대리', '팀장', '임원', 'CEO'] },
+  { id: 'ceo', n: 'CEO 입성', d: '1위로 끝난 판', unit: '번', key: 'ceo', val: c => c.ceo, at: [1, 3, 10, 30, 100] },
+  { id: 'tasks', n: '회사의 기둥', d: '끝낸 업무', unit: '개', key: 'tasks', val: c => c.tasks, at: [20, 100, 300, 1000, 3000] },
+  { id: 'kills', n: '인사권자', d: '해고시킨 동료', unit: '명', key: 'kills', val: c => c.kills, at: [1, 20, 80, 250, 800] },
 ];
+/* what one 성과 step gives (the shared list, public/js/shared/rewards.js): its 칭호 and any 옷장 pieces */
+export function rewardsOf(aw, st) {
+  const R = globalThis.REWARDS, items = [];
+  for (const [kind, label] of [['hair', '머리'], ['gear', '소품'], ['fx', '이펙트'], ['color', '색']])
+    for (const [id, r] of Object.entries(R[kind])) if (r.aw === aw && r.st === st) items.push({ kind, label, id, n: r.n });
+  return { title: (R.titles[aw] || [])[st - 1] || null, items };
+}
 export const judge = c => AWARDS.map(a => { const v = a.val(c) || 0; return { id: a.id, n: a.n, d: a.d, unit: a.unit, at: a.at, names: a.names || null, val: v, step: a.at.filter(x => v >= x).length }; });
 
 /* one finished game (the same report the play stats get) into the totals */
@@ -78,7 +85,23 @@ export class CareerCore {
   async view(uid) {
     const e = (await this.find(uid)) || (await this.stats.person(uid) ? await this.run(async () => { const n = await this.load(uid); delete n.seeded; await this.store.put('e:' + n.code, n); return n; })
       : { code: null, joined: null, name: '', uids: [], c: newCareer() });
-    return { code: e.code, joined: e.joined, name: e.name, devices: e.uids.length, prof: e.prof || null, career: { ...newCareer(), ...e.c }, awards: AWARDS_ON ? judge({ ...newCareer(), ...e.a }) : null };
+    return { code: e.code, joined: e.joined, name: e.name, devices: e.uids.length, prof: e.prof || null, career: { ...newCareer(), ...e.c }, awards: AWARDS_ON || e.test ? judge({ ...newCareer(), ...e.a }) : null };
+  }
+  /* admin: a person's 성과 as it is now (null with no career and no games; one with games gets its career now, as on opening the 사원증) */
+  async awardsOf(uid) { const e = (await this.find(uid)) || (await this.stats.person(uid) && await this.view(uid) && await this.find(uid)); return e &&{ test: !!e.test, prof: e.prof || null, list: judge({ ...newCareer(), ...e.a }) }; }
+  /* admin: put one 성과 exactly at a step (its number set to that step's goal, 0 for none). Marks the career as a test one,
+     whose 사원증 shows the 성과 even before they open (AWARDS_ON), so its rewards can be tried on a real device */
+  setAward(uid, id, step) {
+    return this.run(async () => {
+      const e = await this.find(uid), a = AWARDS.find(x => x.id === id); if (!e || !a) return false;
+      const st = Math.max(0, Math.min(a.at.length, step | 0));
+      e.a = { ...newCareer(), ...e.a }; e.a[a.key] = st ? a.at[st - 1] * (a.per || 1) : 0; e.test = true;
+      await this.store.put('e:' + e.code, e); return true;
+    });
+  }
+  /* admin: back to the real 성과 (zero until they open) and no longer a test career */
+  resetAwards(uid) {
+    return this.run(async () => { const e = await this.find(uid); if (!e) return false; e.a = newCareer(); delete e.test; await this.store.put('e:' + e.code, e); return true; });
   }
   async codeOf(uid) { return this.store.get('e:u:' + uid); }
 

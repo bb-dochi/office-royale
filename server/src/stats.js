@@ -5,6 +5,7 @@
 // A game's branch is the team the player was posted to (sim BRANCH; '' = still an intern). Days and games from before
 // it was recorded (and games from pages cached since then) have no branch field at all and aren't counted.
 // Storage keys (all small values): s:day:<date> per KST day, s:p:<uid> per person, s:idx (one line per person), s:recent.
+import { AWARDS, AWARDS_ON, STEPS, rewardsOf } from './career.js'; // the admin's 성과 views (career.js uses dayOf from here: only at run time)
 const BRANCHES = ['dev', 'mkt', 'hr', 'design'];
 const RECENT = 100, PERSON_RECENT = 20, IDX_MAX = 3000, DAY_PEOPLE_MAX = 5000;
 export const dayOf = (ms = Date.now()) => new Date(ms + 9 * 3600e3).toISOString().slice(0, 10);
@@ -128,12 +129,50 @@ async function feedbackSection(feedback, link) {
   return section(`사내 게시판 댓글 <small>${live}개 보이는 중${all.length > 100 ? ' · 최근 100개' : ''}</small>`,
     all.length ? tbl(`<thead><tr><th>시각</th><th>글</th><th>사원</th><th>내용</th><th class="n"></th></tr></thead><tbody>${rows}</tbody>`) : '<p class="empty">아직 댓글이 없어요.</p>', '', 'fb');
 }
+/* 성과 of one person: each 성과's number and step, links to put it at any step (test), what it has opened, what they wear */
+const stepName = i => i ? STEPS[i - 1] : '없음';
+function gotOf(aw, step) { const out = []; for (let s = 1; s <= step; s++) { const r = rewardsOf(aw, s); if (r.title) out.push(`「${r.title}」`); out.push(...r.items.map(x => x.n)); } return out; }
+async function awardSection(career, uid) {
+  const v = career && await career.awardsOf(uid);
+  if (!v) return section('성과', '<p class="empty sm">사원코드가 없어요. 첫 판을 마치면 생겨요.</p>', '', 'aw');
+  const u = `?uid=${encodeURIComponent(uid)}`, R = globalThis.REWARDS;
+  const rows = v.list.map(a => {
+    const fmt = x => a.names ? a.names[a.at.indexOf(x)] : `${x.toLocaleString()}${a.unit}`;
+    const steps = [0, 1, 2, 3, 4, 5].map(i => i === a.step ? `<b class="stp on">${stepName(i)}</b>` : `<a class="stp" href="${u}&aw=${a.id}&st=${i}#aw">${stepName(i)}</a>`).join('');
+    const got = gotOf(a.id, a.step);
+    return `<tr><td><b>${esc(a.n)}</b><div class="mut sm">${esc(a.d)}</div></td><td class="n">${a.names ? (a.step ? a.names[a.step - 1] : '-') : a.val.toLocaleString() + a.unit}</td>
+      <td class="mut">${a.step >= a.at.length ? '모두 달성' : '다음 ' + fmt(a.at[a.step])}</td><td><div class="stps">${steps}</div></td><td class="wrap sm">${got.map(esc).join(', ') || '<span class="mut">-</span>'}</td></tr>`;
+  }).join('');
+  const f = v.prof && v.prof.fit, worn = f ? [f.title && `칭호 「${(R.titles[f.title.split(':')[0]] || [])[f.title.split(':')[1] - 1]}」`, R.hair[f.hair] && `머리 ${R.hair[f.hair].n}`,
+    ...(f.gear || []).map(g => R.gear[g] && R.gear[g].n), f.fx && R.fx[f.fx] && `이펙트 ${R.fx[f.fx].n}`, R.color[f.topC] && R.color[f.topC].n].filter(Boolean) : [];
+  const total = v.list.reduce((s, a) => s + a.step, 0);
+  const note = (AWARDS_ON ? '' : `<p class="mut sm note">성과는 아직 꺼져 있어요(<span class="mono">AWARDS_ON</span>). 여기서 단계를 바꾸면 <b>이 사람만 테스트로</b> 사원증에 성과가 보이고 보상이 열려요.</p>`)
+    + `<p class="sm note">지금 입은 성과 보상: ${worn.length ? worn.map(esc).join(', ') : '<span class="mut">없음</span>'}${v.prof ? '' : ' <span class="mut">(옷장 연동 기록 없음)</span>'}</p>`;
+  return section(`성과 <small>단계 ${total} / ${v.list.length * 5}${v.test ? ' · 테스트 조정됨' : ''}</small>`,
+    note + tbl(`<thead><tr><th>성과</th><th class="n">값</th><th>다음 목표</th><th>단계 <span class="mut">(눌러서 바꾸기)</span></th><th>열린 보상</th></tr></thead><tbody>${rows}</tbody>`),
+    v.test ? `<a class="btnl" href="${u}&awreset=1#aw">성과 초기화 · 테스트 해제</a>` : '', 'aw');
+}
+/* every 성과 step and what it gives (public/js/shared/rewards.js), and the reward pieces by kind */
+function rewardPage() {
+  const R = globalThis.REWARDS;
+  const grid = AWARDS.map(a => `<tr><td><b>${esc(a.n)}</b><div class="mut sm">${esc(a.d)}</div></td>${STEPS.map((s, i) => { const r = rewardsOf(a.id, i + 1);
+    return `<td class="wrap sm"><div>「${esc(r.title || '-')}」</div>${r.items.map(x => `<div>${x.label} · ${esc(x.n)}</div>`).join('')}${!r.items.length && i >= 2 ? '<div class="mut">아이템 비어 있음</div>' : ''}</td>`; }).join('')}</tr>`).join('');
+  const kinds = [['hair', '머리'], ['gear', '소품'], ['fx', '이펙트'], ['color', '색']];
+  const list = kinds.flatMap(([k, label]) => Object.entries(R[k]).map(([id, r]) => `<tr><td>${label}</td><td><b>${esc(r.n)}</b> <span class="mono mut">${esc(id)}</span></td>
+    <td>${R.awards[r.aw] ? `${esc(R.awards[r.aw])} ${STEPS[r.st - 1]}` : '<span class="mut">어느 성과에도 안 붙음</span>'}</td></tr>`)).join('');
+  return `<nav class="crumb"><a href="?">← 전체 목록</a></nav>`
+    + section('성과 단계별 보상 <small>단계마다 칭호 1개 · 대리부터 아이템</small>', tbl(`<thead><tr><th>성과</th>${STEPS.map(s => `<th>${s}</th>`).join('')}</tr></thead><tbody>${grid}</tbody>`))
+    + section(`보상 아이템 <small>${list.split('<tr>').length - 1}개 · 목록은 public/js/shared/rewards.js</small>`, tbl(`<thead><tr><th>종류</th><th>이름</th><th>열리는 단계</th></tr></thead><tbody>${list}</tbody>`));
+}
 export async function adminHTML(stats, q, career, feedback) {
   const link = (uid, name) => `<a href="?uid=${encodeURIComponent(uid)}">${esc(name)}</a>`;
   if (feedback && q.get('fbhide')) await feedback.hide(+q.get('fbhide'), true); // 사내 게시판 댓글 숨기기 / 되살리기
   if (feedback && q.get('fbshow')) await feedback.hide(+q.get('fbshow'), false);
+  if (career && q.get('uid') && q.get('aw') && await career.awardsOf(q.get('uid'))) await career.setAward(q.get('uid'), q.get('aw'), +q.get('st')); // 성과 단계 조정 (테스트; makes the career first if needed)
+  if (career && q.get('uid') && q.get('awreset')) await career.resetAwards(q.get('uid'));
   let body;
-  if (q.get('uid')) {
+  if (q.get('rw')) body = rewardPage();
+  else if (q.get('uid')) {
     const p = await stats.person(q.get('uid')), code = career && await career.codeOf(q.get('uid'));
     const avgPlace = p && p.recent.length ? (p.recent.reduce((s, g) => s + g.place, 0) / p.recent.length).toFixed(1) : '-';
     body = `<nav class="crumb"><a href="?">← 전체 목록</a></nav>` + (!p ? '<p class="empty">기록이 없어요.</p>' : `
@@ -146,6 +185,7 @@ export async function adminHTML(stats, q, career, feedback) {
         ${card(`${p.tasks}<u>업무</u> ${p.kills}<u>해고</u>`, '누적', `최근 ${p.recent.length}판 평균 ${avgPlace}위`)}
         ${card(ago(p.last), '마지막 플레이', `처음 ${when(p.first)}`)}
       </div>
+      ${await awardSection(career, q.get('uid'))}
       ${section(`최근 ${p.recent.length}판`, tbl(GAME_HEAD(false) + `<tbody>${p.recent.map(g => gameRow(g)).join('')}</tbody>`) + lunchPop(p.recent))}`);
   } else {
     const days = await stats.days(14), trend = days.slice(0, 7).reverse(), people = await stats.people(), rec = await stats.recent();
@@ -176,7 +216,7 @@ export async function adminHTML(stats, q, career, feedback) {
       ${ppl.slice(0, 300).map(p => `<tr><td>${link(p.uid, p.name)}</td><td class="w"><div class="bc">${bar([[p.games, 'solo']], maxPG)}<b>${p.games}</b></div></td><td class="n">${dur(p.sec)}</td><td class="n">${p.wins ? `<span class="place p1">${p.wins}</span>` : '<span class="mut">0</span>'}</td><td class="mut">${when(p.first)}</td><td title="${when(p.last)}">${ago(p.last)}</td></tr>`).join('')}</tbody>`, 'tall'), `<div class="seg">${tabs}</div>`, 'people')}
       ${section('최근 판 <small>50판</small>', tbl(GAME_HEAD(true) + `<tbody>${rec.slice(0, 50).map(g => gameRow(g, g => link(g.uid, nameOf.get(g.uid) || g.name))).join('')}</tbody>`, 'tall') + lunchPop(rec))}`;
   }
-  if (feedback && !q.get('uid')) body = await feedbackSection(feedback, link) + body;
+  if (feedback && !q.get('uid') && !q.get('rw')) body = await feedbackSection(feedback, link) + body;
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <title>오피스 로얄 · 관리</title><link rel="icon" href="/favicon.ico"><style>
 :root{color-scheme:light dark;--bg:#f4f4f3;--fg:#1f2225;--mut:#7a7f84;--card:#fff;--line:#e4e4e2;--head:#fafafa;--acc:#1f2225;--hov:#f2f2f1;
@@ -238,9 +278,14 @@ svg .bdev{fill:var(--solo)}svg .bmkt{fill:var(--normal)}svg .bhr{fill:var(--easy
 .place{color:var(--mut)}.place.p1{background:var(--goldbg);color:var(--gold);font-weight:700}.place.p3{color:var(--fg)}
 .crumb{margin-bottom:14px}.who{display:flex;align-items:center;gap:14px;margin-bottom:16px}.who h2{margin:0;font-size:22px}.sub{color:var(--mut);margin:2px 0 0}
 .ava{width:52px;height:52px;border-radius:14px;background:var(--acc);color:var(--card);display:grid;place-items:center;font-size:24px;font-weight:700;flex:none}
-.empty{color:var(--mut);padding:40px 0;text-align:center}
+.empty{color:var(--mut);padding:40px 0;text-align:center}.empty.sm{padding:16px 0}
+td.wrap{white-space:normal;min-width:120px}.note{margin:0 0 8px}
+.stps{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.stp{padding:3px 8px;font-size:12px;border-left:1px solid var(--line);color:var(--mut)}
+.stp:first-child{border-left:0}.stp.on{background:var(--acc);color:var(--card)}a.stp:hover{background:var(--hov);text-decoration:none;color:var(--fg)}
+.btnl{margin-left:auto;font-size:12px;padding:4px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+.top nav{margin-left:12px;display:flex;gap:12px;font-size:13px}.top nav a{color:var(--mut)}.top nav a.on{color:var(--fg);font-weight:600}
 @media (max-width:1100px){.charts{grid-template-columns:1fr 1fr}.charts .chart:first-child{grid-column:1/-1}}
 @media (max-width:800px){.charts{grid-template-columns:1fr}}
 @media (max-width:600px){.plot{height:150px}.xa i{display:none}.cards{grid-template-columns:1fr 1fr;gap:8px}.card{padding:12px}.card b{font-size:20px}.seg{margin-left:0}td.w{min-width:120px}}
-</style></head><body><header class="top"><div><h1><a href="?">오피스 로얄 · 플레이 기록</a></h1><span class="mut">${when(Date.now())} 기준</span></div></header><main>${body}</main></body></html>`;
+</style></head><body><header class="top"><div><h1><a href="?">오피스 로얄 · 플레이 기록</a></h1><nav><a href="?"${q.get('rw') ? '' : ' class="on"'}>플레이 기록</a><a href="?rw=1"${q.get('rw') ? ' class="on"' : ''}>성과 보상 목록</a></nav><span class="mut">${when(Date.now())} 기준</span></div></header><main>${body}</main></body></html>`;
 }
