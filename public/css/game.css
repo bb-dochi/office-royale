@@ -770,6 +770,7 @@ body:not(.pc) .mapbox .mhead>b{font-size:11.5px}
 #banner strong{white-space:nowrap}
 body:not(.pc) .mexp{display:none}
 body:not(.pc) .msys{gap:3px}
+body:not(.pc) .mapbox:not(.folded) .mfold{width:28px;height:22px}
 
 /* team choice: bigger, easier to read and tap */
 #branchBox{width:min(94vw,620px);padding:18px 20px 20px}
@@ -942,6 +943,7 @@ body{word-break:keep-all;overflow-wrap:anywhere}
   body:not(.pc) .quests p{white-space:normal}
   body:not(.pc) .msys{gap:2px}
   body:not(.pc) .mapbox:not(.folded) .msys button{width:17px}
+  body:not(.pc) .mapbox:not(.folded) .msys .mfold{width:24px}
 }
 /* the weekly ranking on 320–360px phones: tighter rows, a smaller 우수 stamp, sub lines that wrap instead of cutting off */
 @media (max-width:360px){
