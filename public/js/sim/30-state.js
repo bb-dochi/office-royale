@@ -40,7 +40,7 @@ const DIFF={easy:{n:'쉬움',aim:1.8,react:.35,cd:1.35,speed:.9,regen:false,idle
   hard:{n:'어려움',aim:.55,react:-.08,cd:.8,speed:1.07,regen:false,idle:true,hunt:180,huntP:.4,huntMax:2,dodge:.5,seek:.8,seekAfter:4,move:[[.15,.8,.9],[1,.9,1]],dodgeCd:[.05,.1],see:.07,lead:.85,guard:.25,plant:[.08,.12]}};
 const diff=()=>DIFF[G&&G.diff]||DIFF.normal;
 const NET_SEEK=.4;   // online rooms (G.online): fewer last-floor seekers than solo 보통's .55
-const KILL_ANY_AT=Date.parse('2026-11-02T00:00:00+09:00');   // the new 해고 rule starts with the ranking week, so one week isn't scored by two rules
+const KILL_ANY_AT=Date.parse('2026-11-02T00:00:00+09:00');   // the new 해고 rule and what counts as 업무 (G.workAll) start with the ranking week, so one week isn't scored by two rules
 function newGame(opts={}){
   NID=0;
   const actors=[],spots=[];
@@ -78,7 +78,7 @@ function newGame(opts={}){
   if(kinds.indexOf('ceo')>2){kinds.splice(kinds.indexOf('ceo'),1);kinds.splice(1,0,'ceo');}
   [rnd(28,38),rnd(62,72),rnd(150,165),rnd(195,210)].forEach((at,i)=>G.events.push({at,kind:kinds.at(i),stage:0}));
   G.events.push({at:rnd(96,104),kind:'lunch',stage:0});G.lunchKind=opts.lunch||pick(LUNCH_KINDS);
-  G.killAny=Date.now()>=KILL_ANY_AT;G.diff=DIFF[opts.diff]?opts.diff:'normal';for(const b of actors)if(!b.isPlayer){b.speed*=diff().speed;b.hunter=Math.random()<diff().huntP;}
+  G.killAny=G.workAll=Date.now()>=KILL_ANY_AT;G.diff=DIFF[opts.diff]?opts.diff:'normal';for(const b of actors)if(!b.isPlayer){b.speed*=diff().speed;b.hunter=Math.random()<diff().huntP;}
   if(opts.tutorial){G.tutorial=true;G.events=[];G.nextClose=1e9;for(const b of actors)if(!b.isPlayer)b.dummy=true;}
   UI.snapCam(me);
   UI.reset();

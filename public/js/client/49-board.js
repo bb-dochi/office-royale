@@ -3,11 +3,17 @@
    A post is new until the board has been opened once after it went up (or-board keeps the highest id seen);
    while one is new the tab, the link and the board itself say NEW!.
    Add a post at the TOP with the next id. Keep it short: what changed, in the players' words.
-   A line can be {t, s:[...]} for a heading with smaller lines under it; __words__ are bold (a <u> styled bold, no line).
+   A line can be {t, s:[...]} for a heading with smaller lines under it, or {q} for a line set off like a quote; __words__ are bold (a <u> styled bold, no line).
    A post with `at` (a KST time) stays hidden until then, so a change that starts later can be posted ahead. */
 const BOARD_ALL=[
-  {id:7,d:'10.31',t:'성과와 보상이 열렸어요!',b:['사원증 > 성과 탭이 열렸어요. 일할수록 새로운 코스튬이 열려요.','주간 랭킹 3위 안에 들면 다음 한 주 동안 특별한 후광이 함께해요. 1위는 금가루 이펙트도 한 주 동안 받아요.','쉬움 난이도는 집계되지 않아요. __성과는 오늘부터 새로 쌓여요.__']},
-  {id:5,d:'11.02',at:'2026-11-02T00:00:00+09:00',t:'랭킹 점수 계산식이 바뀌었어요',b:['이제 1위도 마지막 직급대로 점수를 받아요(기존엔 모두 CEO 점수). 대신 1위 보너스가 생겼어요.']},
+  {id:10,d:'11.02',at:'2026-11-02T00:00:00+09:00',t:'⚖️ 인사평가 점수 개편',b:[{q:'순위 + 마지막 직급 + CEO 보너스 + 해고 ×40 + 업무 ×10 + 버틴 시간'},
+    '__CEO 점수:__ 고정 500점 → 마지막 직급 점수 + CEO 보너스 300점!',
+    '__업무 인정:__ 심부름과 자리 근무(3판 모두 성공)도 업무 실적으로 인정해요.',
+    '__해고 판정:__ 내가 맞힌 뒤 3초 안에 상대의 고과가 0이 되면 해고로 인정해요.',
+    '__계단 날먹 방지:__ 계단을 오르려는 봇도 맞으면 반격해요.']},
+  {id:9,d:'11.02',at:'2026-11-02T00:00:00+09:00',t:'명예 사원 동상이 세워졌어요!',b:['지난주 랭킹 1~3위가 로비 단상에 동상으로 섰어요.','단상 앞에서 주차별 기록을 볼 수 있어요.']},
+  {id:8,d:'10.31',t:'성과와 보상이 열렸어요!',b:['사원증 > 성과 탭이 열렸어요. 일할수록 새로운 코스튬이 열려요.','주간 랭킹 3위 안에 들면 다음 한 주 동안 특별한 후광이 함께해요. 1위는 금가루 이펙트도 한 주 동안 받아요.','쉬움 난이도는 집계되지 않아요. __성과는 오늘부터 새로 쌓여요.__']},
+  {id:7,d:'10.31',t:'오피스 로얄 전용 노래가 생겼어요!',b:['로비와 게임 안에서 들을 수 있어요.']},
   {id:6,d:'10.30',t:'부서별 업무와 사원증이 생겼어요!',b:[
     '내 자리에서 __부서별 업무__를 하게 돼요.',
     '__사원증__에서 옷 갈아입기, 기기별 연동, __성과__를 확인할 수 있어요.',
@@ -26,7 +32,7 @@ function boardMark(){
   for(const el of document.querySelectorAll('.newmark:not(.idnew)'))el.hidden=!on;
 }
 const boardText=l=>esc(l).replace(/__(.+?)__/g,'<u>$1</u>');
-const boardLine=l=>typeof l==='string'?`<li>${boardText(l)}</li>`:`<li>${boardText(l.t)}<ul>${l.s.map(boardLine).join('')}</ul></li>`;
+const boardLine=l=>typeof l==='string'?`<li>${boardText(l)}</li>`:l.q?`<li class="bdq">${boardText(l.q)}</li>`:`<li>${boardText(l.t)}<ul>${l.s.map(boardLine).join('')}</ul></li>`;
 function boardOpen(){
   const seen=boardSeen();
   const days=[];for(const p of BOARD){const d=days[days.length-1];if(d&&d.d===p.d)d.ps.push(p);else days.push({d:p.d,ps:[p]});} // one date heading per day

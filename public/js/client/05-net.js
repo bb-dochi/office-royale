@@ -25,6 +25,9 @@ const ACT={
   desk:k=>NETC.on?netSend({t:'cmd',c:'desk',k}):deskKey(G.me,k),
   lane:i=>NETC.on?netSend({t:'cmd',c:'lane',i}):pickLane(G.me,i),
 };
+/* 대표님 carries last week's 1위 name (hallLoad in 52-hall.js sets it): screen only, the same in solo and online, so the rules keep saying 대표님 */
+const CEO={name:'대표님'};
+const ceoText=s=>s.replaceAll('대표님',()=>CEO.name);
 /* what the action button would do now: computed by the server online (it sees the whole state) */
 const myAction=()=>NETC.on?NETC.act:contextAction(G.me);
 function netSend(m){if(NETC.ws&&NETC.ws.readyState===1)NETC.ws.send(JSON.stringify(m));}

@@ -8,7 +8,8 @@ const HL_X=588,HL_W=56,HL_BOX={x:HL_X-HL_W*1.5,y:168,w:HL_W*3,h:46,k:'hall',sigh
 const HL_SPOT=[{x:HL_X,y:182,lift:.85,c:'#e3b53c'},{x:HL_X-HL_W,y:182,lift:.58,c:'#c5ced8'},{x:HL_X+HL_W,y:182,lift:.38,c:'#b9794a'}];
 const HL={weeks:[],week:null,top:[],cache:new Map(),group:null,cells:[],open:false};
 const hallURL=w=>rankURL(`?uid=${rankUid()}${w?`&week=${w}`:''}`,'hall');
-function hallLoad(){fetch(hallURL()).then(r=>r.json()).then(r=>{if(!r||!r.weeks)return;HL.weeks=r.weeks;HL.week=r.week;HL.top=r.top;if(r.week)HL.cache.set(r.week,r.top);hallSet();}).catch(()=>{});}
+function hallLoad(){fetch(hallURL()).then(r=>r.json()).then(r=>{if(!r||!r.weeks)return;HL.weeks=r.weeks;HL.week=r.week;HL.top=r.top;if(r.week)HL.cache.set(r.week,r.top);hallSet();
+  const w=r.weeks[r.weeks.length-1];CEO.name=w?`${w.first} 대표님`:'대표님';}).catch(()=>{});}
 /* a round red 인감 with worn ink */
 function hallStamp(){
   const C=document.createElement('canvas');C.width=C.height=320;const x=C.getContext('2d');x.strokeStyle=x.fillStyle='#c8283a';

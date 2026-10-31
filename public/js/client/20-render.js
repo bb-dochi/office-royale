@@ -1631,7 +1631,7 @@ function render(dt){
   /* npc labels */
   for(const n of npcs){const p=scr(n.x,n.y,n.kind==='ceo'?2.0:1.8);if(!p)continue;
     if(n.kind==='desk'){if(n.ask&&n.job){tag(p[0],p[1]-6,`부탁 있어요 +${n.job.r}`,'#3f6f99','#fbfaf6');outlined('!',p[0],p[1]-26,DF(26),'#3f6f99');}continue;}
-    const lbl={boss:n.senior?'전무님':'부장님',ceo:'대표님',cleaner:'청소 아주머니',busy:'옆팀 팀장',newbie:isHawawa(n)?'신입 하와와':'신입 인턴',courier:'택배 기사',cart:'커피카트',guide:'안내원',late:'지각한 대리'}[n.kind];
+    const lbl={boss:n.senior?'전무님':'부장님',ceo:CEO.name,cleaner:'청소 아주머니',busy:'옆팀 팀장',newbie:isHawawa(n)?'신입 하와와':'신입 인턴',courier:'택배 기사',cart:'커피카트',guide:'안내원',late:'지각한 대리'}[n.kind];
     tag(p[0],p[1]-6,lbl,n.senior?'#7a1f17':{boss:'#cf3626',ceo:'#c08a1e',newbie:'#3f8f5f',courier:'#b5651d',cart:'#7a4b2a',guide:'#2b4a6b',late:'#b5651d'}[n.kind]||'#5d666e','#fbfaf6');
     if(n.kind==='cart')outlined('고과 70까지 회복',p[0],p[1]+18*UIS,F(700,10),'#7a4b2a');
     if(n.kind==='newbie'&&n.att)outlined('?',p[0]+18,p[1]-24,DF(24),'#3f8f5f');

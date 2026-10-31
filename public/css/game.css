@@ -1073,6 +1073,7 @@ body.band2 .hud,body.band2 #lunchBoard,body.band2:not(.pc) #pdock .idcard{transl
 .boardlist li+li{margin-top:2px}
 .boardlist ul ul{margin-top:2px;padding-left:16px;font-size:12.5px;list-style:circle}
 .boardlist u{text-decoration:none;font-weight:900}
+.boardlist li.bdq{margin:0 0 7px -18px;padding:5px 9px;border-left:3px solid var(--ink);background:rgba(251,231,160,.38);font-weight:800;list-style:none}
 /* 사내 게시판 = update notes + 사원 의견 (2026-10-30): two columns side by side on wide screens, two tabs on phones */
 .boardmemo:has(.bdcols){max-width:880px;width:100%}
 #boardSheet{grid-template-columns:minmax(0,1fr)} /* the sheet's column otherwise grows to the card's content: on iPhones the form pushed the card past the right edge */

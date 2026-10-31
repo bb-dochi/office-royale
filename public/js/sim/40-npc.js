@@ -58,7 +58,7 @@ function errandStep(a,dt){
   const e=a.errand;e.t-=dt;
   if(a.f!==e.f||e.t<=0){a.errand=null;tell(a,'부탁을 못 들어줬다 (층을 떠났거나 시간 초과)');return;}
   if(e.step===0&&Math.hypot(a.x-e.tx,a.y-e.ty)<50){e.step=1;pop(a.f,a.x,a.y-36,'챙겼다!','#3f6f99');tell(a,'이제 부탁한 사람 자리로 돌아가요');}
-  else if(e.step===1&&Math.hypot(a.x-e.bx,a.y-e.by)<55){a.errand=null;jobDone(a,'hr');gain(a,e.r);worked(a);pop(a.f,a.x,a.y-36,`부탁 완료 +${e.r}`,'#2f7d4f');tell(a,`동료 부탁 완료: 고과 +${e.r}`);
+  else if(e.step===1&&Math.hypot(a.x-e.bx,a.y-e.by)<55){a.errand=null;jobDone(a,'hr');if(G.workAll)a.tasksDone++;gain(a,e.r);worked(a);pop(a.f,a.x,a.y-36,`부탁 완료 +${e.r}`,'#2f7d4f');tell(a,`동료 부탁 완료: 고과 +${e.r}`);
     const n=G.npcs.find(n=>n.kind==='desk'&&n.f===a.f&&Math.hypot(n.x-e.bx,n.y-e.by)<2);if(n)say(n,pick(['고마워요!','역시 최고예요','다음에 밥 살게요!']),'#2f7d4f');}
 }
 function soundAlert(f,victim,ox,oy,thrower){

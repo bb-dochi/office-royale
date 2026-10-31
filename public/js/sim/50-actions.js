@@ -258,7 +258,7 @@ function endDesk(a){
 }
 function deskDone(a,ok){
   const d=a.desk,r=DESK.rew[d.round];
-  if(ok){jobDone(a,'dev');d.ok++;d.gain+=r;gain(a,r);pop(a.f,a.x,a.y-30,`+${r} ${d.job}`,'#2f7d4f');}
+  if(ok){jobDone(a,'dev');d.ok++;if(G.workAll&&d.ok===DESK.rounds)a.tasksDone++;d.gain+=r;gain(a,r);pop(a.f,a.x,a.y-30,`+${r} ${d.job}`,'#2f7d4f');}
   d.res=ok?'ok':'bad';d.resT=G.t;d.round++;d.wait=DESK.gap;d.seq='';
 }
 function deskKey(a,k){

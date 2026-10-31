@@ -230,7 +230,7 @@ function frameBody(now){
    is not pushed out by an ordinary one for its first 1.5 s, and repeats only refresh the timer */
 const FD={el:null,hot:false,t0:0,out:0,gone:0};
 function feedDOM(msg,hot){
-  const f=$('feed'),now=performance.now();
+  msg=ceoText(msg);const f=$('feed'),now=performance.now();
   if(FD.el&&FD.el.isConnected){
     if(FD.el.textContent===msg){FD.el.classList.remove('out');}
     else if(FD.hot&&!hot&&now-FD.t0<1500)return;
@@ -244,7 +244,7 @@ function feedDOM(msg,hot){
 const forMe=a=>!a||!G||!G.me||a===G.me;
 Object.assign(UI,{
   feed:(msg,hot,to)=>{if(!forMe(to))return;const t=typeof msg==='function'?msg(G.me):msg;if(t)feedDOM(t,hot);},
-  notice:t=>{$('noticeText').textContent=t;$('notice').hidden=false;},
+  notice:t=>{$('noticeText').textContent=ceoText(t);$('notice').hidden=false;},
   noticeEnd:()=>{$('notice').hidden=true;},
   branch:a=>{if(forMe(a)&&$('branchBox').hidden)openBranch();},
   shake:(v,a)=>{if(forMe(a)&&!reduceMotion)shake=v;},

@@ -335,7 +335,7 @@ function hud(dt){
   phoneHud(me);
   // call box (every frame)
   if(me.call&&me.alive){
-    if(lastCall!==me.call){lastCall=me.call;$('callWho').textContent=me.call.n.kind==='ceo'?'대표님':`${bossTitle(me.call.n)}이 부릅니다`;$('callQ').textContent=me.call.line.q;
+    if(lastCall!==me.call){lastCall=me.call;$('callWho').textContent=me.call.n.kind==='ceo'?CEO.name:`${bossTitle(me.call.n)}이 부릅니다`;$('callQ').textContent=me.call.line.q;
       $('callOpts').innerHTML=callOptions(me).map((o,i)=>`<button data-k="${o.key}">${i+1}. ${o.t}<small>${o.s}</small></button>`).join('');$('callBox').hidden=false;}
     $('callTm').style.width=Math.max(0,me.call.t/me.call.max*100)+'%';
   }else if(lastCall){lastCall=null;$('callBox').hidden=true;}
