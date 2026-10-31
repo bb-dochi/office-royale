@@ -194,7 +194,11 @@ body.plaza #home.closed:not([hidden]) ~ #dock{display:flex}
 #dock button:active{transform:translateX(-2px)}
 #dock button.pri{min-width:114px;background:var(--ink);color:var(--paper);border-left-color:var(--lit);font:900 14px var(--display)}
 #dock button[data-go=guide]{border-left-color:var(--stamp)}
-#dock button.gap{margin-top:12px}
+#dock button.gap{margin-top:24px}
+/* the lower group (게시판, 튜토리얼, 설정): smaller, plainer tabs, so the game menu above stands out */
+#dock button.sub{min-width:82px;padding:6px 12px 6px 11px;border-left-width:3px;background:#dcdedb;color:#4a5157;font:700 12px var(--body);box-shadow:-2px 2px 0 rgba(0,0,0,.22)}
+#dockCount{flex:none}
+@media (max-height:460px){#dock{gap:4px}#dock button{padding-block:6px}#dock button.gap{margin-top:12px}#dock button.sub{padding-block:4px}}
 /* NEW! on the 사내 게시판 tab and link while a post is unread */
 .newmark{position:absolute;top:-6px;right:6px;display:block;padding:0 3px 1px;border-radius:2px;background:var(--stamp);color:#fff;font:900 8px/1.2 var(--body);font-style:normal;letter-spacing:.02em;vertical-align:1px;text-decoration:none;animation:newmark 1.6s ease-in-out infinite}
 .newmark[hidden]{display:none}
@@ -202,6 +206,12 @@ body.plaza #home.closed:not([hidden]) ~ #dock{display:flex}
 @media (prefers-reduced-motion:reduce){.newmark{animation:none}}
 #dockCount{margin:0 10px 2px 0;font:800 11px var(--body);color:var(--ok);background:var(--paper);border-radius:3px;padding:2px 7px;box-shadow:0 2px 0 rgba(0,0,0,.25)}
 @media (prefers-reduced-motion:reduce){#dock button{transition:none}}
+/* sound panel: opened from any 🔊 button or the 소리 tab; 25-juice.js places it next to whichever opened it */
+#sound{position:fixed;z-index:20;box-sizing:border-box;width:236px;padding:8px 12px 6px;background:var(--paper);color:var(--ink);border:2px solid var(--ink);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+#sound label{display:grid;grid-template-columns:42px 1fr 28px;align-items:center;gap:8px;min-height:36px;font:800 12px var(--body)}
+#sound input{width:100%;height:28px;margin:0;accent-color:var(--stamp);touch-action:none;cursor:pointer}
+#sound output{text-align:right;font:800 12px var(--body);color:var(--muted);font-variant-numeric:tabular-nums}
+#sound .tlink{display:block;margin:2px 0 0 auto;font-size:12px}
 /* first visit: pick a name before anything else; afterwards a small chip to change it */
 .homecard .namerow{display:flex;gap:8px;margin:4px 0 6px}
 .homecard .namerow input{flex:1;min-width:0;box-sizing:border-box;font:900 18px var(--display);color:var(--ink);background:#fff;border:2px solid var(--ink);border-radius:6px;padding:9px 12px;outline:none}

@@ -66,10 +66,10 @@ function plazaStart(keepLobby){
   plazaWorld();document.body.classList.add('plaza');
   for(const id of['lobby','result','cine','notice','callBox','branchBox','countdown','spec'])if(!(keepLobby&&id==='lobby'))$(id).hidden=true;
   $('home').hidden=!!keepLobby;$('feed').textContent='';PZ.roomSent='';
-  plazaConnect();if(typeof careerLoad==='function')careerLoad();if(typeof hallLoad==='function')hallLoad();   // (the very first time 51-career.js and 52-hall.js aren't loaded yet: they do this themselves)
+  plazaConnect();bgmPlay('audio/lobby.mp3');if(typeof careerLoad==='function')careerLoad();if(typeof hallLoad==='function')hallLoad();   // (the very first time 51-career.js and 52-hall.js aren't loaded yet: they do this themselves)
 }
 function plazaStop(){
-  if(!PZ.on)return;PZ.on=false;if(G&&G.plaza&&G.me){G.me.wc=null;if(G.me.sit)pzStand();}if(typeof hallStop==='function')hallStop();
+  if(!PZ.on)return;PZ.on=false;bgmStop();if(G&&G.plaza&&G.me){G.me.wc=null;if(G.me.sit)pzStand();}if(typeof hallStop==='function')hallStop();
   {const fl=FLOORS[0];let ch=false;for(const d of fl.doors)if(d.open){d.open=false;ch=true;}if(ch)refreshObs(fl);}dressClose();document.body.classList.remove('plaza');$('home').hidden=true;$('pzRooms').hidden=true;PZ.roomsKey='';
   const ws=PZ.ws;PZ.ws=null;PZ.online=false;if(ws)try{ws.close();}catch{}
 }
@@ -212,6 +212,7 @@ $('dock').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)
   else if(go==='multi'){$('home').hidden=true;showLobby();}
   else if(go==='rank')rankOpen();
   else if(go==='tut')tutStart();
+  else if(go==='sound')soundOpen(b);
   else if(go==='dress'){PZ.dressFromDock=true;$('home').classList.remove('closed');dressOpen();}});
 $('hSolo').addEventListener('click',diffOpen);
 /* 부서 안내: one card per team, opened from the 팀 보기 link on the guide */

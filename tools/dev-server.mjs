@@ -21,7 +21,7 @@ const PORT = +(process.argv.slice(2).find(a => /^\d+$/.test(a)) || process.env.P
 const PUB = fileURLToPath(new URL('../public/', import.meta.url));
 const SIM = join(PUB, 'js', 'sim');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.jpg': 'image/jpeg', '.webp': 'image/webp' };
+  '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.mp3': 'audio/mpeg' };
 
 /* each room gets its own copy of the rules (they keep state in globals) */
 function createSim() {

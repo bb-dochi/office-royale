@@ -67,7 +67,7 @@ $('dPad').addEventListener('pointerdown',e=>{const b=e.target.closest('button');
 $('pills').addEventListener('pointerdown',e=>{const b=e.target.closest('button');if(!b)return;e.preventDefault();e.stopPropagation();
   const a=b.dataset.a;if(a==='up')ACT.floor(1);else if(a==='down')ACT.floor(-1);else if(a==='act')doInteract();});
 $('callOpts').addEventListener('pointerdown',e=>{const b=e.target.closest('button');if(!b)return;e.preventDefault();e.stopPropagation();if(G&&G.me.call)ACT.answer(b.dataset.k);});
-document.addEventListener('touchmove',e=>{if(e.touches.length>1||!e.target.closest('.sheet,.idpane'))e.preventDefault();},{passive:false});
+document.addEventListener('touchmove',e=>{if(e.touches.length>1||!e.target.closest('.sheet,.idpane,#sound'))e.preventDefault();},{passive:false});
 /* two thumbs on the glass (stick + 서류 투척) can read as a pinch and iOS ignores user-scalable=no, so its gesture events are
    stopped too. If the page gets zoomed anyway nothing here can pinch it back out: a short maximum-scale puts it back */
 for(const t of ['gesturestart','gesturechange'])document.addEventListener(t,e=>e.preventDefault(),{passive:false});
