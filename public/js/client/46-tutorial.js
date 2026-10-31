@@ -87,4 +87,4 @@ addEventListener('keydown',e=>{if(e.key==='Enter'&&TUT.on&&TUT_STEPS[TUT.i]&&TUT
 $('tutSkip').addEventListener('click',()=>{if(TUT.i<TUT_STEPS.length-1)tutGo(TUT.i+1);});
 $('tutQuit').addEventListener('click',()=>{tutStop();plazaStart();});
 $('tutHome').addEventListener('click',()=>{tutStop();plazaStart();});
-$('tutPlay').addEventListener('click',()=>{tutStop();start();});
+$('tutPlay').addEventListener('click',()=>{tutStop();start('easy');});

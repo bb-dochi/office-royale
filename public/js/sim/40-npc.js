@@ -1,12 +1,12 @@
 /* ================= NPC senses ================= */
-const VIS={boss:{len:230,half:.52,pres:80,sound:260},ceo:{len:345,half:.7,pres:120,sound:390},busy:{len:120,half:.6,pres:0,sound:0}};
+const VIS={boss:{len:230,half:.52,pres:80,sound:260},ceo:{len:345,half:.7,pres:120,sound:390},busy:{len:120,half:.6,pres:0,sound:0},late:{len:0,half:0,pres:90,sound:0}}; // late: nothing to dodge, only the 인사 range drawn under their feet
 function npcActive(n){
   if(G.tutorial&&!n.tut)return false; // the tutorial switches NPCs on one at a time
   if(n.kind==='ceo')return true;
   if(!isOpen(n.f))return false;
   /* roof lunch: 부장님 stay down on the floors (greet first as usual), so sitting the lunch out there isn't free; everyone else is out */
   if(n.kind!=='cleaner'&&G.lunch&&!(n.kind==='boss'&&roofLunch()))return false;
-  if(n.kind==='courier'&&!n.on)return false;
+  if((n.kind==='courier'||n.kind==='late')&&!n.on)return false;
   if(n.kind==='boss'){if(G.final)return false;if(n.slot===1&&!(n.f===topOpen()&&G.closed<NF-1))return false;}
   return true;
 }
@@ -111,6 +111,34 @@ function greet(a){
     return;}
   a.greetLock=2;if(a.isPlayer)say(a,'안녕하… 세요?','#5d666e');
 }
+/* 안내원 (lobby only): it's their first day, so they ask anyone who comes to the desk for help. Pays little on purpose:
+   one go never reaches 사원 (55) by itself, so it works as the 인사팀 route's first step (응대 1.5 beats a task's 1)
+   instead of a promotion of its own. Humans only */
+const GUIDE={r:2,cd:20,gap:12,desk:{x:K(400),y:K(490),w:K(300),h:K(180)},
+  ask:['아… 오늘 첫날이라 일이 많네요','첫날이라 힘든데 좀 도와주세요!','오늘 첫날인데 방문객이 왜 이렇게 많죠…'],
+  me:['제가 좀 도와드릴게요!','많이 힘드시죠ㅠㅠ'],says:['감사합니다, 덕분에 살았어요!','첫날부터 은인을 만났네요']};
+const guideNear=a=>a.f===0&&inRect(a,GUIDE.desk)?G.npcs.find(n=>n.kind==='guide'&&npcActive(n))||null:null;
+function guideStep(n){if(G.t<(n.askT||0)||!humans().some(h=>h.alive&&h.guideCd<=G.t&&guideNear(h)))return;n.askT=G.t+GUIDE.gap;say(n,pick(GUIDE.ask),'#2b4a6b');}
+function helpGuide(a,n){a.guideCd=G.t+GUIDE.cd;jobDone(a,'hr');gain(a,GUIDE.r);worked(a);say(a,pick(GUIDE.me));say(n,pick(GUIDE.says),'#2b4a6b');pop(a.f,a.x,a.y-36,`안내 +${GUIDE.r}`,'#2f7d4f');tell(a,`안내 데스크를 도왔다 +${GUIDE.r}`);}
+/* 지각한 대리 (lobby only, about every other game): lost, they tear round the whole lobby from the front door and only then
+   reach the elevator, faster than a sprinting player (262), so you cut them off rather than chase them. The first to greet
+   them counts as 응대 and gets a coffee: 회복, so it doesn't count toward promotion and can't decide a team by itself */
+const LATE={p:.5,at:[10,25],speed:330,r:VIS.late.pres,hold:1.2,coffee:7,botR:60,botP:.3,run:['늦었다 늦었다!','엘리베이터가 어디였지?!','오늘만 봐주세요!'],
+  me:['대리님, 이쪽으로 오세요~','제가 안내해 드릴게요!','엘리베이터는 저쪽이에요!'],
+  route:[[100,640],[100,380],[550,300],[950,380],[930,620]]};
+function lateCatch(a,n){if(n.caught||!n.on)return;n.caught=true;n.hold=LATE.hold;n.face=Math.atan2(a.y-n.y,a.x-n.x);jobDone(a,'hr');gain(a,LATE.coffee,true);worked(a);
+  say(a,pick(LATE.me));say(n,'고마우니까 커피 살게요~','#b5651d');pop(a.f,a.x,a.y-36,`커피 얻어먹음 +${LATE.coffee}`,'#7a4b2a');tell(a,`지각한 대리님께 인사했다 · 회복 +${LATE.coffee}`);}
+function lateStep(n,dt){
+  if(n.gone)return;
+  if(!n.on){if(G.t<n.at)return;n.on=true;n.path=[];say(n,pick(LATE.run),'#b5651d');
+    {let x=n.x,y=n.y;for(const q of[...LATE.route.map(([rx,ry])=>({x:K(rx),y:K(ry)})),{x:PADS.elev.x,y:PADS.elev.y-20}]){n.path.push(...findPath(n.f,x,y,q.x,q.y));x=q.x;y=q.y;}}
+    for(const h of humans())if(h.alive&&h.f===n.f)tell(h,'지각한 대리 등장: 먼저 인사하면 커피를 사 줘요');}
+  if(!isOpen(n.f)||G.lunch||!n.path.length){n.on=false;n.gone=true;return;}
+  if(!n.caught)for(const b of G.actors)if(!b.isPlayer&&b.alive&&b.f===n.f&&!b.transit&&!b.sit&&dist(b,n)<LATE.botR&&Math.random()<LATE.botP*dt){lateCatch(b,n);break;}
+  if(n.hold>0){n.hold-=dt;return;}
+  const p=n.path[0],dx=p.x-n.x,dy=p.y-n.y,d=Math.hypot(dx,dy);if(d<6){n.path.shift();return;}
+  const sp=Math.min(d,LATE.speed*dt);n.x+=dx/d*sp;n.y+=dy/d*sp;n.face+=angDiff(Math.atan2(dy,dx),n.face)*Math.min(1,dt*8);
+}
 function answerQuest(a){if(!a.quest)return;jobDone(a,'hr');const n=a.quest.n;a.quest=null;a.questCd=G.t+15;n.att=null;n.cool=G.t+10;n.path=[];gain(a,2);pop(a.f,a.x,a.y-36,'멘토링 +2','#2f7d4f');tell(a,'신입에게 친절하게 알려줬다 +2');
   if(isHawawa(n))say(n,pick(HAWAWA.thanks)(hwCall(a)),'#3f8f5f');}
 /* 하와와: the 6F newbie, who drawls. Calls people "민지 선배" (a three-syllable name loses the surname), just "선배" when the name is long */
@@ -142,8 +170,10 @@ function updNpcs(dt){
     else{n.left-=dt;n.dropT-=dt;
       if(n.dropT<=0){n.dropT=rnd(5,7);if(G.items.filter(i=>i.f===n.f).length<itemQuota(n.f)+3){spawnItem(n.f,null,{x:n.x,y:n.y+22});pop(n.f,n.x,n.y-40,'택배 상자 툭','#b5651d');}}
       if(n.left<=0||!isOpen(n.f)||G.lunch){n.on=false;n.cd=rnd(35,55);}}}
+  for(const n of G.npcs)if(n.kind==='late')lateStep(n,dt);
   for(const n of G.npcs){
-    if(!npcActive(n))continue;
+    if(!npcActive(n)||n.kind==='late')continue;
+    if(n.kind==='guide'){guideStep(n);continue;}
     if(n.kind==='desk'){deskStep(n);continue;}
     const fl=FLOORS[n.f];
     if(n.alert){n.alert.t-=dt;if(n.alert.t<=0){n.face=n.alert.ang;n.hold=2;const w=n.alert.who;n.alert=null;

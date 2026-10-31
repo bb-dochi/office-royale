@@ -47,6 +47,7 @@ function netConnect(code,name,onRoom,onFail,tries=0){
       if(tries&&m.state!=='playing')tries=0;NETC.room=m;NETC.you=m.you;onRoom(m);}
     else if(m.t==='start'){NETC.you=m.you;tries=0;netBegin();if(m.resume)feedDOM('다시 연결됐어요');}
     else if(m.t==='s'){if(NETC.on&&G&&G.net)netApply(m);} // never into the lobby world
+    else if(m.t==='news')careerOnline(m.career);
     else if(m.t==='pong'){const r=(performance.now()-m.ct)/1000;if(r>=0&&r<3)NETC.rtt=NETC.rtt*.7+r*.3;}
     else if(m.t==='err'){onFail(m.m);}};
   ws.onclose=()=>{if(NETC.ws!==ws)return;NETC.ws=null;
@@ -90,7 +91,7 @@ function netApply(m){
     if(s.id!==meId)pushSamp(a,P.t,s,a.f!==a.lastF||!!a.transit);
     a.nx=s.x??0;a.ny=s.y??0;a.lastF=a.f;
     a.sit=seatAt(s.sit);a.transit=s.transit||null;a.chan=s.chan||null;a.call=s.call||null;return a;});
-  for(const s of P.N){const n=keep(NETC.byN,s.id,()=>({...s,samp:[],path:[]}));const jump=n.f!==s.f;Object.assign(n,{kind:s.kind,f:s.f,slot:s.slot,on:s.on,senior:!!s.sr,ask:s.ask>0,job:s.ask>0?{r:s.ask}:null});pushSamp(n,P.t,s,jump);}
+  for(const s of P.N){const n=keep(NETC.byN,s.id,()=>({...s,samp:[],path:[]}));const jump=n.f!==s.f;Object.assign(n,{kind:s.kind,f:s.f,slot:s.slot,on:s.on,senior:!!s.sr,ask:s.ask>0,job:s.ask>0?{r:s.ask}:null,caught:!!s.cg,sprint:s.kind==='late'});pushSamp(n,P.t,s,jump);}
   G.npcs=P.N.map(s=>NETC.byN.get(s.id));G.ceo=npcBy(P.ceo);
   G.tasks=P.T.map(s=>{const t=keep(NETC.byT,s.id,()=>({react:{}}));Object.assign(t,s);if('seat' in s)t.seat=seatAt(s.seat);t.by=actorBy(s.by);return t;});
   G.items=listFrom(P.I,'i',(o,s)=>Object.assign(o,s));

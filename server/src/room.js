@@ -6,7 +6,8 @@ export const MAX_PLAYERS = 10;
 const TICK = 1 / 30, SEND_EVERY = 3, AFTER_OVER = 8; // 30 steps/s, 10 snapshots/s, back to lobby 8s after the end
 
 export class RoomCore {
-  /* onGame(results): called once when a match is decided, one entry per person who started it (play stats) */
+  /* onGame(results): one person's game for the records (play stats, 성과), when they are out or the match is decided. May answer with
+     their career ({code, news}), which goes to that player, as /api/game does for a solo game */
   constructor(code, { createSim, send, onEmpty, onGame }) {
     this.code = code; this.createSim = createSim; this.send = send; this.onEmpty = onEmpty || (() => {}); this.onGame = onGame || (() => {});
     this.peers = []; // {key, name, inGame}
@@ -60,6 +61,7 @@ export class RoomCore {
     if (this.state !== 'playing' || !peer.inGame) return;
     if (m.t === 'in') this.sim.NET.input(peer.key, m);
     else if (m.t === 'cmd') this.sim.NET.cmd(peer.key, m);
+    else if (m.t === 'quit') { const s = this.started.find(x => x.key === peer.key); if (this.sim.NET.quit(peer.key) && s) s.saved = true; } // a game not played to the end isn't recorded, as in solo
   }
   begin() {
     this.sim = this.createSim(); this.state = 'playing'; this.tick = 0; this.overT = 0;
@@ -92,10 +94,20 @@ export class RoomCore {
     }
     /* decided: someone won, or every person is out and only bots are left (no point making the room watch them) */
     const done = this.sim.over() || NET.humansOut();
-    if (done && this.overT === 0) {
-      try { this.onGame(this.started.map(p => ({ uid: p.uid, name: p.name, room: this.code, ...NET.result(p.key) }))); } catch (e) { console.error('stats', e); }
-    }
+    this.settle(done);
     if (done) { this.overT += TICK; if (this.overT > AFTER_OVER) { this.stop(); this.broadcastRoster(); } }
+  }
+  /* someone a bot is playing for has nothing recorded: if they come back in time it counts as theirs, if not the game is dropped */
+  settle(done) {
+    for (const s of this.started) if (!s.saved && this.peers.some(p => p.key === s.key && !p.away) && (done || this.sim.NET.isOut(s.key))) this.save(s);
+  }
+  save(s) {
+    s.saved = true;
+    try {
+      Promise.resolve(this.onGame([{ uid: s.uid, name: s.name, room: this.code, ...this.sim.NET.result(s.key) }])).then(rs => {
+        const p = this.peers.find(x => x.key === s.key && !x.away); if (p && rs && rs[0]) this.send(p, { t: 'news', career: rs[0] });
+      }).catch(e => console.error('stats', e));
+    } catch (e) { console.error('stats', e); }
   }
   stop() {
     if (this.timer) clearInterval(this.timer);

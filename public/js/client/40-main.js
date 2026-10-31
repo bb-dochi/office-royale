@@ -33,7 +33,7 @@ function showResult(win){
   $('rNote').textContent=note;
   Object.assign(RES,{win,title:$('rTitle').textContent,name:me.name==='나'?store.get('or-name')||'신입':me.name,place:$('rPlace').textContent,time:$('rTime').textContent,
     rank:$('rRank').textContent,perf:$('rPerf').textContent,note});
-  $('rNews').hidden=$('rBang').hidden=true;for(const el of document.querySelectorAll('#result .rsc'))el.hidden=true;if(!NETC.room&&!G.net&&!G.tutorial)rankSubmit(win); // solo: stats, and the weekly score on 어려움
+  $('rNews').hidden=$('rBang').hidden=true;for(const el of document.querySelectorAll('#result .rsc'))el.hidden=true;careerLate();if(G.net)setTimeout(careerLoad,2500);if(!NETC.room&&!G.net&&!G.tutorial)rankSubmit(win); // solo: stats, and the weekly score on 어려움
   $('watchBtn').hidden=win||G.over||!running; // nothing left to watch once the room has gone back to its lobby
   $('againBtn').textContent=NETC.room?'대기실로':'다시 출근';
   $('result').hidden=false;$('callBox').hidden=true;
@@ -71,15 +71,16 @@ function keybar(){
 }
 function startScreens(){paused=false;$('pause').hidden=true;plazaStop();if(typeof TUT!=='undefined')tutStop();$('home').hidden=true;$('countdown').hidden=true;lastCd='';$('branchBox').hidden=true;branchT=0;$('cineTower').hidden=false;running=true;lastItem='x';lastPills='x';lastCall=null;
   $('lobby').hidden=true;$('result').hidden=true;$('cine').hidden=true;$('notice').hidden=true;$('callBox').hidden=true;$('feed').textContent='';cineT=0;if(isTouch)$('hint').hidden=false;}
-/* ---------- solo pause (Esc or the ❚❚ on the ID card): the rules stop, nothing else changes ---------- */
+/* ---------- pause (Esc or the ❚❚ on the ID card). Solo: the rules stop, nothing else changes. Online: only a popup, the match runs on ---------- */
 let paused=false;
-function pauseOpen(on){paused=on;$('pause').hidden=!on;if(on){keys.clear();throwHeld=false;}}
-const canPause=()=>running&&G&&G.me&&G.me.alive&&!NETC.on&&!G.net&&!(typeof TUT!=='undefined'&&TUT.on)&&$('result').hidden;
+function pauseOpen(on){paused=on;$('pause').hidden=!on;if(on){keys.clear();throwHeld=false;const net=!!G.net;$('pRestart').hidden=net;
+  $('pTitle').textContent=net?'자리 비움':'잠깐 멈춤';$('pSub').textContent=net?'같이 하기라서 회사 시계는 멈추지 않아요.\n나가면 이번 판은 탈락 처리되고 기록되지 않아요.':'혼자 하기라서 회사 시계도 같이 멈춰 있어요.';}}
+const canPause=()=>running&&G&&G.me&&G.me.alive&&!(typeof TUT!=='undefined'&&TUT.on)&&$('result').hidden;
 addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(paused){e.preventDefault();pauseOpen(false);}else if(canPause()){e.preventDefault();pauseOpen(true);}});
 $('pauseBtn').addEventListener('click',e=>{e.stopPropagation();if(canPause())pauseOpen(true);});
 $('pResume').addEventListener('click',()=>pauseOpen(false));
 $('pRestart').addEventListener('click',()=>{pauseOpen(false);start();});
-$('pHome').addEventListener('click',()=>{pauseOpen(false);running=false;plazaStart();});
+$('pHome').addEventListener('click',()=>{pauseOpen(false);if(G.net){netSend({t:'quit'});netClose();}running=false;plazaStart();});
 /* solo: d is the difficulty picked on the 난이도 sheet; restarts (다시 출근, pause) reuse the last one */
 function start(d){if((d||store.get('or-diff'))===RANKED&&!hardOpen()){store.set('or-diff','normal');diffOpen();return;} // 어려움 still locked: show why
   netClose();if(DIFF[d])store.set('or-diff',d);$('diffSheet').hidden=true;
@@ -217,7 +218,8 @@ function frameBody(now){
   shake=Math.max(0,shake-dt);
   /* hit-stop: in solo the rules crawl for a blink after a hit that involves me (online the server keeps time) */
   let sdt=dt;if(hitStop>0){hitStop-=dt;if(!NETC.on&&!reduceMotion)sdt=dt*.08;}
-  if(running&&G&&!paused){readInput();if(NETC.on){netSendInput();netFrame(dt);}else if(!G.net)step(sdt);}
+  if(paused&&G&&G.net&&!canPause())pauseOpen(false);   // knocked out or the match ended behind the popup
+  if(running&&G&&(!paused||G.net)){readInput();if(NETC.on){netSendInput();netFrame(dt);}else if(!G.net)step(sdt);}
   else if(PZ.on){readInput();plazaFrame(dt);}
   if(typeof TUT!=='undefined'&&TUT.on)tutFrame(dt); // the loop can start before 46-tutorial.js has loaded
   juiceFrame(dt);

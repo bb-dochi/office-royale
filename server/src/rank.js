@@ -103,7 +103,11 @@ export async function apiHTTP({ rank, stats, career, feedback }, method, url, bo
 
 /* an online match is over: play stats and careers for everyone who started it (the room's own rules wrote the results) */
 export async function recordMatch({ stats, career }, rs) {
+  const out = [];
   for (const g of rs) {
-    try { await stats.record({ ...g, mode: 'multi' }); if (okUid(g.uid)) await career.record(g.uid, g); } catch (err) { console.error('career', err); } // one bad entry doesn't drop the others
+    let c = null;
+    try { await stats.record({ ...g, mode: 'multi' }); if (okUid(g.uid)) c = await career.record(g.uid, g); } catch (err) { console.error('career', err); } // one bad entry doesn't drop the others
+    out.push(c);
   }
+  return out;
 }

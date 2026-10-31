@@ -47,7 +47,7 @@ const press=(el,fn)=>{const on=()=>running||!!(G&&G.plaza); // in a match, or wa
   el.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(on())fn();});el.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&on()){e.preventDefault();fn();}});};
 tb.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();throwHeld=true;if(running)ACT.throw(autoAim(G.me));});
 ['pointerup','pointercancel','pointerleave'].forEach(t=>tb.addEventListener(t,()=>throwHeld=false));
-press(gb,()=>{if(!running&&G&&G.plaza)pzUse();else doInteract();});
+press(gb,()=>{if(!running&&G&&G.plaza){if(!pzUse())plazaSayRandom();}else doInteract();}); // nothing to use in the lobby: says a random line, like E on PC
 let ibT=null,ibLong=false;
 $('slots').addEventListener('pointerdown',e=>{const b=e.target.closest('.slot');if(!b)return;e.preventDefault();e.stopPropagation();ibLong=false;});
 $('slots').addEventListener('pointerup',e=>{const b=e.target.closest('.slot');clearTimeout(ibT);if(!b)return;e.preventDefault();if(!ibLong&&running)ACT.item(+b.dataset.i);ibLong=true;});
@@ -56,24 +56,31 @@ press($('pCash'),()=>{if(!running&&G&&G.plaza)pzUse();else doInteract();});
 /* phones: the control guide's chips (keybar() in 40-main.js) are buttons */
 $('keybar').addEventListener('pointerdown',e=>{const b=e.target.closest('[data-a]');if(!b||!running)return;e.preventDefault();e.stopPropagation();
   const a=b.dataset.a;if(a==='down')ACT.floor(-1);else if(a==='skill')ACT.skill();});
-$('mapbox').addEventListener('pointerdown',e=>{if(e.target.closest('.msys button'))return;e.preventDefault();e.stopPropagation();toggleMap();});
+$('mapbox').addEventListener('pointerdown',e=>{if(e.target.closest('.msys button'))return;e.preventDefault();e.stopPropagation();if($('mapbox').classList.contains('folded'))mapFold(false);else toggleMap();}); // folded there is no map to enlarge: a tap anywhere unfolds it
 for(const b of document.querySelectorAll('.msys button'))b.addEventListener('pointerdown',e=>e.stopPropagation());
 /* phones: the map folds down to its title bar (remembered) */
-function mapFold(on){$('mapbox').classList.toggle('folded',on);$('mFold').textContent=on?'지도':'▴';$('mFold').setAttribute('aria-label',on?'지도 펴기':'지도 접기');try{localStorage.setItem('or-mapfold',on?'1':'');}catch{}}
+const MAP_UP='<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M2.5 11.5 8 6l5.5 5.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function mapFold(on){$('mapbox').classList.toggle('folded',on);$('mFold').innerHTML=on?'지도':MAP_UP;$('mFold').setAttribute('aria-label',on?'지도 펴기':'지도 접기');try{localStorage.setItem('or-mapfold',on?'1':'');}catch{}}
 $('mFold').addEventListener('click',e=>{e.stopPropagation();mapFold(!$('mapbox').classList.contains('folded'));});
-try{if(localStorage.getItem('or-mapfold'))mapFold(true);}catch{}
+{let f=false;try{f=!!localStorage.getItem('or-mapfold');}catch{}mapFold(f);}
 $('dPad').addEventListener('pointerdown',e=>{const b=e.target.closest('button');const pz=!running&&G&&G.plaza;if(!b||!running&&!pz)return;e.preventDefault();e.stopPropagation();if(b.dataset.k==='Q'){if(pz)pzUse();else doInteract();}else if(pz)deskKey(G.me,b.dataset.k);else ACT.desk(b.dataset.k);});
 $('pills').addEventListener('pointerdown',e=>{const b=e.target.closest('button');if(!b)return;e.preventDefault();e.stopPropagation();
   const a=b.dataset.a;if(a==='up')ACT.floor(1);else if(a==='down')ACT.floor(-1);else if(a==='act')doInteract();});
 $('callOpts').addEventListener('pointerdown',e=>{const b=e.target.closest('button');if(!b)return;e.preventDefault();e.stopPropagation();if(G&&G.me.call)ACT.answer(b.dataset.k);});
-document.addEventListener('touchmove',e=>{if(!e.target.closest('.sheet,.idpane'))e.preventDefault();},{passive:false});
+document.addEventListener('touchmove',e=>{if(e.touches.length>1||!e.target.closest('.sheet,.idpane'))e.preventDefault();},{passive:false});
+/* two thumbs on the glass (stick + 서류 투척) can read as a pinch and iOS ignores user-scalable=no, so its gesture events are
+   stopped too. If the page gets zoomed anyway nothing here can pinch it back out: a short maximum-scale puts it back */
+for(const t of ['gesturestart','gesturechange'])document.addEventListener(t,e=>e.preventDefault(),{passive:false});
+if(window.visualViewport){const m=document.querySelector('meta[name=viewport]'),c=m.content;let t=0;
+  const unzoom=()=>{clearTimeout(t);t=setTimeout(()=>{if(visualViewport.scale>1.01){m.content=c+',maximum-scale=1';setTimeout(()=>m.content=c,100);}},250);};
+  visualViewport.addEventListener('resize',unzoom);addEventListener('focusout',unzoom);}
 
 function readInput(){
   if(!G||!G.me)return;const me=G.me;let vx=0,vy=0;
   if(keys.has('ArrowLeft')||keys.has('KeyA'))vx-=1;if(keys.has('ArrowRight')||keys.has('KeyD'))vx+=1;
   if(keys.has('ArrowUp')||keys.has('KeyW'))vy-=1;if(keys.has('ArrowDown')||keys.has('KeyS'))vy+=1;
   if(joy.id!==null){vx+=joy.dx;vy+=joy.dy;}
-  if(me.desk)vx=vy=0;
+  if(me.desk||paused)vx=vy=0;   // (online the 자리 비움 popup doesn't stop the clock)
   me.input={vx,vy,fire:throwHeld,run:keys.has('ShiftLeft')||keys.has('ShiftRight')||(joy.id!==null&&joy.full)};
   me.aim=performance.now()-mouse.t<1500?aimAngle(me):null;
 }

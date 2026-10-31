@@ -132,7 +132,7 @@ async function feedbackSection(feedback, link) {
 /* 성과 of one person: each 성과's number and step, links to put it at any step (test), what it has opened, what they wear */
 const stepName = i => i ? STEPS[i - 1] : '없음';
 function gotOf(aw, step) { const out = []; for (let s = 1; s <= step; s++) { const r = rewardsOf(aw, s); if (r.title) out.push(`「${r.title}」`); out.push(...r.items.map(x => x.n)); } return out; }
-async function awardSection(career, uid) {
+async function awardSection(career, uid, testTools) {
   const v = career && await career.awardsOf(uid);
   if (!v) return section('성과', '<p class="empty sm">사원코드가 없어요. 첫 판을 마치면 생겨요.</p>', '', 'aw');
   const u = `?uid=${encodeURIComponent(uid)}`, R = globalThis.REWARDS;
@@ -148,10 +148,11 @@ async function awardSection(career, uid) {
   const has = new Set(v.own), own = REWARD_KINDS.flatMap(([kind, label]) => Object.entries(R[kind]).filter(([id, r]) => r.aw || kind === 'color').map(([id, r]) => ({ key: `${kind}:${id}`, n: `${label} · ${r.n}` })));
   const piece = p => `<a class="stp${has.has(p.key) ? ' on' : ''}" href="${u}&own=${encodeURIComponent(p.key)}&on=${has.has(p.key) ? 0 : 1}#aw">${esc(p.n)}</a>`;
   const total = v.list.reduce((s, a) => s + a.step, 0);
+  const fake = !testTools ? '' : `<p class="sm note"><b>지난주 순위 테스트</b> <span class="mut">(이 서버 전용, 랭킹은 그대로)</span> <span class="stps">${[0, 1, 2, 3].map(p => p === v.fakeTop ? `<b class="stp on">${p ? p + '위' : '실제 순위'}</b>` : `<a class="stp" href="${u}&faketop=${p}#aw">${p ? p + '위' : '실제 순위'}</a>`).join('')}</span></p>`;
   const note = (AWARDS_ON ? '' : `<p class="mut sm note">성과는 아직 꺼져 있어요(<span class="mono">AWARDS_ON</span>). 여기서 단계를 바꾸면 <b>이 사람만 테스트로</b> 사원증에 성과가 보이고 보상이 열려요.</p>`)
     + `<p class="sm note">지금 입은 성과 보상: ${worn.length ? worn.map(esc).join(', ') : '<span class="mut">없음</span>'}${v.prof ? '' : ' <span class="mut">(옷장 연동 기록 없음)</span>'}</p>`;
   return section(`성과 <small>단계 ${total} / ${v.list.reduce((s, a) => s + a.at.length, 0)}${v.test ? ' · 테스트 조정됨' : ''}</small>`,
-    note + tbl(`<thead><tr><th>성과</th><th class="n">값</th><th>다음 목표</th><th>단계 <span class="mut">(눌러서 바꾸기)</span></th><th>열린 보상</th></tr></thead><tbody>${rows}</tbody>`) + `<p class="sm note">소지품 ${v.own.length}개 <span class="mut">(파란 것이 가진 것, 눌러서 지급·회수. 회수한 건 단계에 도달해도 다시 안 들어와요)</span></p><div class="stps" style="flex-wrap:wrap">${own.map(piece).join('')}</div>`,
+    note + fake + tbl(`<thead><tr><th>성과</th><th class="n">값</th><th>다음 목표</th><th>단계 <span class="mut">(눌러서 바꾸기)</span></th><th>열린 보상</th></tr></thead><tbody>${rows}</tbody>`) + `<p class="sm note">소지품 ${v.own.length}개 <span class="mut">(파란 것이 가진 것, 눌러서 지급·회수. 회수한 건 단계에 도달해도 다시 안 들어와요)</span></p><div class="stps" style="flex-wrap:wrap">${own.map(piece).join('')}</div>`,
     v.test ? `<a class="btnl" href="${u}&awreset=1#aw">성과 초기화 · 테스트 해제</a>` : '', 'aw');
 }
 /* every 성과 step and what it gives (public/js/shared/rewards.js), and every reward piece. `edit` (the local dev server only:
@@ -184,12 +185,13 @@ document.addEventListener('click',e=>{const b=e.target.closest('.rwchip');if(b)r
 </script>`;
 }
 
-export async function adminHTML(stats, q, career, feedback, rewardEdit = false) {
+export async function adminHTML(stats, q, career, feedback, rewardEdit = false, testTools = false) {
   const link = (uid, name) => `<a href="?uid=${encodeURIComponent(uid)}">${esc(name)}</a>`;
   if (feedback && q.get('fbhide')) await feedback.hide(+q.get('fbhide'), true); // 사내 게시판 댓글 숨기기 / 되살리기
   if (feedback && q.get('fbshow')) await feedback.hide(+q.get('fbshow'), false);
   if (career && q.get('uid') && q.get('aw') && await career.awardsOf(q.get('uid'))) await career.setAward(q.get('uid'), q.get('aw'), +q.get('st')); // 성과 단계 조정 (테스트; makes the career first if needed)
   if (career && q.get('uid') && q.get('awreset')) await career.resetAwards(q.get('uid'));
+  if (testTools && career && q.get('uid') && q.has('faketop')) await career.setFakeTop(q.get('uid'), +q.get('faketop')); // 지난주 순위 테스트 (test server only)
   if (career && q.get('uid') && q.get('own')) await career.setOwn(q.get('uid'), q.get('own'), q.get('on') === '1');
   let body;
   if (q.get('rw')) body = rewardPage(rewardEdit);
@@ -206,7 +208,7 @@ export async function adminHTML(stats, q, career, feedback, rewardEdit = false) 
         ${card(`${p.tasks}<u>업무</u> ${p.kills}<u>해고</u>`, '누적', `최근 ${p.recent.length}판 평균 ${avgPlace}위`)}
         ${card(ago(p.last), '마지막 플레이', `처음 ${when(p.first)}`)}
       </div>
-      ${await awardSection(career, q.get('uid'))}
+      ${await awardSection(career, q.get('uid'), testTools)}
       ${section(`최근 ${p.recent.length}판`, tbl(GAME_HEAD(false) + `<tbody>${p.recent.map(g => gameRow(g)).join('')}</tbody>`) + lunchPop(p.recent))}`);
   } else {
     const days = await stats.days(14), trend = days.slice(0, 7).reverse(), people = await stats.people(), rec = await stats.recent();

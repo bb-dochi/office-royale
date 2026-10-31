@@ -3,7 +3,8 @@
 // 성과 v2 (2026-10-30): the basic ones (six, then 부서별 3), judged from their own totals (`a`) that start at zero when 성과 opened — the
 // 인사 관리 totals (`c`) carry the play stats over, the 성과 don't. The rest of the plan (docs/CAREER.md) needs new counts.
 // AWARDS_ON: off until the 성과 open together with their rewards — nothing is counted for them before then.
-export const AWARDS_ON = false;
+export let AWARDS_ON = false;
+export const awardsOn = v => { AWARDS_ON = v; };   // the test Worker turns them on with its AWARDS variable (`--var AWARDS:1`); the live Worker never sets it
 
 import { RANKS, RANKED, weekOf } from './rank.js';
 import { dayOf } from './stats.js';
@@ -47,12 +48,17 @@ export function grant(e) {
   }
   const more = own.size !== (e.own || []).length; e.own = [...own]; return more;
 }
+/* the rarest first in the 성과 달성 note: a step's weight is about how many days it takes to reach, at what an active player earns in a day
+   (4 games a day, from the live records of 2026-10-31; 승진의 길 counts its step number) */
+const PER_DAY = { days: 3.4, night: 15, promo: 2.5, ceo: 1, top3: 1 / 7, tasks: 38, kills: 16, wc: 4, dev: 1.6, mkt: 1.4, hr: .4 };
+const stepDays = x => { const a = AWARDS.find(y => y.id === x.aw); return a ? a.at[x.st - 1] / (PER_DAY[x.aw] || 1) : 0; };
+const rarest = list => [...list].sort((p, q) => stepDays(q) - stepDays(p));
 /* the steps with a reward reached since `was` (a judge() list): what the 성과 달성 note shows */
 function gained(e, was) {
   const out = [];
   for (const a of judge({ ...newCareer(), ...e.a })) { const from = (was.find(x => x.id === a.id) || {}).step || 0;
     for (let st = from + 1; st <= a.step; st++) { const r = rewardsOf(a.id, st); if (r.title || r.items.length) out.push({ aw: a.id, st, goal: a.names ? a.names[st - 1] : `${a.at[st - 1].toLocaleString()}${a.unit}` }); } }
-  return out;
+  return rarest(out);
 }
 export const judge = c => AWARDS.map(a => { const v = a.val(c) || 0; return { id: a.id, n: a.n, d: a.d, unit: a.unit, at: a.at, names: a.names || null, val: v, step: a.at.filter(x => v >= x).length }; });
 
@@ -134,12 +140,12 @@ export class CareerCore {
       : { code: null, joined: null, name: '', uids: [], c: newCareer() });
     let news = [];
     if ((AWARDS_ON || e.test) && e.code) e = await this.run(async () => { const n = await this.find(uid), was = judge({ ...newCareer(), ...n.a }), week = AWARDS_ON && n.topW !== weekOf() && await this.settleTop3(n), more = grant(n);
-      news = [...(n.news || []), ...gained(n, was)]; if (n.news) delete n.news; if (more || week || news.length) await this.store.put('e:' + n.code, n); return n; });   // also picks up a reward moved to a step already reached
+      news = rarest([...(n.news || []), ...gained(n, was)]); if (n.news) delete n.news; if (more || week || news.length) await this.store.put('e:' + n.code, n); return n; });   // also picks up a reward moved to a step already reached
     const temp = e.code ? await this.tempOf(e) : [], lent = temp.find(k => k.startsWith('halo:'));
     return { code: e.code, joined: e.joined, name: e.name, devices: e.uids.length, prof: e.prof || null, own: [...(e.own || []), ...temp], news, lent: lent ? { place: +lent.slice(5), week: weekOf(Date.now() - WEEK) } : null, career: { ...newCareer(), ...e.c }, awards: AWARDS_ON || e.test ? judge({ ...newCareer(), ...e.a }) : null };
   }
   /* admin: a person's 성과 as it is now (null with no career and no games; one with games gets its career now, as on opening the 사원증) */
-  async awardsOf(uid) { const e = (await this.find(uid)) || (await this.stats.person(uid) && await this.view(uid) && await this.find(uid)); return e &&{ test: !!e.test, prof: e.prof || null, own: e.own || [], taken: e.taken || [], list: judge({ ...newCareer(), ...e.a }) }; }
+  async awardsOf(uid) { const e = (await this.find(uid)) || (await this.stats.person(uid) && await this.view(uid) && await this.find(uid)); return e &&{ test: !!e.test, fakeTop: e.fakeTop || 0, prof: e.prof || null, own: e.own || [], taken: e.taken || [], list: judge({ ...newCareer(), ...e.a }) }; }
   /* admin: put one 성과 exactly at a step (its number set to that step's goal, 0 for none). Marks the career as a test one,
      whose 사원증 shows the 성과 even before they open (AWARDS_ON), so its rewards can be tried on a real device */
   setAward(uid, id, step) {
@@ -160,8 +166,17 @@ export class CareerCore {
   /* 주간 1~3위: lent for the week after, never owned: the 후광 in the colour of the place (금 은 동), and 금가루 for 1위 */
   async tempOf(e) {
     if (!AWARDS_ON && !e.test) return [];
-    const b = (await this.store.get(`${weekOf(Date.now() - WEEK)}:${RANKED}`)) || [], i = b.slice(0, 3).findIndex(x => e.uids.includes(x.uid));
+    const last = weekOf(Date.now() - WEEK), from = await this.store.get('aw:from');   // nothing for the weeks before 성과 opened
+    const b = e.fakeTop || !from || last < from ? [] : (await this.store.get(`${last}:${RANKED}`)) || [], i = e.fakeTop ? e.fakeTop - 1 : b.slice(0, 3).findIndex(x => e.uids.includes(x.uid));
     return i < 0 ? [] : ['gear:halo', `halo:${i + 1}`, ...(i ? [] : ['fx:gold'])];
+  }
+  /* admin on the test server: act as if this career came 1~3위 last week (0: back to the real board). The board itself isn't touched */
+  setFakeTop(uid, place) {
+    return this.run(async () => {
+      const e = await this.find(uid); if (!e) return false;
+      if ([1, 2, 3].includes(place)) e.fakeTop = place; else delete e.fakeTop;
+      await this.store.put('e:' + e.code, e); return true;
+    });
   }
   /* admin: give one reward or take it away (kept away even if its step is reached) */
   setOwn(uid, key, on) {

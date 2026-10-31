@@ -94,14 +94,14 @@ const RI_J=['인턴','사원','대리','팀장','임원'];
 const PAPER=['#fbfaf6','#fbfaf6','#e9e4d6','#e5483a'],CONFETTI=['#f3d77a','#e5483a','#2b6cb0','#2f9e57','#fbfaf6'];
 
 /* ---------- watching state for changes ---------- */
-const JU={g:null,st:new Map(),proj:new WeakSet(),marks:[],stamps:[],hurt:0,warn:false,closed:0};
+const JU={g:null,st:new Map(),proj:new WeakSet(),marks:[],stamps:[],hurt:0,warn:false,closed:0,kills:0};
 let hitStop=0; // solo only: the rules run slower for a blink after a hit that involves me
 function juiceFrame(dt){
   scrapsStep(dt);
   JU.hurt=Math.max(0,JU.hurt-dt);for(const m of JU.marks)m.t+=dt;JU.marks=JU.marks.filter(m=>m.t<.3);for(const s of JU.stamps)s.t+=dt;JU.stamps=JU.stamps.filter(s=>s.t<.9);
   if(!G||!G.me||G.plaza)return;
   const me=G.me;
-  if(JU.g!==G){JU.g=G;JU.st.clear();JU.proj=new WeakSet();for(const p of G.proj)JU.proj.add(p);JU.warn=G.warn;JU.closed=G.closed;
+  if(JU.g!==G){JU.g=G;JU.kills=me.kills||0;JU.st.clear();JU.proj=new WeakSet();for(const p of G.proj)JU.proj.add(p);JU.warn=G.warn;JU.closed=G.closed;
     for(const a of G.actors)JU.st.set(a.id,{flash:a.flash,alive:a.alive,rank:a.rank,branch:a.branch,ammo:a.ammo,items:a.items.length,sq:0});return;}
   if(G.warn&&!JU.warn)SFX.warn();JU.warn=G.warn;
   if(G.closed>JU.closed)SFX.closure();JU.closed=G.closed;
@@ -122,7 +122,7 @@ function juiceFrame(dt){
     if(s.alive&&!a.alive){
       if(a.f===viewF)scraps(a.x,a.y,34,null,PAPER,1.3);
       if(a===me)SFX.down();
-      else if(byMe){SFX.koMine();JU.stamps.push({x:a.x,y:a.y,f:a.f,t:0});hitStop=Math.max(hitStop,.14);
+      else if(byMe&&(me.kills||0)>JU.kills){JU.kills=me.kills;SFX.koMine();JU.stamps.push({x:a.x,y:a.y,f:a.f,t:0});hitStop=Math.max(hitStop,.14);
         banner('해고',`${a.name} 처리`,`고과 +${RI_J.indexOf(s.rank)>RI_J.indexOf(me.rank)?16:10} · 윗사람 처리하면 더 받아요`);}
       else if(v>0)SFX.ko(v);
     }

@@ -196,7 +196,7 @@ body.plaza #home.closed:not([hidden]) ~ #dock{display:flex}
 #dock button[data-go=guide]{border-left-color:var(--stamp)}
 #dock button.gap{margin-top:12px}
 /* NEW! on the 사내 게시판 tab and link while a post is unread */
-.newmark{display:inline-block;margin-left:6px;padding:1px 5px 2px;border-radius:3px;background:var(--stamp);color:#fff;font:900 10px/1.2 var(--body);font-style:normal;letter-spacing:.02em;vertical-align:1px;text-decoration:none;animation:newmark 1.6s ease-in-out infinite}
+.newmark{position:absolute;top:-6px;right:6px;display:block;padding:0 3px 1px;border-radius:2px;background:var(--stamp);color:#fff;font:900 8px/1.2 var(--body);font-style:normal;letter-spacing:.02em;vertical-align:1px;text-decoration:none;animation:newmark 1.6s ease-in-out infinite}
 .newmark[hidden]{display:none}
 @keyframes newmark{50%{transform:scale(1.12)}}
 @media (prefers-reduced-motion:reduce){.newmark{animation:none}}
@@ -337,7 +337,6 @@ body.plaza #home.closed:not([hidden]) ~ #dock{display:flex}
 #dress .opts .lk{font-style:normal;font-size:9px;margin-right:2px;filter:grayscale(1)}
 #dress .opts button.sw .lk{position:absolute;right:-5px;bottom:-5px;margin:0;font-size:10px;background:#fff;border-radius:50%;width:15px;height:15px;line-height:15px;text-align:center;box-shadow:0 0 0 1px #cfcabd}
 #dress .opts button.trying{border-color:#c08a1e;border-style:solid;box-shadow:0 0 0 2px #f3d77a;opacity:1}
-#dress .opts button.rw:not(.on){border-color:#d9b25e}
 /* picture rows: the label on top, then a grid of tiles (me wearing each option) */
 #dress .row.big{grid-template-columns:1fr;gap:4px}
 #dress .opts.ths{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px}
@@ -816,6 +815,7 @@ body:not(.pc) .mapbox .mhead>b{font-size:11.5px}
 #banner strong{white-space:nowrap}
 body:not(.pc) .mexp{display:none}
 body:not(.pc) .msys{gap:3px}
+body:not(.pc) .mapbox:not(.folded) .mfold{width:28px;height:22px}
 
 /* team choice: bigger, easier to read and tap */
 #branchBox{width:min(94vw,620px);padding:18px 20px 20px}
@@ -836,7 +836,7 @@ body:not(.pc) .mapbox.folded .mhead{margin:0}
 body:not(.pc) .mapbox.folded .mhead>b,body:not(.pc) .mapbox.folded .mutebtn{display:none}
 body:not(.pc) .mapbox.folded .mfold{width:auto;height:24px;padding:0 9px;font-size:11.5px;font-weight:800}
 body:not(.pc) .mapbox.folded .pausebtn{height:24px;width:24px}
-body:not(.pc) .rcol:has(.mapbox.folded){max-width:none}
+body:not(.pc) .rcol:has(.mapbox.folded){flex:none;max-width:none} /* a small chip at the top right: stretched across the top, its 지도 button ended up behind my card */
 
 #tut p{white-space:pre-line;word-break:keep-all} /* tutorial texts may break lines with 
  */
@@ -858,7 +858,10 @@ body:not(.pc) .rcol:has(.mapbox.folded){max-width:none}
 #lunchBoard i{font-style:normal;font-size:24px;opacity:.6}
 #lunchBoard p{margin:5px 0 0;font-size:13px;font-weight:700;color:#dfe3e6}
 #lunchBoard u{text-decoration:none;color:#f3d77a}#lunchBoard strong{color:#7fe0a4}
-@media (max-width:560px){#lunchBoard{top:calc(env(safe-area-inset-top,0px) + 150px);padding:6px 12px 7px;width:calc(100vw - 32px)}#lunchBoard em{font-size:26px}#lunchBoard .lb b{font-size:14px}#lunchBoard p{font-size:11.5px}}
+/* phones: a small score tag under my card, left of the task list, so the middle stays clear (2026-10-30). The rule itself is already on the band's second line */
+@media (max-width:560px){#lunchBoard{left:calc(max(12px,env(safe-area-inset-left,0px)));transform:none;top:calc(env(safe-area-inset-top,0px) + 116px);padding:3px 7px 4px;border-radius:9px;width:auto;max-width:calc(100vw - 222px);box-shadow:none;background:rgba(29,35,40,.78)}
+  #lunchBoard .lb{gap:4px}#lunchBoard em{font-size:17px;min-width:12px}#lunchBoard i{font-size:13px}#lunchBoard .lb b{font-size:11px;padding:1px 4px;border-radius:5px}#lunchBoard[data-me="L"] .tl::after,#lunchBoard[data-me="R"] .tr::after{content:none}
+  #lunchBoard .lbx{font-size:11.5px;gap:1px 7px}#lunchBoard p{display:none}}
 @media (min-width:1600px) and (min-height:820px){#lunchBoard{top:64px;zoom:1.2}}
 body.desking #lunchBoard,body.phoning #lunchBoard{display:none!important}
 #lunchBoard .lbx{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:4px 12px;font:900 16px var(--display)}
@@ -985,6 +988,7 @@ body{word-break:keep-all;overflow-wrap:anywhere}
   body:not(.pc) .quests p{white-space:normal}
   body:not(.pc) .msys{gap:2px}
   body:not(.pc) .mapbox:not(.folded) .msys button{width:17px}
+  body:not(.pc) .mapbox:not(.folded) .msys .mfold{width:24px}
 }
 /* the weekly ranking on 320–360px phones: tighter rows, a smaller 우수 stamp, sub lines that wrap instead of cutting off */
 @media (max-width:360px){
@@ -1040,6 +1044,7 @@ body.band2 .hud,body.band2 #lunchBoard,body.band2:not(.pc) #pdock .idcard{transl
 .boardlist u{text-decoration:none;font-weight:900}
 /* 사내 게시판 = update notes + 사원 의견 (2026-10-30): two columns side by side on wide screens, two tabs on phones */
 .boardmemo:has(.bdcols){max-width:880px;width:100%}
+#boardSheet{grid-template-columns:minmax(0,1fr)} /* the sheet's column otherwise grows to the card's content: on iPhones the form pushed the card past the right edge */
 .bdtabs{display:none;gap:4px;margin:4px 0 8px;border-bottom:1.5px solid var(--ink)}
 .bdtabs button{flex:1;border:0;background:none;padding:7px 0 6px;font:900 14px var(--body);color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1.5px}
 .bdtabs button.on{color:var(--ink);border-bottom-color:var(--ink)}.bdtabs i{font-style:normal;font-size:11px;color:var(--muted)}
@@ -1050,7 +1055,7 @@ body.band2 .hud,body.band2 #lunchBoard,body.band2:not(.pc) #pdock .idcard{transl
 .bdcol.fb h3{border-bottom-color:#d6d2c6}
 .bdcol .boardlist,.bdcol .fblist{max-height:min(56vh,500px);overflow:auto;overscroll-behavior:contain}
 .fbsub{margin:0 0 6px;font-size:12.5px;color:var(--muted)}
-.fbform{display:flex;gap:6px}.fbform input{flex:1;min-width:0;font:600 14px var(--body);border:1.5px solid #c9cdd0;border-radius:8px;padding:8px 10px}
+.fbform{display:flex;gap:6px}.fbform input{flex:1;width:0;min-width:0;font:600 14px var(--body);border:1.5px solid #c9cdd0;border-radius:8px;padding:8px 10px}
 .fbmsg{margin:4px 0 4px;font-size:12px;font-weight:700;color:var(--muted);min-height:16px}
 .fblist{list-style:none;margin:0;padding:0 2px;display:grid;gap:6px;align-content:start}
 .fblist li{background:#fff;border:1px solid #e3e5e7;border-radius:8px;padding:6px 9px}
@@ -1077,3 +1082,17 @@ body.band2 .hud,body.band2 #lunchBoard,body.band2:not(.pc) #pdock .idcard{transl
 .bang{position:absolute;left:50%;top:44%;z-index:3;transform:translate(-50%,-50%) rotate(-9deg);border:5px solid #c8283a;border-radius:6px;background:rgba(251,250,246,.95);color:#c8283a;padding:12px 20px;text-align:center;font:900 26px/1.2 var(--body);white-space:nowrap;box-shadow:0 4px 18px rgba(0,0,0,.22);animation:bangIn .24s cubic-bezier(.2,1.5,.4,1) both}.bang small{display:block;margin-top:4px;font:800 13px var(--body)}
 @keyframes bangIn{from{opacity:0;transform:translate(-50%,-50%) rotate(-9deg) scale(2.4)}to{opacity:1;transform:translate(-50%,-50%) rotate(-9deg) scale(1)}}
 @media (prefers-reduced-motion:reduce){.bang{animation:none}}
+#hDress,#hBoard{position:relative}#dock button:has(.newmark){position:relative}#hDress .newmark,#hBoard .newmark{right:50%;margin-right:-27px;top:-9px}
+/* phone 옷장: the list gets the room. The card takes 58% of the screen and 완료·기본 옷으로 move up beside the title */
+@media (max-width:700px){
+  #home.dressing[data-idtab=wear] .homecard{height:58dvh;max-height:58dvh;padding:8px 14px}
+  #home.dressing #dress{position:relative}
+  #home.dressing .idpane{margin-bottom:0}
+  #home.dressing .idtabs{margin-top:4px}
+  #home.dressing #dress .btns{position:absolute;top:-2px;right:0;display:flex;flex-direction:row-reverse;gap:6px;margin:0;width:auto}
+  #home.dressing #dress .btns .btn{flex:none;width:auto;padding:5px 12px;font-size:12.5px;min-height:0}
+}
+/* 주간 표창: a sentence to a line, and on phones a title that clears the stamp */
+#rankWinS{white-space:pre-line;word-break:keep-all}
+@media (max-width:700px){#rankWin h1{font-size:28px;padding-right:58px}#rankWin .stampmark{width:58px;height:58px;top:38px;right:14px;font-size:13px}#rankWinS{font-size:13.5px}}
+#pSub{white-space:pre-line}#pRestart[hidden]+.tlink::before{display:none}

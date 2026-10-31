@@ -19,7 +19,7 @@ $('paneCareer').addEventListener('focusin',e=>{if(e.target.matches('input'))setT
 function careerLoad(){
   if(!CR.view)$('crBox').innerHTML='<p class="awmsg">불러오는 중…</p>';
   if(!CR.view)awardRender();
-  fetch(careerURL()+`?uid=${rankUid()}`).then(r=>r.json()).then(v=>{if(!v||!v.career)throw 0;CR.view=v;rwPrune();rwLentCheck();newsAdd(v.news);newsCheck();if(v.code)store.set('or-code',v.code);profApply(v.prof);if(v.code&&!v.prof&&store.get('or-profAt'))profPush();careerRender();awardRender();if(typeof PZ!=='undefined'&&PZ.dress&&CR.tab==='wear')dressRender();})
+  fetch(careerURL()+`?uid=${rankUid()}`).then(r=>r.json()).then(v=>{if(!v||!v.career)throw 0;CR.view=v;rwPrune();rwLentCheck();newsIn(v.news);newsCheck();idMark();if(v.code)store.set('or-code',v.code);profApply(v.prof);if(v.code&&!v.prof&&store.get('or-profAt'))profPush();careerRender();awardRender();if(typeof PZ!=='undefined'&&PZ.dress&&CR.tab==='wear')dressRender();})
     .catch(()=>{if(!CR.view){$('crBox').innerHTML='<p class="awmsg">사원증 서버에 연결하지 못했어요.</p>';$('awList').innerHTML='<li class="awmsg">사원증 서버에 연결하지 못했어요.</li>';}});
 }
 /* 성과: one row each — name, what it counts, the 5 step chips (reached ones filled) and a bar to the next goal */
@@ -110,13 +110,19 @@ function careerJoin(){
 }
 /* a device with a 사원코드 picks up outfit / name changes made on its other devices when the page opens */
 if(store.get('or-code'))fetch(careerURL()+`?uid=${rankUid()}`).then(r=>r.json()).then(v=>{if(v&&v.code)profApply(v.prof);}).catch(()=>{});
+/* NEW! on 사원증 while the career owns something this device hasn't looked at yet (opening the 사원증 counts as looking) */
+function idMark(){const own=((CR.view&&CR.view.own)||[]).filter(k=>!k.startsWith('halo:'));let seen=[];try{seen=JSON.parse(store.get('or-ownSeen'))||[];}catch{}
+  if(typeof PZ!=='undefined'&&PZ.dress){store.set('or-ownSeen',JSON.stringify(own));seen=own;}
+  const on=own.some(k=>!seen.includes(k));for(const el of document.querySelectorAll('.idnew'))el.hidden=!on;}
 /* 성과 달성: after a solo game a big 도장 comes down on the result (the server answered there), then the list stays. A match, or a result left too soon: a note back in the lobby */
 const NEWS={shown:new Set(),wait:[]},newsKey=x=>`${x.aw}:${x.st}`;
 function newsRows(list){const row=x=>{const r=awRewards(x.aw,x.st),f=r.items[0],pic=f?(f.icon?`<b>${f.icon}</b>`:`<img alt="" src="${charShot(rwShotFit(f.fit[0],f.fit[1]),f.view)}">`):'<b>🏅</b>';
     return`<div class="nwr">${pic}<p>${esc(REWARDS.awards[x.aw])} ${esc(x.goal)}<small>${[r.title&&`<i class="tstamp">${esc(r.title)}</i>`,...r.items.map(i=>esc(i.n))].filter(Boolean).join(' · ')}</small></p></div>`;};
   return`<h5>새로 달성한 성과 ${list.length}개</h5>${list.slice(0,3).map(row).join('')}${list.length>3?`<p class="nwm">외 ${list.length-3}개</p>`:''}`;}
-function resultNews(list){const b=$('rBang');b.innerHTML=`성과 달성<small>${esc(REWARDS.awards[list[0].aw])} ${esc(list[0].goal)}${list.length>1?` 외 ${list.length-1}개`:''}</small>`;b.hidden=false;if(typeof SFX!=='undefined')SFX.promote();
-  setTimeout(()=>{b.hidden=true;if($('result').hidden)return;for(const x of list)NEWS.shown.add(newsKey(x));$('rNews').innerHTML=newsRows(list);$('rNews').hidden=false;},1300);}
+function resultNews(list){for(const x of list)NEWS.shown.add(newsKey(x));const b=$('rBang');b.innerHTML=`성과 달성<small>${esc(REWARDS.awards[list[0].aw])} ${esc(list[0].goal)}${list.length>1?` 외 ${list.length-1}개`:''}</small>`;b.hidden=false;if(typeof SFX!=='undefined')SFX.promote();
+  setTimeout(()=>{b.hidden=true;if($('result').hidden){NEWS.wait.push(...list);newsCheck();return;}$('rNews').innerHTML=newsRows(list);$('rNews').hidden=false;},1800);}
+/* news from the career load: on the result screen it goes there, as the game's own answer would */
+function newsIn(l){const fresh=(l||[]).filter(x=>!NEWS.shown.has(newsKey(x)));if(fresh.length&&!$('result').hidden&&$('rBang').hidden&&$('rNews').hidden)resultNews(fresh);else newsAdd(fresh);}
 function newsAdd(l){for(const x of l||[])if(!NEWS.shown.has(newsKey(x))&&!NEWS.wait.some(y=>newsKey(y)===newsKey(x)))NEWS.wait.push(x);}
 function newsCheck(){if(!NEWS.wait.length||!PZ.on||!$('rankWin').hidden)return;const list=NEWS.wait.splice(0);for(const x of list)NEWS.shown.add(newsKey(x));
   $('rankWinH').textContent='성과 달성!';$('rankWinS').textContent='';$('rankWinList').innerHTML=newsRows(list);$('rankWinList').hidden=false;$('rankWin').hidden=false;if($('nameStep').hidden&&!PZ.dress)homeClose(true);}

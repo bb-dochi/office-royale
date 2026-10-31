@@ -5,7 +5,7 @@ import { cleanName } from './room.js';
 import { cleanFit } from './outfit.js';
 
 export const PLAZA_MAX = 60;
-const SEND_HZ = 6, EMOTES = 10; // must match EMOTES in public/js/client/45-plaza.js
+const SEND_HZ = 10, EMOTES = 10; // must match EMOTES in public/js/client/45-plaza.js
 
 export class PlazaCore {
   constructor({ send }) {

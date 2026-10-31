@@ -6,6 +6,7 @@
    A line can be {t, s:[...]} for a heading with smaller lines under it; __words__ are bold (a <u> styled bold, no line).
    A post with `at` (a KST time) stays hidden until then, so a change that starts later can be posted ahead. */
 const BOARD_ALL=[
+  {id:7,d:'10.31',t:'성과와 보상이 열렸어요!',b:['사원증 > 성과 탭이 열렸어요. 일할수록 새로운 코스튬이 열려요.','주간 랭킹 3위 안에 들면 다음 한 주 동안 특별한 후광이 함께해요. 1위는 금가루 이펙트도 한 주 동안 받아요.','쉬움 난이도는 집계되지 않아요. __성과는 오늘부터 새로 쌓여요.__']},
   {id:5,d:'11.02',at:'2026-11-02T00:00:00+09:00',t:'랭킹 점수 계산식이 바뀌었어요',b:['이제 1위도 마지막 직급대로 점수를 받아요(기존엔 모두 CEO 점수). 대신 1위 보너스가 생겼어요.']},
   {id:6,d:'10.30',t:'부서별 업무와 사원증이 생겼어요!',b:[
     '내 자리에서 __부서별 업무__를 하게 돼요.',
@@ -22,7 +23,7 @@ const boardTop=BOARD.reduce((m,p)=>Math.max(m,p.id),0);
 const boardSeen=()=>+(store.get('or-board')||0);
 function boardMark(){
   const on=boardTop>boardSeen();PZ.boardNew=on;
-  for(const el of document.querySelectorAll('.newmark'))el.hidden=!on;
+  for(const el of document.querySelectorAll('.newmark:not(.idnew)'))el.hidden=!on;
 }
 const boardText=l=>esc(l).replace(/__(.+?)__/g,'<u>$1</u>');
 const boardLine=l=>typeof l==='string'?`<li>${boardText(l)}</li>`:`<li>${boardText(l.t)}<ul>${l.s.map(boardLine).join('')}</ul></li>`;

@@ -67,7 +67,7 @@ async function seedDemo(stats) {
 const server = createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   if (url.pathname === '/admin/rewards' && req.method === 'POST') { let body = ''; req.on('data', d => { if (body.length < 1024) body += d; }); req.on('end', () => res.writeHead(rewardEdit(body) ? 200 : 400).end()); return; }
-  if (url.pathname === '/admin') { adminHTML(api.stats, url.searchParams, api.career, api.feedback, true).then(h => res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }).end(h)); return; }
+  if (url.pathname === '/admin') { adminHTML(api.stats, url.searchParams, api.career, api.feedback, true, true).then(h => res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }).end(h)); return; }
   if (url.pathname.startsWith('/api/')) {
     let body = ''; req.on('data', d => { if (body.length < 4096) body += d; });
     req.on('end', async () => { const r = await apiHTTP(api, req.method, url, body);

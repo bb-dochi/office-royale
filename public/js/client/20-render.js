@@ -649,6 +649,7 @@ function outfitFor(kind,seed,color){
     case 'newbie':return{skin,hair:{style:'short',color:'#2e2a28'},top:{shirt:'#fbfaf6',cardigan:'#9fcf9f',badge:1},bottom:{pants:'#c8b89a',shoes:'#5a4632'}};
     case 'courier':return{skin,hair:{style:'cap',color:'#3d4a54'},top:{shirt:'#b5651d'},bottom:{pants:'#5a4632',shoes:'#2c3036'}};
     case 'cart':return{skin,hair:{style:'chef',color:'#fbfaf6'},face:{mustache:1},top:{shirt:'#fbfaf6',apron:'#7a4b2a'},bottom:{pants:'#2f3540',shoes:'#1d2024'}};
+    case 'late':return{skin,hair:{style:'side',color:'#3a2d28'},top:{shirt:'#dfe8f2',jacket:'#5b6fa8',tie:'#b8322a',badge:1},bottom:{pants:'#2f3540',shoes:'#1d2024'}};
   }
   /* office workers: `color` is their signature colour (jacket, cardigan or shirt) */
   const look=Math.floor(r(1)*5),long=r(2)<.4;
@@ -1467,14 +1468,15 @@ function render(dt){
   if(!(G.plaza&&typeof PZ!=='undefined'&&PZ.dress)&&!$('dRot').hidden)$('dRot').hidden=true;
   {const dressing=!!(G.plaza&&typeof PZ!=='undefined'&&PZ.dress);if(sun.castShadow===dressing)sun.castShadow=!dressing;}   // no sun shadows in the 사원증 close-up
   if(G.plaza&&typeof PZ!=='undefined'&&PZ.dress){const c=dressCard().getBoundingClientRect(),side=c.left>VW*.4;
-    const z=PZ.dz=(PZ.dz||0)+((PZ.zoom||0)-(PZ.dz||0))*Math.min(1,dt*6);   // 얼굴 tab: in close on the head
+    const z=PZ.dz=(PZ.dz||0)+((PZ.zoom||0)-(PZ.dz||0))*Math.min(1,dt*6);   // 얼굴·헤어 tabs: in close on the head
     if(side){cam3.position.set(me.x*U,2.1-z*.8,me.y*U+4.0-z*2.1);cam3.lookAt(me.x*U,.75+z*.45,me.y*U);cam3.setViewOffset(VW,VH,VW/2-c.left/2,0,VW,VH);}
     else{const H=Math.max(120,c.top-46),d=Math.min(10,Math.max(3,VH*1.95/(2*Math.tan(cam3.fov*Math.PI/360)*.9*H)))*(1-z*.55),ly=.95+z*.3;   // the strip under my feet is kept for the 돌려 보기 buttons
       cam3.position.set(me.x*U,ly+d*.29*(1-z*.6),me.y*U+d*.96);cam3.lookAt(me.x*U,ly,me.y*U);cam3.setViewOffset(VW,VH,0,VH/2-H/2,VW,VH);}
     /* the 돌려 보기 buttons sit under my feet, in the space beside / above the card */
     const rb=$('dRot'),show=CR.tab==='wear';if(rb.hidden===show)rb.hidden=!show;
     if(show){cam3.updateMatrixWorld();tmpV.set(me.x*U,0,me.y*U).project(cam3);   // my feet on screen
-      const l=Math.round((tmpV.x+1)/2*VW)+'px',t=Math.round(Math.min((1-tmpV.y)/2*VH+30,(side?VH:c.top)-42))+'px';if(rb.style.left!==l)rb.style.left=l;if(rb.style.top!==t)rb.style.top=t;}}
+      const l=Math.round((tmpV.x+1)/2*VW),t=Math.round(Math.min((1-tmpV.y)/2*VH+30,(side?VH:c.top)-42));   // a pixel or two of drift is ignored: the buttons trembled on phones
+      if(Math.abs(l-(parseFloat(rb.style.left)||0))>2)rb.style.left=l+'px';if(Math.abs(t-(parseFloat(rb.style.top)||0))>2)rb.style.top=t+'px';}}
   else if(G.plaza&&typeof PZ!=='undefined'&&PZ.cardH>0)cam3.setViewOffset(VW,VH,0,Math.min(VH*.3,PZ.cardH/2),VW,VH);
   else if(cam3.view&&cam3.view.enabled)cam3.clearViewOffset();
   const onFloor=me.alive&&me.f===f&&!me.transit;
@@ -1515,12 +1517,12 @@ function render(dt){
   /* npcs + cones */
   const npcs=G.npcs.filter(n=>n.f===f&&npcActive(n));
   for(const n of G.npcs){let m=npcM.get(n);if(!m&&n.kind==='desk'){const k=parseInt(String(n.id).slice(1))||0;m=makeChar(EXTRA_COLORS[k%EXTRA_COLORS.length],null,1000+k);npcM.set(n,m);}
-    if(!m){const col=n.senior?'#2b2f3a':{boss:'#55617a',ceo:'#2a2a2e',cleaner:'#9fb7ad',busy:'#7d8790',newbie:'#bfe3c8',courier:'#b5651d',cart:'#fbfaf6'}[n.kind]||'#7d8790';m=makeChar(col,n.kind,7,isHawawa(n)?{...outfitFor('newbie',7,col),hair:{style:'short',color:'#26305c'}}:undefined);if(n.kind==='ceo')m.scale.setScalar(1.12);else if(n.senior)m.scale.setScalar(1.06);npcM.set(n,m);}
+    if(!m){const col=n.senior?'#2b2f3a':{boss:'#55617a',ceo:'#2a2a2e',cleaner:'#9fb7ad',busy:'#7d8790',newbie:'#bfe3c8',courier:'#b5651d',cart:'#fbfaf6',late:'#5b6fa8'}[n.kind]||'#7d8790';m=makeChar(col,n.kind,7,isHawawa(n)?{...outfitFor('newbie',7,col),hair:{style:'short',color:'#26305c'}}:n.kind==='guide'?fitToOutfit(GUIDE_FIT):undefined);if(n.kind==='ceo')m.scale.setScalar(1.12);else if(n.senior)m.scale.setScalar(1.06);npcM.set(n,m);}
     m.visible=npcs.includes(n);if(!m.visible)continue;
     if(n.kind==='desk'){m.position.set(n.x*U,0,n.y*U);m.rotation.y=toYaw(n.face);poseRig(m.userData,'sit',dt);}else poseChar(m,n,dt,true);}
   /* an 임원 doesn't have to greet a plain 부장님, so their cones are just clutter (전무님 and 대표님 still count) */
   const exempt=n=>n.kind==='boss'&&!n.senior&&me.rank==='임원';
-  const coneList=G.blackout&&G.blackout.f===f?[]:npcs.filter(n=>VIS[n.kind]&&!exempt(n));
+  const coneList=G.blackout&&G.blackout.f===f?[]:npcs.filter(n=>VIS[n.kind]&&!exempt(n)&&!n.caught);
   syncSet(coneM,coneList,makeCone,updCone);
   /* items, traps, wet, tasks, drops */
   syncSet(itemM,G.items.filter(i=>i.f===f),makeItem,(it,m)=>{m.position.set(it.x*U,.5+Math.sin(G.t*4+it.x)*.07,it.y*U);m.children[0].rotation.y+=dt*1.4;m.children[1].scale.setScalar(1+Math.sin(G.t*4+it.x)*.14);});
@@ -1595,7 +1597,7 @@ function render(dt){
   }
   /* actor labels */
   for(const a of G.actors){const m=actorM.get(a);if(!m||!m.visible)continue;
-    const p=scr(a.x,a.y,1.75);if(!p)continue;const x=p[0],y=p[1];
+    const dressing=G.plaza&&a===me&&typeof PZ!=='undefined'&&PZ.dress,p=scr(a.x,a.y,dressing?1.5:1.75);if(!p)continue;const x=p[0],y=dressing?Math.max(p[1],48*UIS):p[1];   // 사원증 close-up: closer to me and never off the top, 칭호 included
     if(G.plaza){const nm=a===me?(store.get('or-name')||a.name):a.name,bg=a===me?'#2b6cb0':a.isPlayer?OTHER_HUMAN:'rgba(251,250,246,.94)',fg=a===me||a.isPlayer?'#fbfaf6':'#1d2328';tag(x,y-12,nm,bg,fg);}
     else nameTag(x,y-12,a===me?'나':a.name,a,a===me?'#1d2328':a.isPlayer?OTHER_HUMAN:'rgba(251,250,246,.94)',a===me||a.isPlayer?'#fbfaf6':'#1d2328');
     {const ttl=a.fit&&titleOf(a.fit.title);if(ttl)titleStamp(x,y-12,ttl);}
@@ -1617,8 +1619,8 @@ function render(dt){
   /* npc labels */
   for(const n of npcs){const p=scr(n.x,n.y,n.kind==='ceo'?2.0:1.8);if(!p)continue;
     if(n.kind==='desk'){if(n.ask&&n.job){tag(p[0],p[1]-6,`부탁 있어요 +${n.job.r}`,'#3f6f99','#fbfaf6');outlined('!',p[0],p[1]-26,DF(26),'#3f6f99');}continue;}
-    const lbl={boss:n.senior?'전무님':'부장님',ceo:'대표님',cleaner:'청소 아주머니',busy:'옆팀 팀장',newbie:isHawawa(n)?'신입 하와와':'신입 인턴',courier:'택배 기사',cart:'커피카트'}[n.kind];
-    tag(p[0],p[1]-6,lbl,n.senior?'#7a1f17':{boss:'#cf3626',ceo:'#c08a1e',newbie:'#3f8f5f',courier:'#b5651d',cart:'#7a4b2a'}[n.kind]||'#5d666e','#fbfaf6');
+    const lbl={boss:n.senior?'전무님':'부장님',ceo:'대표님',cleaner:'청소 아주머니',busy:'옆팀 팀장',newbie:isHawawa(n)?'신입 하와와':'신입 인턴',courier:'택배 기사',cart:'커피카트',guide:'안내원',late:'지각한 대리'}[n.kind];
+    tag(p[0],p[1]-6,lbl,n.senior?'#7a1f17':{boss:'#cf3626',ceo:'#c08a1e',newbie:'#3f8f5f',courier:'#b5651d',cart:'#7a4b2a',guide:'#2b4a6b',late:'#b5651d'}[n.kind]||'#5d666e','#fbfaf6');
     if(n.kind==='cart')outlined('고과 70까지 회복',p[0],p[1]+18*UIS,F(700,10),'#7a4b2a');
     if(n.kind==='newbie'&&n.att)outlined('?',p[0]+18,p[1]-24,DF(24),'#3f8f5f');
     if(me.contact&&me.contact.n===n){const kk=me.contact.t/me.contact.max;outlined('!',p[0],p[1]-26,DF(30),'#cf3626');ctx.beginPath();ctx.arc(p[0],p[1]-36,16,-Math.PI/2,-Math.PI/2+kk*Math.PI*2);ctx.strokeStyle='#cf3626';ctx.lineWidth=3;ctx.stroke();}

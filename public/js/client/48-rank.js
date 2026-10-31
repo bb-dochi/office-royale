@@ -25,11 +25,17 @@ function rankSubmit(win){
   const ranked=e.diff===RANKED,sc=soloScore(e);
   if(ranked){$('rScore').textContent=`${sc.toLocaleString()}점`;for(const el of document.querySelectorAll('#result .rsc'))el.hidden=false;} // only 어려움 is ranked
   fetch(rankURL('','game'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(e)}).then(r=>r.json()).then(r=>{
-    if(G!==g||$('result').hidden)return; // already on to the next game
-    careerNews(r.career);
+    const here=G===g&&!$('result').hidden;if(here)careerNews(r.career);else if(r.career&&r.career.code)store.set('or-code',r.career.code);
+    careerLoad();   // what the game just unlocked, even if they've already left this screen (the lobby's own load may have come too soon)
+    if(!here)return; // already on to the next game
     const k=r.rank;if(!k||!k.week)return;
     $('rScore').textContent=`${sc.toLocaleString()}점${k.me?` · 이번 주 ${k.me.pos}위`:''}${k.best?'':' (최고 기록 아님)'}`;}).catch(()=>{});
 }
+/* 같이 하기: the server records my game the moment I'm out, a little ahead of my result screen */
+let newsLate=null;
+function careerOnline(c){if(!c)return;if(!$('result').hidden){careerNews(c);careerLoad();return;}
+  newsLate=c;setTimeout(()=>{if(newsLate!==c)return;newsLate=null;if(c.code)store.set('or-code',c.code);newsAdd(c.news);newsCheck();careerLoad();},3000);}
+function careerLate(){const c=newsLate;if(!c)return;newsLate=null;careerNews(c);careerLoad();}
 /* the server answers with this device's 사원코드 (it is made by the first finished game) */
 function careerNews(c){if(c&&c.code)store.set('or-code',c.code);if(c&&c.news&&c.news.length)resultNews(c.news);}
 function rankOpen(){$('rankSheet').hidden=false;rankLoad();}

@@ -9,7 +9,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { RoomCore } from './room.js';
 import { PlazaCore } from './plaza.js';
 import { RankCore, apiHTTP, recordMatch } from './rank.js';
-import { CareerCore } from './career.js';
+import { CareerCore, awardsOn } from './career.js';
 import { FeedbackCore } from './feedback.js';
 import { StatsCore, adminHTML } from './stats.js';
 import { createSim, PLAZA_VER } from './sim.gen.js';
@@ -21,18 +21,18 @@ export class Room extends DurableObject {
   }
   async fetch(request) {
     const url = new URL(request.url);
-    if (url.pathname.startsWith('/api/') || url.pathname === '/admin' || url.pathname === '/internal/games') {
+    if (url.pathname.startsWith('/api/') || url.pathname === '/admin' || url.pathname.startsWith('/internal/')) {
       const store = { get: k => this.ctx.storage.get(k), put: (k, v) => this.ctx.storage.put(k, v) };
-      if (!this.api) { const stats = new StatsCore(store); this.api = { rank: new RankCore(store), stats, career: new CareerCore(store, stats), feedback: new FeedbackCore(store) }; }
-      if (url.pathname === '/admin') return new Response(await adminHTML(this.api.stats, url.searchParams, this.api.career, this.api.feedback), { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
-      if (url.pathname === '/internal/games') { await recordMatch(this.api, await request.json()); return new Response('ok'); }
+      if (!this.api) { const stats = new StatsCore(store); this.api = { rank: new RankCore(store), stats, career: new CareerCore(store, stats), feedback: new FeedbackCore(store) }; if (this.env.AWARDS === '1') awardsOn(true); }
+      if (url.pathname === '/admin') return new Response(await adminHTML(this.api.stats, url.searchParams, this.api.career, this.api.feedback, false, this.env.TEST_TOOLS === '1'), { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
+      if (url.pathname === '/internal/games') return Response.json(await recordMatch(this.api, await request.json()));
       if (url.pathname === '/internal/own') return Response.json(await this.api.career.ownOf(url.searchParams.get('uid') || ''));
       const r = await apiHTTP(this.api, request.method, url, request.method === 'POST' ? (await request.text()).slice(0, 4096) : '');
       return Response.json(r.json, { status: r.status, headers: { 'Cache-Control': 'no-store' } });
     }
     const path = url.pathname, send = (p, o) => { try { p.ws.send(typeof o === 'string' ? o : JSON.stringify(o)); } catch {} };
     const stats = () => this.env.ROOM.get(this.env.ROOM.idFromName('__rank'));
-    const onGame = rs => this.ctx.waitUntil(stats().fetch('https://stats/internal/games', { method: 'POST', body: JSON.stringify(rs) }).catch(e => console.error('stats', e)));
+    const onGame = rs => { const r = stats().fetch('https://stats/internal/games', { method: 'POST', body: JSON.stringify(rs) }).then(x => x.json()).catch(e => console.error('stats', e)); this.ctx.waitUntil(r); return r; };
     this.core ||= path === '/plaza' ? new PlazaCore({ send }) : new RoomCore(path.split('/').pop(), { createSim, send, onGame });
     const [client, server] = Object.values(new WebSocketPair());
     // Plain accept (not the Hibernation API): the room keeps its lobby and match in memory while anyone is connected.

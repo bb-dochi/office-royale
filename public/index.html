@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="description" content="회사에서 살아남는 배틀로얄. 고과가 체력, 서류가 무기, 최후의 1인만 대표실로.">
 <meta name="theme-color" content="#2a3036">
 <meta property="og:title" content="오피스 로얄 · 인사평가 서바이벌">
@@ -33,7 +33,7 @@
 <div class="hud">
   <div class="rcol">
   <div class="mapbox" id="mapbox" role="button" aria-label="지도 크게 보기">
-    <div class="mhead"><b id="mFloor"></b><span class="msys"><button class="mfold touch-only" id="mFold" aria-label="지도 접기">▴</button><button class="mutebtn" aria-label="소리 끄기">🔊</button><button class="pausebtn" id="pauseBtn" aria-label="일시정지" hidden>❚❚</button><i class="mexp" aria-hidden="true">⤢</i></span></div>
+    <div class="mhead"><b id="mFloor"></b><span class="msys"><button class="mfold touch-only" id="mFold" aria-label="지도 접기"></button><button class="mutebtn" aria-label="소리 끄기">🔊</button><button class="pausebtn" id="pauseBtn" aria-label="일시정지" hidden>❚❚</button><i class="mexp" aria-hidden="true">⤢</i></span></div>
     <div class="mbody"><div class="tower" id="tower"></div><canvas id="mm" width="300" height="207"></canvas></div>
     <div class="mtap" id="mTap"></div>
   </div>
@@ -149,7 +149,7 @@
       </ul></div></div>
       </div>
       <div class="btns"><button class="btn" id="hSolo">혼자 하기</button><button class="btn" id="hMulti">같이 하기</button></div>
-      <p class="foot"><button class="tlink" id="hRank">주간 랭킹</button><button class="tlink" id="hDress">사원증</button><button class="tlink" id="hBoard">사내 게시판<i class="newmark" hidden>NEW!</i></button><button class="tlink" id="hTut">튜토리얼</button></p>
+      <p class="foot"><button class="tlink" id="hRank">주간 랭킹</button><button class="tlink" id="hDress">사원증<i class="newmark idnew" hidden>NEW!</i></button><button class="tlink" id="hBoard">사내 게시판<i class="newmark" hidden>NEW!</i></button><button class="tlink" id="hTut">튜토리얼</button></p>
     </div>
     <div id="dress" hidden>
       <h1>사원증</h1>
@@ -167,7 +167,7 @@
 <nav id="dock" aria-label="메뉴">
   <span id="dockCount"></span>
   <button data-go="guide">게임 안내</button>
-  <button data-go="dress">사원증</button>
+  <button data-go="dress">사원증<i class="newmark idnew" hidden>NEW!</i></button>
   <button data-go="solo" class="pri">혼자 하기</button>
   <button data-go="multi" class="pri">같이 하기</button>
   <button data-go="rank">주간 랭킹</button>
@@ -261,8 +261,8 @@
   <div class="memo pausememo">
     <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span>자리 비움 신청</span></div>
     <div class="stampmark">보류</div>
-    <h1>잠깐 멈춤</h1>
-    <p class="subj">혼자 하기라서 회사 시계도 같이 멈춰 있어요.</p>
+    <h1 id="pTitle">잠깐 멈춤</h1>
+    <p class="subj" id="pSub">혼자 하기라서 회사 시계도 같이 멈춰 있어요.</p>
     <button class="btn mainbtn" id="pResume">업무 복귀<small class="pc-only">Esc</small></button>
     <p class="foot"><button class="tlink" id="pRestart">처음부터 다시 출근</button><button class="tlink" id="pHome">로비로 나가기</button></p>
   </div>

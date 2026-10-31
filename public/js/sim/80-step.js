@@ -151,9 +151,10 @@ function step(dt){
   for(const a of G.over?[]:al){if(a.f<G.closed&&!(G.lunch&&G.lunch.kind==='ladder')){dmg(a,4*dt,'zone');}if(G.final&&G.finalT>30)dmg(a,(1.4+(G.finalT-30)*.05)*dt,'overtime');}
   // deaths (none after the match is decided: the result is final)
   for(const a of G.over?[]:alive()){
-    if(a.g>0)continue;
+    if(a.g>0&&!a.quit)continue;
     a.g=0;a.alive=false;a.outT=G.t;a.chan=null;a.contact=null;a.call=null;stand(a);const left=aliveCount();a.place=left+1;
-    const killer=(a.cause==='paper')&&a.lastHitBy&&G.t-a.lastHitT<4?a.lastHitBy:null;a.killer=killer;
+    /* a 해고 goes to whoever hit them last, up to 4s ago, if still in the game. From the 2026-11-02 ranking week (G.killAny) whatever took the last of the 고과 counts (a hit often leaves a sliver for the idle or closed-floor drain to finish); before it, only a paper */
+    const killer=a.lastHitBy&&G.t-a.lastHitT<4&&(G.killAny||a.cause==='paper')?a.lastHitBy:null;a.killer=killer;
     if(killer&&killer.alive){worked(killer);const RI=['인턴','사원','대리','팀장','임원'],v=10+(RI.indexOf(a.rank)>RI.indexOf(killer.rank)?6:0);gain(killer,v);killer.kills=(killer.kills||0)+1;
       pop(killer.f,killer.x,killer.y-52,`처리 +${v}`,'#2f7d4f');} // the killer's screen shows its own banner
     if(a.f>=0){a.items.forEach((k,j)=>spawnItem(a.f,k,{x:a.x+12+j*8,y:a.y+j*8}));a.items=[];spawnItem(a.f,null,{x:a.x-12,y:a.y+6});if(a.carry)G.drops.push({f:a.f,x:a.x,y:a.y-10});}

@@ -37,7 +37,8 @@ function pzURL(){
 function plazaConnect(){
   let ws;try{ws=new WebSocket(pzURL());}catch{return;}
   PZ.ws=ws;
-  ws.onopen=()=>ws.send(JSON.stringify({t:'hello',name:store.get('or-name')||'신입',fit:myFit(),uid:rankUid()}));
+  ws.onopen=()=>{const hi=()=>{if(PZ.ws!==ws||ws.readyState!==1)return;if(typeof rankUid!=='function')return void setTimeout(hi,50);   // the socket can open before 48-rank.js has loaded
+    ws.send(JSON.stringify({t:'hello',name:store.get('or-name')||'신입',fit:myFit(),uid:rankUid()}));};hi();};
   ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch{return;}
     if(m.t==='pz-hi'){PZ.pid=m.you;PZ.online=true;PZ.roomSent='';pzRoomSend();const me=G&&G.plaza&&G.me;if(me){me.id=PZ_BASE+m.you;me.name=m.name;dropMesh(me);}}
     else if(m.t==='pz'){PZ.count=m.n;plazaPeople(m.p);}
@@ -45,6 +46,11 @@ function plazaConnect(){
     else if(m.t==='pz-say'){const a=m.id===PZ.pid?G.me:PZ.others.get(m.id);if(a&&EMOTES[m.i])say(a,EMOTES[m.i]);}};
   ws.onclose=()=>{if(PZ.ws!==ws)return;PZ.ws=null;PZ.online=false;if(PZ.on)setTimeout(()=>{if(PZ.on&&!PZ.ws)plazaConnect();},4000);};
 }
+/* 상대방: a spring towards the last position heard. The velocity stays continuous, so uneven network steps don't show as stutter */
+const PZ_FOLLOW=2/.16;
+function pzFollow(a,dt){if(Math.hypot(a.nx-a.x,a.ny-a.y)>260){a.x=a.nx;a.y=a.ny;a.fvx=a.fvy=0;return;}
+  const k=PZ_FOLLOW*dt,e=1/(1+k+.48*k*k+.235*k*k*k);
+  for(const[p,n,v]of[['x','nx','fvx'],['y','ny','fvy']]){const c=a[p]-a[n],t=((a[v]||0)+PZ_FOLLOW*c)*dt;a[v]=((a[v]||0)-PZ_FOLLOW*t)*e;a[p]=a[n]+(c+t)*e;}}
 const dropMesh=a=>{const m=actorM.get(a);if(m){scene.remove(m);actorM.delete(a);}};
 function plazaPeople(list){
   if(!G||!G.plaza)return;const seen=new Set();
@@ -152,11 +158,10 @@ function plazaFrame(dt){
     const q=b.path[0],dx=q.x-b.x,dy=q.y-b.y,d=Math.hypot(dx,dy);if(d<6){b.path.shift();continue;}
     b.face=Math.atan2(dy,dx);drive(b,dx/d*.75,dy/d*.75,dt);}
   {const g=PZ.guide;if(g){if(g.lookT>0&&(g.lookT-=dt)<=0)g.face=Math.PI/2;g.talkT-=dt;if(g.talkT<=0){g.talkT=rnd(14,24);say(g,pick(GUIDE_IDLE));}}}
-  const k=Math.min(1,dt*10);
-  for(const a of PZ.others.values()){a.x+=(a.nx-a.x)*k;a.y+=(a.ny-a.y)*k;if(a.tf!=null)a.face=a.tf;}
+  for(const a of PZ.others.values()){pzFollow(a,dt);if(a.tf!=null)a.face=a.tf;}
   for(const p of G.pops)p.t+=dt;G.pops=G.pops.filter(p=>p.t<(p.life||(p.say?2.4:1.1)));
   const now=performance.now();
-  if(PZ.ws&&PZ.ws.readyState===1&&now-PZ.sendT>160){const s=`${Math.round(me.x)},${Math.round(me.y)},${me.face.toFixed(2)}`;
+  if(PZ.ws&&PZ.ws.readyState===1&&now-PZ.sendT>100){const s=`${Math.round(me.x)},${Math.round(me.y)},${me.face.toFixed(2)}`;
     if(s!==PZ.sent||now-PZ.sendT>2000){PZ.sent=s;PZ.sendT=now;PZ.ws.send(JSON.stringify({t:'pz-pos',x:me.x,y:me.y,face:me.face,mv:m>.15}));}}
   pzRooms(dt);
   const n=PZ.online?Math.max(1,PZ.count):0;
@@ -165,7 +170,7 @@ function plazaFrame(dt){
 }
 
 /* ---------- menu ---------- */
-/* PC greets with keys 1-5 and E; phones have no greeting button (the lobby's 상호작용 button uses things) */
+/* PC greets with keys 1-5 and E; phones with the 상호작용 button when there is nothing near to use (10-input.js) */
 const plazaSayRandom=()=>plazaSay(Math.floor(Math.random()*EMOTES.length));
 addEventListener('keydown',e=>{if(!PZ.on||($('home').hidden&&!$('lobby').classList.contains('dock'))||(e.target.closest&&e.target.closest('input')))return;
   if(G&&G.plaza&&G.me.desk){const k={KeyW:'U',ArrowUp:'U',KeyS:'D',ArrowDown:'D',KeyA:'L',ArrowLeft:'L',KeyD:'R',ArrowRight:'R'}[e.code];if(k){e.preventDefault();deskKey(G.me,k);return;}}
@@ -260,11 +265,11 @@ function rwHave(n){if(!n||rwUnlocked())return true;const own=typeof CR!=='undefi
 /* my place last week (1~3) if it lends me anything, and taking off what was only lent once the week is over */
 const rwPlace=()=>{const own=(typeof CR!=='undefined'&&CR.view&&CR.view.own)||[],k=own.find(x=>/^halo:/.test(x));return k?+k.slice(5):0;};
 /* 지난주 1~3위: once a week, on coming back to the lobby: the 후광 put on for them (금가루 too for 1위, unless another trail is on) and a note saying so */
-function rwLentCheck(){const l=typeof CR!=='undefined'&&CR.view&&CR.view.lent;if(!l||!PZ.on||store.get('or-lentSeen')===l.week)return;store.set('or-lentSeen',l.week);
+function rwLentCheck(){const l=typeof CR!=='undefined'&&CR.view&&CR.view.lent;if(!l||!PZ.on)return;const seen=`${l.week}:${l.place}`;if(store.get('or-lentSeen')===seen)return;store.set('or-lentSeen',seen);
   const f=myFit();f.gear=[...new Set([...(f.gear||[]),'halo'])];f.haloT=l.place;if(l.place===1&&!f.fx)f.fx='gold';store.set('or-fit',JSON.stringify(f));
   if(G&&G.plaza&&G.me)dressShow();if(PZ.ws&&PZ.ws.readyState===1)PZ.ws.send(JSON.stringify({t:'pz-fit',fit:f}));profSave();
   $('rankWinList').hidden=true;$('rankWinH').textContent=`지난주 랭킹 ${l.place}위!`;
-  $('rankWinS').textContent=`${['','금빛 후광과 금가루를','은빛 후광을','동빛 후광을'][l.place]} 입혀 드렸어요. 이번 주 동안 쓸 수 있고, 옷장에서 벗을 수도 있어요.`;$('rankWin').hidden=false;if($('nameStep').hidden&&!PZ.dress)homeClose(true);}   // the note takes the place of the guide card
+  $('rankWinS').textContent=`${['','금빛 후광과 금가루를','은빛 후광을','동빛 후광을'][l.place]} 입혀 드렸어요.\n이번 주 동안 쓸 수 있고, 옷장에서 벗을 수도 있어요.`;$('rankWin').hidden=false;if($('nameStep').hidden&&!PZ.dress)homeClose(true);}   // the note takes the place of the guide card
 $('rankWinOk').addEventListener('click',()=>{$('rankWin').hidden=true;newsCheck();});
 function rwPrune(){if(rwUnlocked())return;let f;try{f=JSON.parse(store.get('or-fit'));}catch{return;}if(!f)return;
   const g=f.gear||[],keep=g.filter(x=>x!=='halo'||rwHave(RW_GEAR.halo)),p=rwPlace();let ch=keep.length!==g.length;
@@ -300,7 +305,7 @@ function dressRender(){
   const f=G.me.fit,lockI='<i class="lk" aria-hidden="true">🔒</i>',jobs=[];
   $('dressCats').innerHTML=DRESS_CATS.map(([k,n])=>`<button data-c="${k}" class="${DR.cat===k?'on':''}">${n}</button>`).join('');
   const btn=(lab,k,v,names,view)=>{const n=rwNeed(k,v),lock=!rwHave(n),tr=DR.tries.some(t=>t.k===k&&t.v===v);
-    const cls=`${dressIs(f,k,v)?'on':''}${lock?' lock':''}${tr?' trying':''}${n&&!lock?' rw':''}`,data=`data-k="${k}" data-v="${v??''}"`,tip=n?(lock?rwWhy(n):n.n||''):'';
+    const cls=`${dressIs(f,k,v)?'on':''}${lock?' lock':''}${tr?' trying':''}`,data=`data-k="${k}" data-v="${v??''}"`,tip=n?(lock?rwWhy(n):n.n||''):'';
     if(names&&view){const vw=typeof view==='string'?view:view[v];
       if(k==='fx'||k==='thr')return`<button ${data} class="th ${cls}" title="${tip}"><b class="thi">${vw}</b><span>${lock?lockI:''}${names[v]}</span></button>`;
       const tf=rwShotFit(k,v),url=shotKnown(tf,vw);   // always on the default outfit: the same few pictures, drawn once (what I wear shows on me beside the card)
@@ -334,7 +339,8 @@ function dressSet(k,v){
 }
 /* turning me round: the ◀ ▶ buttons or dragging across the view. The 헤어 / 얼굴 tabs bring the camera in on the head */
 PZ.yaw=0;PZ.zoom=0;
-$('dressCats').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;DR.cat=b.dataset.c;PZ.zoom=DR.cat==='face'?1:0;dressRender();$('paneWear').scrollTop=0;});
+const dressZoom=c=>c==='face'?1:c==='hair'?.85:0;   // 얼굴·헤어 tabs: in close on the head
+$('dressCats').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;DR.cat=b.dataset.c;PZ.zoom=dressZoom(DR.cat);dressRender();$('paneWear').scrollTop=0;});
 for(const[id,d]of[['dRotL',-1],['dRotR',1]])$(id).addEventListener('click',()=>{PZ.yaw+=d*Math.PI/4;});
 {let dx=null;addEventListener('pointerdown',e=>{if(PZ.dress&&(e.target===cv||e.target===gl.domElement))dx=e.clientX;});
  addEventListener('pointermove',e=>{if(dx===null||!PZ.dress)return;PZ.yaw-=(e.clientX-dx)*.012;dx=e.clientX;});
@@ -349,7 +355,7 @@ function dressOpen(){if(!PZ.on)return;PZ.dress=true;$('home').classList.add('dre
    let best=spots[start]||{x:FW/2,y:K(300)};
    for(let i=0;i<n;i++){const p=spots[(start+i)%n];if(!others.some(a=>Math.hypot(a.x-p.x,a.y-p.y)<60)){best=p;break;}}
    G.me.x=best.x;G.me.y=best.y;}
-  G.me.vx=G.me.vy=0;cam={x:G.me.x,y:G.me.y};$('homeMenu').hidden=true;$('dress').hidden=false;DR.tries=[];PZ.yaw=0;PZ.zoom=DR.cat==='face'?1:0;dressRender();idTab('wear');careerLoad();}   // the 옷장 locks read the 성과 steps
+  idMark();G.me.vx=G.me.vy=0;cam={x:G.me.x,y:G.me.y};$('homeMenu').hidden=true;$('dress').hidden=false;DR.tries=[];PZ.yaw=0;PZ.zoom=dressZoom(DR.cat);dressRender();idTab('wear');careerLoad();}   // the 옷장 locks read the 성과 steps
 function dressClose(){if(DR.tries.length){DR.tries=[];dressShow();}PZ.dress=false;$('home').classList.remove('dressing');$('homeMenu').hidden=false;$('dress').hidden=true;
   if(PZ.dressFromDock){PZ.dressFromDock=false;homeClose(true);}} // opened from the tabs: go back to the tabs
 $('dressRows').addEventListener('change',e=>{if(e.target.id==='dHideLock'){store.set('or-hideLock',e.target.checked?'1':'0');dressRender();}});

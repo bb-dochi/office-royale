@@ -38,7 +38,7 @@ function serA(a,full,fixed){
   }
   return o;
 }
-const serN=n=>({id:n.id,kind:n.kind,f:n.f,x:r1(n.x),y:r1(n.y),face:r2(n.face),slot:n.slot,on:n.on,sr:n.senior?1:0,ask:n.ask&&n.job?n.job.r:0});
+const serN=n=>({id:n.id,kind:n.kind,f:n.f,x:r1(n.x),y:r1(n.y),face:r2(n.face),slot:n.slot,on:n.on,sr:n.senior?1:0,ask:n.ask&&n.job?n.job.r:0,cg:n.caught?1:0});
 /* the ladder's rungs stay on the server until everyone has picked a lane */
 function lunchSnap(){const L=G.lunch;if(!L)return null;
   return{kind:L.kind,t:r2(L.t),score:L.score,phase:L.phase,dealt:L.dealt,zone:L.zone,crowd:L.crowd,
@@ -122,7 +122,11 @@ NET.result=function(key){const a=byKey(key);if(!a)return null;const win=G.winner
 NET.humansOut=()=>!!G&&!humans().some(a=>a.alive);
 /* a player who drops mid-match is handed to the bot brain so the match keeps its numbers */
 NET.leave=function(key){const a=byKey(key);NET.out.delete(key);if(!a||!a.isPlayer)return;a.isPlayer=false;a.input=null;a.call&&(a.call.botAns=a.call.line.ans,a.call.botT=0);
-  if(a.alive)feed(`${a.name}님 연결 끊김: 봇이 대신 근무합니다`);};
+  if(a.alive&&!a.quit)feed(`${a.name}님 연결 끊김: 봇이 대신 근무합니다`);};
+/* 로비로 나가기, on purpose: out of the match at once, no bot takes over (a dropped connection stays NET.leave, it can come back) */
+NET.quit=function(key){const a=byKey(key);if(!a||!a.isPlayer||!a.alive||G.over)return;a.quit=true;feed(v=>a===v?null:`${a.name}님 퇴사`,true);return true;};
+/* this person's own game is over: nothing on their record can change any more */
+NET.isOut=key=>{const a=byKey(key);return !!a&&!a.alive;};
 /* the same player back on a new socket (server/src/room.js checks the resume token): hand the actor back.
    Events sent while away are gone, so one who was knocked out meanwhile gets their result again */
 NET.rejoin=function(key){const a=byKey(key);if(!a||a.isPlayer)return;a.isPlayer=true;a.input=null;a.aim=null;a.mode='idle';a.target=null;NET.out.set(key,[]);

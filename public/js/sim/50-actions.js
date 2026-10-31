@@ -337,10 +337,13 @@ function contextAction(me){
   if(me.wc)return me.wc.res?null:{label:(g=>g>=0?`익절! +${g}`:`손절 ${g}`)(wcGain(me.wc.m)),cls:'hot',fn:()=>cashWc(me)};
   if(me.contact)return{label:`${bossTitle(me.contact.n)}께 인사!`,cls:'hot',fn:()=>greet(me)};
   if(me.quest)return{label:'신입 질문 답해주기 +2',cls:'hot',fn:()=>answerQuest(me)};
+  if(!me.sit){const n=G.npcs.find(n=>n.kind==='late'&&n.f===me.f&&npcActive(n)&&!n.caught&&dist(n,me)<LATE.r);if(n)return{label:'지각한 대리님께 인사',cls:'hot',fn:()=>lateCatch(me,n)};}
   if(!me.errand){const n=G.npcs.find(n=>n.kind==='desk'&&n.ask&&n.f===me.f&&dist(n,me)<70);if(n)return{label:`부탁 들어주기 +${n.job.r}`,cls:'go',fn:()=>acceptErrand(me,n)};}
   if(me.docs>0){const n=watchers(me).find(n=>dist(n,me)<150);if(n)return{label:'결재 올리기 +8',cls:'ready',fn:()=>submitDoc(me,n)};}
   const rt=G.tasks.find(t=>t.ready&&t.by===me&&inTaskRange(me,t));
   if(rt)return{label:`제출 +${rt.reward*(warnFloor(rt.f)?2:1)}`,cls:'ready',fn:()=>submitTask(me,rt)};
+  const gd=me.sit?null:guideNear(me);
+  if(gd&&me.guideCd<=G.t)return{label:`안내 도와드리기 +${GUIDE.r}`,cls:'go',fn:()=>helpGuide(me,gd)};
   const d=G.doors[me.f];
   if(d&&d.v&&dist(me,DOOR)<64)return{label:'문 열기',cls:'go',fn:()=>openDoor(me)};
   const rd=nearDoor(me);
@@ -367,6 +370,7 @@ function contextAction(me){
   if(other)return{label:'남의 자리에 앉기',cls:'',fn:()=>{if(sit(me,other))tell(me,`${other.owner?other.owner.name+'님':'빈'} 자리: 회복 없음`);}};
   const cl=G.npcs.find(n=>n.kind==='cleaner'&&n.f===me.f&&npcActive(n)&&dist(n,me)<80);
   if(cl&&me.cleanCd<=0)return{label:'아주머니께 인사 (정보)',cls:'',fn:()=>greet(me)};
+  if(gd)return{label:`안내 데스크 · ${Math.ceil(me.guideCd-G.t)}초`,cls:'off',fn:()=>{}};
   return null;
 }
 function interact(a){if(!a.alive||a.f<0||locked(a)||a.chan)return;const act=contextAction(a);if(act&&act.cls!=='off')act.fn();}

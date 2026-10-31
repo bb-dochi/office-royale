@@ -10,7 +10,7 @@ function mk(name,isPlayer,type,color,pos){
     path:[],pathAge:0,goal:null,mode:'idle',think:Math.random()*.3,target:null,strafe:Math.random()<.5?1:-1,react:.4,
     speed:isPlayer?175:135+Math.random()*25,flash:0,lastHitBy:null,hitBy:0,lastHitT:-99,cause:null,sx:pos.x,sy:pos.y,stuckT:0,nudge:null,place:0,
     items:[],docs:0,intelT:0,sprint:false,runCd:0,fallCd:0,side:null,lunchGo:false,rapidT:0,slipT:0,ammo:0,lastCd:.6,cloakT:0,skillCd:0,rushT:0,branch:null,revived:false,shieldN:0,speedT:0,stunT:0,vipT:0,slowT:0,lockT:0,lockWhy:'',chan:null,transit:null,inv:0,
-    seats:{},sit:null,sitT:0,sitHeal:0,sitStart:0,sitGoal:0,desk:null,deskCd:0,working:false,wc:null,wcCd:0,jobs:{dev:0,mkt:0,hr:0},lighter:0,bill:false,billFrom:null,billT:-99,meal:0,lad:null,smokeCd:0,workT:0,carry:false,lastTaskT:-99,tasksDone:0,coffeeCd:0,coolerCd:0,
+    seats:{},sit:null,sitT:0,sitHeal:0,sitStart:0,sitGoal:0,desk:null,deskCd:0,guideCd:0,working:false,wc:null,wcCd:0,jobs:{dev:0,mkt:0,hr:0},lighter:0,bill:false,billFrom:null,billT:-99,meal:0,lad:null,smokeCd:0,workT:0,carry:false,lastTaskT:-99,tasksDone:0,coffeeCd:0,coolerCd:0,
     contact:null,call:null,met:{},stampT:0,stampNpc:null,greetLock:0,cleanCd:0,cleanFriend:false,chatCd:0,restT:0,inRest:false,
     pref:0,padPref:Math.random()<.5?'stair':'elev',greed:rnd(2,10),maxF:0,killer:null};
 }
@@ -40,6 +40,7 @@ const DIFF={easy:{n:'쉬움',aim:1.8,react:.35,cd:1.35,speed:.9,regen:false,idle
   hard:{n:'어려움',aim:.55,react:-.08,cd:.8,speed:1.07,regen:false,idle:true,hunt:180,huntP:.4,huntMax:2,dodge:.5,seek:.8,seekAfter:4,move:[[.15,.8,.9],[1,.9,1]],dodgeCd:[.05,.1],see:.07,lead:.85,guard:.25,plant:[.08,.12]}};
 const diff=()=>DIFF[G&&G.diff]||DIFF.normal;
 const NET_SEEK=.4;   // online rooms (G.online): fewer last-floor seekers than solo 보통's .55
+const KILL_ANY_AT=Date.parse('2026-11-02T00:00:00+09:00');   // the new 해고 rule starts with the ranking week, so one week isn't scored by two rules
 function newGame(opts={}){
   NID=0;
   const actors=[],spots=[];
@@ -60,6 +61,9 @@ function newGame(opts={}){
     if(f>=1&&f<=4){const p=randFree(f);G.npcs.push(mkNpc('busy',f,p.x,p.y));}
     if(f>=1){const p=randFree(f);G.npcs.push(mkNpc('newbie',f,p.x,p.y));G.npcs.push(Object.assign(mkNpc('courier',f,PADS.elev.x,PADS.elev.y-20),{on:false,cd:rnd(12,40)}));}
     {const p=randFree(f);G.npcs.push(mkNpc('cart',f,p.x,p.y));}
+    /* lobby only: the 안내원 at the desk (the same spot as in the plaza), and in about half the games a 대리 running in late */
+    if(f===0){G.npcs.push(Object.assign(mkNpc('guide',0,K(478),K(538)),{face:Math.PI/2}));
+      if(!opts.tutorial&&Math.random()<LATE.p)G.npcs.push(Object.assign(mkNpc('late',0,DOOR.x,DOOR.y-10),{face:-Math.PI/2,on:false,at:rnd(...LATE.at),sprint:true}));}
     G.doors.push({f,v:null,cd:rnd(10,30)});
     /* seat workers: a few people glued to their desks from 2F up; their chairs are taken and now and then they ask a favour */
     for(const s of FLOORS[f].seats)s.npc=null;
@@ -74,7 +78,7 @@ function newGame(opts={}){
   if(kinds.indexOf('ceo')>2){kinds.splice(kinds.indexOf('ceo'),1);kinds.splice(1,0,'ceo');}
   [rnd(28,38),rnd(62,72),rnd(150,165),rnd(195,210)].forEach((at,i)=>G.events.push({at,kind:kinds.at(i),stage:0}));
   G.events.push({at:rnd(96,104),kind:'lunch',stage:0});G.lunchKind=opts.lunch||pick(LUNCH_KINDS);
-  G.diff=DIFF[opts.diff]?opts.diff:'normal';for(const b of actors)if(!b.isPlayer){b.speed*=diff().speed;b.hunter=Math.random()<diff().huntP;}
+  G.killAny=Date.now()>=KILL_ANY_AT;G.diff=DIFF[opts.diff]?opts.diff:'normal';for(const b of actors)if(!b.isPlayer){b.speed*=diff().speed;b.hunter=Math.random()<diff().huntP;}
   if(opts.tutorial){G.tutorial=true;G.events=[];G.nextClose=1e9;for(const b of actors)if(!b.isPlayer)b.dummy=true;}
   UI.snapCam(me);
   UI.reset();
