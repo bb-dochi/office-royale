@@ -3,7 +3,8 @@
 // Solo games run in the browser, so a score can't be proven: the server recomputes it from the reported numbers and
 // turns away impossible ones. Each device (uid) keeps only its best score of the week.
 export const DIFFS = ['easy', 'normal', 'hard'], RANKED = 'hard';
-const KEEP = 100, SHOW = 50, GAP = 20e3, TOTAL = 20;
+const KEEP = 100, SHOW = 50, GAP = 20e3, TOTAL = 20, WEEK = 7 * 864e5;
+const HALL_FROM = '2026-10-26'; // the first week the board ran: 명예 사원 starts here
 export const RANKS = ['인턴', '사원', '대리', '팀장', '임원', 'CEO'];
 const RANK_PT = [0, 50, 100, 200, 300, 500];
 
@@ -63,10 +64,32 @@ export class RankCore {
     await this.store.put(`${week}:${e.diff}`, b);
     return { ...this.view(week, e.diff, b, e.uid), score: e.score, best };
   }
+  /* 명예 사원: the first look after a week ends freezes its top 3 with the outfit each career wears at that moment, so
+     nothing that happens later changes them. Keys: hall:w → the first week not frozen yet, hall:weeks → [{week, first}]
+     (weeks anyone played, oldest first; first: the 1위's name), hall:<week> → the three */
+  settleHall(career) {
+    const now = weekOf(); if (this.hallW === now) return;
+    return (this.q = (this.q || Promise.resolve()).catch(() => {}).then(async () => {
+      const weeks = (await this.store.get('hall:weeks')) || [];
+      for (let w = (await this.store.get('hall:w')) || HALL_FROM; w < now; w = weekOf(Date.parse(w) + WEEK)) {
+        const top = (await this.board(w, RANKED)).slice(0, 3), list = []; if (!top.length) continue;
+        for (const e of top) list.push({ uid: e.uid, name: e.name, score: e.score, place: e.place, rank: e.rank, kills: e.kills, tasks: e.tasks, time: e.time, fit: await career.lookOf(e.uid) });
+        await this.store.put('hall:' + w, list); weeks.push({ week: w, first: top[0].name });
+      }
+      await this.store.put('hall:weeks', weeks); await this.store.put('hall:w', now); this.hallW = now;
+    }));
+  }
+  /* one frozen week (the latest if `week` isn't one) and the list of them all */
+  async hall(career, uid, week) {
+    await this.settleHall(career);
+    const weeks = (await this.store.get('hall:weeks')) || [], w = weeks.some(x => x.week === week) ? week : weeks.length ? weeks[weeks.length - 1].week : null;
+    return { weeks, week: w, top: w ? (await this.store.get('hall:' + w)).map(e => ({ ...pub(e, uid), fit: e.fit })) : [] };
+  }
 }
 
 /* The game's HTTP API, the same for the dev server and the Durable Object:
    GET  /api/rank?uid=…  → this week's board
+   GET  /api/hall?uid=…&week=…  → 명예 사원: one finished week's top 3 and the list of weeks
    POST /api/game {uid,name,diff,place,rank,kills,tasks,time,lunch,branch} → a finished solo game: play stats, plus the board if 어려움
    The host itself records online games (stats.record) and serves the admin page. */
 const okUid = u => typeof u === 'string' && /^[a-z0-9]{8,32}$/.test(u);
@@ -78,6 +101,7 @@ export async function apiHTTP({ rank, stats, career, feedback }, method, url, bo
     return { status: 200, json: url.pathname.endsWith('/del') ? await feedback.remove(m.uid, m.id) : await feedback.add(m.uid, m.name, m.post, m.text) };
   }
   if (url.pathname === '/api/rank' && method === 'GET') return { status: 200, json: await rank.top(url.searchParams.get('uid') || '') };
+  if (url.pathname === '/api/hall' && method === 'GET') return { status: 200, json: await rank.hall(career, url.searchParams.get('uid') || '', url.searchParams.get('week')) };
   if (url.pathname === '/api/career' && method === 'GET') { // the 사원증 (server/src/career.js)
     const uid = url.searchParams.get('uid');
     return okUid(uid) ? { status: 200, json: await career.view(uid) } : { status: 400, json: { err: '잘못된 요청' } };

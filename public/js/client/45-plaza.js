@@ -27,7 +27,7 @@ function plazaWorld(){
   /* stands behind the 안내데스크, left of the info board, facing the visitors */
   const g=mk('안내원',false,'안내원','#2b4a6b',{x:K(478),y:K(538)});g.f=0;g.alive=true;g.face=Math.PI/2;g.fit=GUIDE_FIT;g.talkT=rnd(6,12);g.lookT=0;
   G.actors.push(g);PZ.guide=g;PZ.desk=FLOORS[0].ob.filter(o=>o.k==='reception').sort((a,b)=>b.w-a.w)[0];PZ.tips=PZ.tips||[]; // anywhere along the desk counts
-  PZ.others.clear();cam={x:me.x,y:me.y};
+  PZ.others.clear();cam={x:me.x,y:me.y};if(typeof hallSet==='function')hallSet();
 }
 function pzURL(){
   const q=new URLSearchParams(location.search).get('server'),host=q||location.host;
@@ -66,10 +66,10 @@ function plazaStart(keepLobby){
   plazaWorld();document.body.classList.add('plaza');
   for(const id of['lobby','result','cine','notice','callBox','branchBox','countdown','spec'])if(!(keepLobby&&id==='lobby'))$(id).hidden=true;
   $('home').hidden=!!keepLobby;$('feed').textContent='';PZ.roomSent='';
-  plazaConnect();if(typeof careerLoad==='function')careerLoad();   // (the very first time 51-career.js isn't loaded yet: it does this itself)
+  plazaConnect();if(typeof careerLoad==='function')careerLoad();if(typeof hallLoad==='function')hallLoad();   // (the very first time 51-career.js and 52-hall.js aren't loaded yet: they do this themselves)
 }
 function plazaStop(){
-  if(!PZ.on)return;PZ.on=false;if(G&&G.plaza&&G.me){G.me.wc=null;if(G.me.sit)pzStand();}
+  if(!PZ.on)return;PZ.on=false;if(G&&G.plaza&&G.me){G.me.wc=null;if(G.me.sit)pzStand();}if(typeof hallStop==='function')hallStop();
   {const fl=FLOORS[0];let ch=false;for(const d of fl.doors)if(d.open){d.open=false;ch=true;}if(ch)refreshObs(fl);}dressClose();document.body.classList.remove('plaza');$('home').hidden=true;$('pzRooms').hidden=true;PZ.roomsKey='';
   const ws=PZ.ws;PZ.ws=null;PZ.online=false;if(ws)try{ws.close();}catch{}
 }
@@ -105,6 +105,7 @@ function pzTarget(){
   {const s=fl.seats.find(s=>!s.occ&&!s.npc&&dist(me,s)<26);if(s){const work=s.dept!=='카페'&&me.deskCd<=0;
     return{x:s.x,y:s.y,label:work?'앉기 (모니터 업무)':'앉기',fn:()=>pzSit(s,work)};}}
   {const g=PZ.guide,d=PZ.desk;if(g&&(Math.hypot(g.x-me.x,g.y-me.y)<150||d&&inRect(me,{x:d.x-30,y:d.y-80,w:d.w+60,h:d.h+160})))return{x:g.x,y:g.y,bot:true,quiet:g.lookT>0,label:'말 걸기',fn:()=>pzGuide(g)};}
+  if(typeof hallNear==='function'&&hallNear(me))return{x:HL_X,y:HL_BOX.y+HL_BOX.h,label:'명예 사원 보기',fn:hallOpen};
   let best=null,bd=1e9;
   for(const b of PZ.bots){const d=Math.hypot(b.x-me.x,b.y-me.y);if(d<70&&d<bd){bd=d;best={x:b.x,y:b.y,bot:true,label:'말 걸기',fn:()=>pzTalk(b)};}}
   if(best)return best;

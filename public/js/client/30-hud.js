@@ -28,7 +28,7 @@ function miniLayer(f,cw,ch,dpr,big){
   c.save();miniRR(c,X(0),Y(0),FW*s,FH*s,big?10:6);c.clip();
   c.fillStyle=MP.rest;c.fillRect(X(fl.rest.x),Y(fl.rest.y),fl.rest.w*s,fl.rest.h*s);
   c.fillStyle=MP.meet;for(const z of fl.meet)c.fillRect(X(z.x),Y(z.y),z.w*s,z.h*s);
-  for(const o of fl.ob){if(o.k==='wall'||o.k==='glass')continue;miniRR(c,X(o.x),Y(o.y),Math.max(o.w*s,2),Math.max(o.h*s,2),big?3:1.5);c.fillStyle=MP.furn;c.fill();}
+  for(const o of fl.ob){if(o.k==='wall'||o.k==='glass'||o.k==='hall')continue;miniRR(c,X(o.x),Y(o.y),Math.max(o.w*s,2),Math.max(o.h*s,2),big?3:1.5);c.fillStyle=MP.furn;c.fill();}
   for(const o of fl.ob){if(o.k!=='wall'&&o.k!=='glass')continue;c.fillStyle=o.k==='glass'?MP.glass:MP.wall;
     const w=o.w>o.h?o.w*s:Math.max(1.5,o.w*s*.6),h=o.h>o.w?o.h*s:Math.max(1.5,o.h*s*.6);c.fillRect(X(o.x+o.w/2)-w/2,Y(o.y+o.h/2)-h/2,w,h);}
   c.restore();

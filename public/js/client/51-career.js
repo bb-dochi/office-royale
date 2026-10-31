@@ -19,7 +19,7 @@ $('paneCareer').addEventListener('focusin',e=>{if(e.target.matches('input'))setT
 function careerLoad(){
   if(!CR.view)$('crBox').innerHTML='<p class="awmsg">불러오는 중…</p>';
   if(!CR.view)awardRender();
-  fetch(careerURL()+`?uid=${rankUid()}`).then(r=>r.json()).then(v=>{if(!v||!v.career)throw 0;CR.view=v;rwPrune();rwLentCheck();newsIn(v.news);newsCheck();idMark();if(v.code)store.set('or-code',v.code);profApply(v.prof);if(v.code&&!v.prof&&store.get('or-profAt'))profPush();careerRender();awardRender();if(typeof PZ!=='undefined'&&PZ.dress&&CR.tab==='wear')dressRender();})
+  fetch(careerURL()+`?uid=${rankUid()}`).then(r=>r.json()).then(v=>{if(!v||!v.career)throw 0;CR.view=v;rwPrune();rwLentCheck();newsIn(v.news);newsCheck();idMark();if(v.code)store.set('or-code',v.code);profApply(v.prof);if(v.code&&!v.prof&&(store.get('or-profAt')||store.get('or-fit'))){if(!store.get('or-profAt'))store.set('or-profAt',String(Date.now()));profPush();}careerRender();awardRender();if(typeof PZ!=='undefined'&&PZ.dress&&CR.tab==='wear')dressRender();})
     .catch(()=>{if(!CR.view){$('crBox').innerHTML='<p class="awmsg">사원증 서버에 연결하지 못했어요.</p>';$('awList').innerHTML='<li class="awmsg">사원증 서버에 연결하지 못했어요.</li>';}});
 }
 /* 성과: one row each — name, what it counts, the 5 step chips (reached ones filled) and a bar to the next goal */

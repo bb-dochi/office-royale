@@ -329,6 +329,7 @@ function obMesh(g,o,f){
     case 'exec':{bx(g,x,y,w,h,0,.8,lam('#5a3b28'));bx(g,mx-20,y+6,40,4,.8,.4,lam('#2a3036'));break;}
     case 'cabinet':{bx(g,x,y,w,h,0,1.9,lam('#8d949b'));for(let i=0;i<5;i++){bx(g,x+3,y+h,w-6,1,.12+i*.36,.3,lam('#a7aeb5'),false);bx(g,x+w/2-6,y+h+1,12,1,.3+i*.36,.04,lam('#5d666e'),false);}break;}
     case 'rack':{bx(g,x,y,w,h,0,2.1,lam('#22303c'));for(let xx=x+8;xx<x+w-6;xx+=14)bx(g,xx,y+h,5,1,1.6,.06,lam('#5fd38a',{emissive:'#5fd38a',emissiveIntensity:.9}),false);break;}
+    case 'hall':break;   // only walked around: 52-hall.js draws the 명예 사원 itself, and the floor is kept for matches
     default:bx(g,x,y,w,h,0,.8,lam('#9aa3ab'));
   }
 }
@@ -419,11 +420,22 @@ function pantryProps(g){
   for(let i=0;i<4;i++)mug(g,K(1045)+i*10,K(28),['#fbfaf6','#cf3626','#2b6cb0','#e0c23d'][i]);
   for(let i=0;i<4;i++){const s=new THREE.Mesh(GEO.sph,lam(['#e5483a','#e0c23d','#3fbf6a','#e5483a'][i]));s.scale.setScalar(.06);s.position.set(K(910)*U+i*.09,1.02,K(30)*U+(i%2)*.06);g.add(s);}
 }
+const STAMP_F=s=>`900 ${s}px 'Noto Sans KR','Apple SD Gothic Neo',sans-serif`;   // stamps are textures of a fixed size, so no screen scale (DF)
+/* the wall sign: the I of OFFICE is a red necktie */
+function wallLogo(){
+  const W=470,H=76,P=4,S=52*P,C=document.createElement('canvas');C.width=W*P;C.height=H*P;const x=C.getContext('2d');x.font=STAMP_F(S);
+  const str=[...'OFFICE ROYALE'],slot=.4*S,base=C.height/2+.365*S,ws=str.map(c=>c==='I'?slot:x.measureText(c).width);let px=(C.width-ws.reduce((a,b)=>a+b))/2;
+  const poly=(...p)=>{x.beginPath();for(let i=0;i<p.length;i+=2)x.lineTo(p[i],p[i+1]);x.closePath();x.fill();};
+  str.forEach((c,i)=>{if(c==='I'){const m=px+slot/2,top=base-.76*S,bot=base+.07*S;x.fillStyle='#c8283a';
+      poly(m-.17*S,top,m+.17*S,top,m+.1*S,top+.15*S,m-.1*S,top+.15*S);poly(m-.085*S,top+.17*S,m+.085*S,top+.17*S,m+.205*S,bot-.2*S,m,bot,m-.205*S,bot-.2*S);}
+    else{x.fillStyle='#2a3036';x.fillText(c,px,base);}px+=ws[i];});
+  const t=new THREE.CanvasTexture(C);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;
+  return new THREE.Mesh(new THREE.PlaneGeometry(W*U,H*U),ownMat(new THREE.MeshLambertMaterial({map:t,transparent:true,depthWrite:false})));
+}
 function lobbyProps(g){
-  const sign=textPlane('OFFICE ROYALE',420,70,null,'#2a3036',DF(54));onBackWall(g,sign,FW/2,1.7);
+  const sign=wallLogo();onBackWall(g,sign,FW/2,1.7);
   const sub=textPlane('인사평가 서바이벌',300,26,null,'#5d666e',F(800,18));onBackWall(g,sub,FW/2,.55);sub.position.z=.16; // on the lower panel under the chair rail, clear of the sign above it
-  /* the empty parts of either plate must not hide the other: drawn first, the subtitle cut off the bottom of the sign */
-  for(const m of[sign,sub])m.material.depthWrite=false;sub.renderOrder=1;
+  sub.material.depthWrite=false;sub.renderOrder=1;   // the empty part of the sign must not hide this
   /* revolving door at the front entrance */
   const rv=new THREE.Group();rv.position.set(DOOR.x*U,0,(FH+20)*U);
   const glass=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.1,2.2,24,1,true,0,Math.PI*2),ownMat(new THREE.MeshLambertMaterial({color:'#c8d7e1',transparent:true,opacity:.35,depthWrite:false,side:THREE.DoubleSide})));glass.position.y=1.1;rv.add(glass);
@@ -711,7 +723,7 @@ function charPhoto(fit){
 /* 옷장 thumbnails: the default outfit wearing one option, framed on the part it changes (head / chest / arms / legs / feet).
    One small renderer of their own; each character is thrown away after its picture (only its baked mesh is its own) */
 let shotGL=null;const shotCache=new Map();
-const SHOT_VIEW={halo:[.85,4,.2],sash:[.62,1.55,.25],trophy:[.55,1.5,-.65],crown:[1.5,1.6,.2],neck:[.84,1.35,.4],note:[.6,1.45,.3],badge:[.6,1.05,.15],wrist:[.46,.95,.95],cup:[.45,1.2,-.75],tail:[.3,1.75,2.8],back:[.42,2.1,2.5],dragon:[.5,1.4,1.0],head:[1.16,2.15,.6],face:[1.12,1.6,.15],chest:[.7,1.75,.35],arms:[.6,2.6,.6],legs:[.36,2.2,.5],feet:[.08,1.2,.6]};   // look-at height, distance, turn
+const SHOT_VIEW={full:[.9,4.9,.25],halo:[.85,4,.2],sash:[.62,1.55,.25],trophy:[.55,1.5,-.65],crown:[1.5,1.6,.2],neck:[.84,1.35,.4],note:[.6,1.45,.3],badge:[.6,1.05,.15],wrist:[.46,.95,.95],cup:[.45,1.2,-.75],tail:[.3,1.75,2.8],back:[.42,2.1,2.5],dragon:[.5,1.4,1.0],head:[1.16,2.15,.6],face:[1.12,1.6,.15],chest:[.7,1.75,.35],arms:[.6,2.6,.6],legs:[.36,2.2,.5],feet:[.08,1.2,.6]};   // look-at height, distance, turn
 const shotKnown=(fit,view)=>shotCache.get(view+JSON.stringify(fit));   // an already drawn picture, or undefined
 function charShot(fit,view){
   const key=view+JSON.stringify(fit);if(shotCache.has(key))return shotCache.get(key);
@@ -1187,8 +1199,8 @@ function trailStep(dt){
     else p.m.scale.set(p.s*q,.03,.03);}
 }
 function poseChar(m,o,dt,isNpc){
-  const u=m.userData;m.position.set(o.x*U,0,o.y*U);
-  const want=toYaw(o.face);let cur=m.rotation.y,d=want-cur;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;m.rotation.y=cur+d*Math.min(1,dt*14);
+  const u=m.userData;m.position.set(o.x*U,o.lift||0,o.y*U);
+  const want=toYaw(o.face);let cur=m.rotation.y,d=want-cur;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;m.rotation.y=cur+d*Math.min(1,dt*14);if(o.statue)return;
   /* walking = moving faster than 12 px/s (by speed, not per-frame distance, so slow walkers like the cleaner
      still step on 144 Hz screens); held for a moment so a stuttery network sample doesn't freeze the legs */
   const px=u.px===undefined?o.x:u.px,py=u.py===undefined?o.y:u.py;u.px=o.x;u.py=o.y;
@@ -1495,8 +1507,8 @@ function render(dt){
   for(const[n,m]of npcM)if(!G.npcs.includes(n)){scene.remove(m);npcM.delete(n);}
   /* actors */
   for(const a of G.actors){
-    let m=actorM.get(a);if(!m){m=makeChar(a.color,null,a.id,a.fit?fitToOutfit(a.fit):null);actorM.set(a,m);}
-    const vis=a.alive&&a.f===f&&!a.transit&&(a===me||seenBy(me,a))&&!(a.cloakT>0&&a!==me&&!ally(me,a))
+    let m=actorM.get(a);if(!m){m=makeChar(a.color,null,a.id,a.fit?fitToOutfit(a.fit):null);if(a.statue)hallCast(m,a.statue);actorM.set(a,m);}
+    const vis=a.alive&&a.f===f&&!a.transit&&(a===me||a.statue||seenBy(me,a))&&!(a.cloakT>0&&a!==me&&!ally(me,a))
       &&!(G.plaza&&PZ.dress&&a!==me&&Math.hypot(a.x-me.x,a.y-me.y)<150); // dressing room close-up: just me
     m.visible=vis&&!(a===me&&fpK>.3);if(!m.visible)continue;
     poseChar(m,a,dt,false);const u=m.userData;{const dressing=G.plaza&&typeof PZ!=='undefined'&&PZ.dress&&a===me;trailEmit(a,m,dt,dressing);if(dressing&&DR.cat==='fx')thrDemo(a,m,dt);}teamProp(m,a.branch&&TEAMS.includes(a.branch)?a.branch:null);
@@ -1597,7 +1609,7 @@ function render(dt){
   }
   /* actor labels */
   for(const a of G.actors){const m=actorM.get(a);if(!m||!m.visible)continue;
-    const dressing=G.plaza&&a===me&&typeof PZ!=='undefined'&&PZ.dress,p=scr(a.x,a.y,dressing?1.5:1.75);if(!p)continue;const x=p[0],y=dressing?Math.max(p[1],48*UIS):p[1];   // 사원증 close-up: closer to me and never off the top, 칭호 included
+    const dressing=G.plaza&&a===me&&typeof PZ!=='undefined'&&PZ.dress,p=scr(a.x,a.y,(dressing?1.5:1.75)+(a.lift||0));if(!p)continue;const x=p[0],y=dressing?Math.max(p[1],48*UIS):p[1];   // 사원증 close-up: closer to me and never off the top, 칭호 included
     if(G.plaza){const nm=a===me?(store.get('or-name')||a.name):a.name,bg=a===me?'#2b6cb0':a.isPlayer?OTHER_HUMAN:'rgba(251,250,246,.94)',fg=a===me||a.isPlayer?'#fbfaf6':'#1d2328';tag(x,y-12,nm,bg,fg);}
     else nameTag(x,y-12,a===me?'나':a.name,a,a===me?'#1d2328':a.isPlayer?OTHER_HUMAN:'rgba(251,250,246,.94)',a===me||a.isPlayer?'#fbfaf6':'#1d2328');
     {const ttl=a.fit&&titleOf(a.fit.title);if(ttl)titleStamp(x,y-12,ttl);}

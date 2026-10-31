@@ -962,6 +962,27 @@ body.desking #lunchBoard,body.phoning #lunchBoard{display:none!important}
 .rkhow{margin:10px 0 0;font-size:12px;color:var(--muted)}.rkhow summary{cursor:pointer;font-weight:700}.rkhow p{margin:6px 0 0;line-height:1.55}
 @media (max-width:420px){.rkpod li .rkchip{display:none}.rklist li{grid-template-columns:26px minmax(0,1fr) auto}.rklist li .rkchip{display:none}}
 #rankSheet{z-index:8}
+/* 명예 사원: 2위 1위 3위 on their steps, ‹ › to the other weeks below */
+#hallSheet{z-index:8}
+.sheet .memo.hallmemo{max-width:none;width:min(94vw,520px)}
+.hlpod{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;align-items:end;min-height:232px;border-bottom:1.5px solid var(--ink)}
+.hlpod .rkmsg{grid-column:1/-1;align-self:center}
+.hlf{margin:0;display:flex;flex-direction:column;align-items:center;min-width:0;text-align:center}
+.hlf.p1{order:2}.hlf.p2{order:1}.hlf.p3{order:3}
+.hlf img{display:block;width:min(100%,128px);aspect-ratio:1;margin-bottom:-4px}
+.hlf figcaption{width:100%;padding:0 2px 6px;font-size:11.5px;color:var(--muted);line-height:1.4}
+.hlf figcaption b{display:block;font-size:14px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hlf figcaption small{display:block;font-size:11px}
+.hlf .me{font-weight:700;color:#2b6cb0}
+.hlstep{width:100%;display:grid;place-items:center;font:900 20px var(--display);color:#fbfaf6;background:var(--ink);border-top:4px solid #c0834e;height:30px}
+.hlf.p1 .hlstep{border-color:#d9b13b;height:64px;color:#f3d77a;font-size:26px}
+.hlf.p2 .hlstep{border-color:#b4bfcc;height:44px}
+.hlnav{display:grid;grid-template-columns:40px minmax(0,1fr) 40px;align-items:center;gap:8px;margin-top:10px}
+.hlnav[hidden]{display:none}
+.hlnav p{margin:0;text-align:center}.hlnav b{display:block;font:900 17px var(--display);color:var(--ink)}.hlnav small{font-size:12px;color:var(--muted)}
+.hlnav button{display:grid;place-items:center;width:40px;height:40px;padding:0;border:0;border-radius:50%;background:var(--ink);color:#fbfaf6;cursor:pointer;transition:background .15s}
+.hlnav button:hover:not(:disabled){background:#39424a}
+.hlnav button:disabled{opacity:.2;cursor:default}
 /* narrow phones: the action button (long labels like "담배 피우기 (연막)")
    gets the bottom row next to the throw button, wrapping to two lines */
 @media (max-width:480px){

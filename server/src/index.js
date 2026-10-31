@@ -70,7 +70,7 @@ export default {
       return env.ROOM.get(env.ROOM.idFromName(m ? m[1] : '__plaza-' + PLAZA_VER)).fetch(request);
     }
     if (url.pathname === '/admin' && !adminOK(request, env)) return new Response('관리자 비밀번호가 필요해요', { status: 401, headers: { 'WWW-Authenticate': 'Basic realm="office-royale admin", charset="UTF-8"' } });
-    if (url.pathname === '/api/rank' || url.pathname === '/api/game' || url.pathname.startsWith('/api/career') || url.pathname.startsWith('/api/feedback') || url.pathname === '/admin') return env.ROOM.get(env.ROOM.idFromName('__rank')).fetch(request);
+    if (url.pathname === '/api/rank' || url.pathname === '/api/hall' || url.pathname === '/api/game' || url.pathname.startsWith('/api/career') || url.pathname.startsWith('/api/feedback') || url.pathname === '/admin') return env.ROOM.get(env.ROOM.idFromName('__rank')).fetch(request);
     return env.ASSETS.fetch(request);
   },
 };

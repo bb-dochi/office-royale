@@ -13,6 +13,7 @@ import { PlazaCore } from '../server/src/plaza.js';
 import { RankCore, apiHTTP, recordMatch } from '../server/src/rank.js';
 import { CareerCore, judge, newCareer } from '../server/src/career.js';
 import { FeedbackCore } from '../server/src/feedback.js';
+import { cleanFit } from '../server/src/outfit.js';
 import { StatsCore, adminHTML } from '../server/src/stats.js';
 import { rewardEdit } from './rewards-edit.mjs';
 
@@ -50,6 +51,16 @@ if (process.argv.includes('--demo')) {
   /* --demo also shows the 성과 (off until they open, AWARDS_ON) with sample numbers on every device, for checking the 사원증 and the 옷장 locks */
   const view = api.career.view.bind(api.career), sample = { ...newCareer(), games: 42, sec: 11000, bestRank: 3, ceo: 4, tasks: 340, kills: 25, dev: 27, mkt: 12, hr: 120, lunchWin: 6, wcGo: 20, top3: 2 };
   api.career.view = async uid => ({ ...await view(uid), awards: judge(sample) });
+  seedHall();
+}
+/* --demo: three finished weeks of 명예 사원, before the real first week */
+function seedHall() {
+  const fits = [{ hair: 'allback', hairC: '#1f1b1a', top: 'jacket', topC: '#1d2024', tie: '#b8322a', badge: true, gear: ['crown', 'halo', 'trophy'], haloT: 1 },
+    { hair: 'long', hairC: '#7a4a2a', top: 'cardigan', topC: '#c8d8e8', tie: null, badge: true, glasses: true, gear: ['halo', 'coffee'], haloT: 2 },
+    { hair: 'perm', hairC: '#3a2d28', top: 'hoodie', topC: '#2f7d4f', tie: null, gear: ['halo'], haloT: 3 }, null, { hair: 'buzz', top: 'pj', bottom: 'pj', gear: ['pillow'] }];
+  const weeks = [['2026-10-05', ['최부장', '이사원', '정인턴']], ['2026-10-12', ['한팀장', '최부장']], ['2026-10-19', ['오주임', '윤차장', '최부장']]];
+  weeks.forEach(([w, names], k) => mem.set('hall:' + w, names.map((name, i) => ({ uid: 'demo' + i, name, score: 2100 - i * 140 - k * 30, place: i + 1, rank: ['CEO', '임원', '팀장'][i], kills: 9 - i * 2, tasks: 28 - i * 3, time: 300 - i * 20, fit: cleanFit(fits[(i + k) % fits.length]) }))));
+  mem.set('hall:weeks', weeks.map(([week, n]) => ({ week, first: n[0] }))); mem.set('hall:w', '2026-10-26');
 }
 async function seedDemo(stats) {
   const names = ['김대리', '박과장', '이사원', '최부장', '정인턴', '한팀장', '오주임', '윤차장'], ranks = ['인턴', '사원', '주임', '대리', '과장', '차장', '부장', 'CEO'];

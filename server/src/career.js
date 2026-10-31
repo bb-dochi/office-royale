@@ -163,6 +163,8 @@ export class CareerCore {
   async codeOf(uid) { return this.store.get('e:u:' + uid); }
   /* what a device's career owns: the list rooms and the lobby hold outfits to */
   async ownOf(uid) { const e = await this.find(uid); return e ? [...(e.own || []), ...await this.tempOf(e)] : []; }
+  /* 명예 사원: the outfit a device's career wears now, held to what it owns (null: it never left the default) */
+  async lookOf(uid) { const e = await this.find(uid); return e && e.prof ? cleanFit(e.prof.fit, this.openAll ? undefined : new Set(await this.ownOf(uid))) : null; }
   /* 주간 1~3위: lent for the week after, never owned: the 후광 in the colour of the place (금 은 동), and 금가루 for 1위 */
   async tempOf(e) {
     if (!AWARDS_ON && !e.test) return [];

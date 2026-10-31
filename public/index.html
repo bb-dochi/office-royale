@@ -223,6 +223,16 @@
   </div>
 </section>
 
+<!-- 명예 사원: the three of one finished week, ‹ › to the other weeks (52-hall.js) -->
+<section class="sheet" id="hallSheet" hidden>
+  <div class="memo hallmemo">
+    <div class="memo-head"><span>(주)오피스로얄 인사팀</span><span>주간 표창 기록<button class="homeX" id="hallX" aria-label="닫기">✕</button></span></div>
+    <div class="rktop"><h1>명예 사원</h1><span class="rkbadge">어려움</span></div>
+    <div class="hlpod" id="hallPod"></div>
+    <div class="hlnav" id="hallNav" hidden><button id="hallPrev" aria-label="이전 주"><svg width="10" height="16" viewBox="0 0 10 16" aria-hidden="true"><path d="M8 2 2 8l6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><p><b id="hallName"></b><small id="hallDays"></small></p><button id="hallNext" aria-label="다음 주"><svg width="10" height="16" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+  </div>
+</section>
+
 <!-- 사내 게시판: update notes and the 자유게시판 in one sheet — side by side on wide screens, two tabs on phones (49-board.js) -->
 <section class="sheet" id="boardSheet" hidden>
   <div class="memo boardmemo">
@@ -313,5 +323,6 @@
 <script defer src="js/client/48-rank.js"></script>
 <script defer src="js/client/49-board.js"></script>
 <script defer src="js/client/51-career.js"></script>
+<script defer src="js/client/52-hall.js"></script>
 </body>
 </html>
