@@ -2,7 +2,7 @@
    Works the same in solo and online because it only watches what the renderer already sees (flash, alive, rank,
    projectiles, items…) and turns changes into effects. The rules never call in here. */
 
-/* ---------- sound: tiny synth for effects, one streamed file for music ---------- */
+/* ---------- sound: tiny synth for effects, one streamed file at a time for music ---------- */
 const AU={ctx:null,out:null,noise:null,mute:false,music:.5,sfx:1}; // music, sfx: the sliders, 0..1
 try{AU.mute=localStorage.getItem('or-mute')==='1';
   const m=localStorage.getItem('or-vol-music'),s=localStorage.getItem('or-vol-sfx');if(m!==null)AU.music=+m;if(s!==null)AU.sfx=+s;}catch{}
@@ -10,7 +10,7 @@ try{AU.mute=localStorage.getItem('or-mute')==='1';
 const sfxGain=()=>AU.mute?0:AU.sfx*AU.sfx*.55;
 const BGM={el:null,gain:null,file:'',stopT:0};
 const bgmGain=()=>BGM.file&&!AU.mute?AU.music*AU.music:0;
-function bgmFade(sec){const g=BGM.gain;if(!g)return;const t=AU.ctx.currentTime;g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(bgmGain(),t+sec);}
+function bgmFade(sec,to=bgmGain()){const g=BGM.gain;if(!g)return;const t=AU.ctx.currentTime;g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(to,t+sec);}
 /* makes the player match the current wish: nothing to hear (muted, slider at 0, tab hidden) means it pauses and stops downloading */
 function bgmSync(fade=.8){
   if(!AU.ctx)return; // before the first tap: auInit calls back
@@ -18,7 +18,9 @@ function bgmSync(fade=.8){
   if(!bgmGain()||document.hidden){bgmFade(fade);BGM.stopT=setTimeout(()=>{if(BGM.el)BGM.el.pause();},fade*1000);return;}
   if(!BGM.el){BGM.el=new Audio();BGM.el.loop=true;BGM.gain=AU.ctx.createGain();BGM.gain.gain.value=0; // through a gain node: iPhones ignore audio.volume
     AU.ctx.createMediaElementSource(BGM.el).connect(BGM.gain);BGM.gain.connect(AU.ctx.destination);}
-  if(!BGM.el.src.endsWith(BGM.file))BGM.el.src=BGM.file;
+  if(!BGM.el.src.endsWith(BGM.file)){
+    if(!BGM.el.paused){bgmFade(.5,0);BGM.stopT=setTimeout(()=>{BGM.el.src=BGM.file;bgmSync();},500);return;} // changing songs: the old one fades out first
+    BGM.el.src=BGM.file;}
   const p=BGM.el.play();if(p)p.catch(()=>{}); // refused until a real tap: auInit tries again on the next one
   bgmFade(fade);
 }
@@ -38,7 +40,7 @@ for(const t of['pointerdown','pointerup','touchend','click','keydown'])addEventL
 document.addEventListener('visibilitychange',()=>{if(AU.ctx)auInit();bgmSync(.2);});
 function setMute(m){AU.mute=m;try{localStorage.setItem('or-mute',m?'1':'0');}catch{}if(AU.out)AU.out.gain.value=sfxGain();bgmSync(.2);
   $('volMute').textContent=m?'소리 켜기':'소리 전부 끄기';
-  for(const b of document.querySelectorAll('.mutebtn'))b.textContent=m?'🔇':'🔊';}
+  for(const b of document.querySelectorAll('.mutebtn')){b.textContent=m?'🔇':'🔊';if(b.closest('.msys'))b.setAttribute('aria-label',m?'소리 켜기':'소리 끄기');}}
 function setVol(k,v){AU[k]=v;try{localStorage.setItem(k==='music'?'or-vol-music':'or-vol-sfx',v);}catch{}
   if(AU.mute)setMute(false);else{if(AU.out)AU.out.gain.value=sfxGain();bgmSync(.1);}} // moving a slider while muted means they want sound back
 function tone(f0,f1,dur,type='sine',vol=.3,at=0){
@@ -183,13 +185,13 @@ function juiceOverlay(f){
   if(JU.hurt>0&&!reduceMotion){const a=JU.hurt/.45*.55,gr=ctx.createRadialGradient(VW/2,VH/2,Math.min(VW,VH)*.35,VW/2,VH/2,Math.max(VW,VH)*.72);
     gr.addColorStop(0,'rgba(207,54,38,0)');gr.addColorStop(1,`rgba(207,54,38,${a})`);ctx.fillStyle=gr;ctx.fillRect(0,0,VW,VH);}
 }
-/* every 🔊 button (and the lobby's 소리 tab) opens this one panel next to itself */
+/* outside a match every 🔊 button (and the lobby's 설정 tab) opens this one panel next to itself; levels are set here and carry into the match */
 let soundAt=null;
 function soundOpen(a){const s=$('sound');if(!s.hidden&&soundAt===a){s.hidden=true;return;}soundAt=a;s.hidden=false;
   const r=a.getBoundingClientRect(),w=s.offsetWidth,h=s.offsetHeight,tab=a.closest('#dock');
   s.style.left=Math.max(8,Math.min(tab?r.left-w-8:r.right-w,innerWidth-w-8))+'px';
   s.style.top=(tab?Math.max(8,Math.min(r.top,innerHeight-h-8)):r.bottom+h+14>innerHeight?Math.max(8,r.top-h-6):r.bottom+6)+'px';}
-for(const b of document.querySelectorAll('.mutebtn'))b.addEventListener('click',e=>{e.stopPropagation();soundOpen(b);});
+for(const b of document.querySelectorAll('.mutebtn'))b.addEventListener('click',e=>{e.stopPropagation();if(b.closest('.msys'))setMute(!AU.mute);else soundOpen(b);}); // on the in-game map: plain on/off
 for(const[id,k]of[['volMusic','music'],['volSfx','sfx']]){const i=$(id),n=i.nextElementSibling;i.value=n.textContent=Math.round(AU[k]*100);
   i.addEventListener('input',()=>{n.textContent=i.value;setVol(k,i.value/100);});}
 $('volSfx').addEventListener('change',()=>SFX.pickup()); // effects are silent in the lobby otherwise: a blip to judge the level by
