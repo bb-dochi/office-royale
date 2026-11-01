@@ -96,7 +96,7 @@
 | 숫자 | 세는 곳 |
 |---|---|
 | `greet` 부장님 인사 / `ceo` 대표님 인사 | `sim/40-npc.js` 인사(greet) |
-| `upset` 하극상 | `sim/80-step.js` 탈락 처리: 막타로 **나보다 높은 직급의 사람을 해고**했을 때(처치 보상 +6이 붙는 경우와 같음) |
+| `upset` 하극상 | `sim/80-step.js` 탈락 처리: **나보다 높은 직급의 사람을 해고**했을 때(처치 보상 +6이 붙는 경우와 같음) |
 | `wcCash`·`wcCrash`·`wcBest` | `sim/50-actions.js` `wcDone` |
 | `desk` 자리 근무 성공 | `sim/50-actions.js` 자리 근무 판 성공 |
 | `lunch` 점심 생존 | `sim/70-events.js` 점심이 끝날 때 살아 있는 사람 |

@@ -10,8 +10,8 @@ const RANK_PT={인턴:0,사원:50,대리:100,팀장:200,임원:300,CEO:500};
 const NEW_SCORE='2026-11-02',CEO_BONUS=300;
 const weekKST=(ms=Date.now())=>{const d=new Date(ms+9*3600e3);d.setUTCDate(d.getUTCDate()-(d.getUTCDay()+6)%7);return d.toISOString().slice(0,10);}; // its Monday
 const soloScore=(e,w=weekKST())=>(TOTAL+1-e.place)*50+(w>=NEW_SCORE?RANK_PT[e.real||e.rank]+(e.place===1?CEO_BONUS:0):RANK_PT[e.rank])+e.kills*40+e.tasks*10+Math.floor(e.time/2);
-const scoreHow=w=>w>=NEW_SCORE?'순위 (1위 1,000점부터 50점씩) + 1위 보너스 300 + 오른 직급 (사원 50 ~ 임원 300) + 해고 ×40 + 업무 ×10 + 버틴 시간 (2초에 1점). 기기마다 이번 주 최고 기록만 남아요.'
-  :'순위 (1위 1,000점부터 50점씩) + 최종 직급 (사원 50 ~ 임원 300, CEO 500) + 해고 ×40 + 업무 ×10 + 버틴 시간 (2초에 1점). 기기마다 이번 주 최고 기록만 남아요.';
+const scoreHow=w=>w>=NEW_SCORE?`<table>${[['순위','1위 1,000점, 한 계단마다 −50'],['마지막 직급','사원 50 · 대리 100 · 팀장 200 · 임원 300'],['CEO 보너스','+300'],['해고','1명당 40'],['업무','1건당 10'],['버틴 시간','2초에 1점']].map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table><p>기기마다 이번 주 최고 기록만 남아요.</p>`
+  :'<p>순위 (1위 1,000점부터 50점씩) + 최종 직급 (사원 50 ~ 임원 300, CEO 500) + 해고 ×40 + 업무 ×10 + 버틴 시간 (2초에 1점). 기기마다 이번 주 최고 기록만 남아요.</p>';
 function rankUid(){let u=store.get('or-uid');if(!u||!/^[a-z0-9]{8,32}$/.test(u)){u=Array.from(crypto.getRandomValues(new Uint8Array(10)),b=>(b%36).toString(36)).join('');store.set('or-uid',u);}return u;}
 function rankURL(q,what='rank'){const s=new URLSearchParams(location.search).get('server');
   const base=s?`${/^(localhost|127\.|192\.168\.|10\.)/.test(s)?'http':'https'}://${s}`:'';return `${base}/api/${what}${q||''}`;}
@@ -43,9 +43,9 @@ const RK_COL={CEO:'#c08a1e',임원:'#1f52c8',팀장:'#3d6cc4',대리:'#5f80b4',�
 const rkChip=e=>`<i class="rkchip" style="background:${RK_COL[e.rank]||'#8a929a'}">${e.rank==='CEO'?'CEO 입성':e.rank}</i>`;
 const rkSub=e=>`${e.rank==='CEO'?'':e.place+'위 · '}업무 ${e.tasks} · 해고 ${e.kills}`;
 function rankLoad(){
-  $('rankPod').innerHTML='';$('rankMe').innerHTML='';$('rankList').innerHTML='<p class="rkmsg">불러오는 중…</p>';$('rankWeek').textContent='';
+  $('rankPod').innerHTML='';$('rankMe').innerHTML='';$('rankList').innerHTML='<p class="rkmsg">불러오는 중…</p>';$('rankWeek').textContent='';$('rankHow').innerHTML=scoreHow(weekKST());
   fetch(rankURL(`?uid=${rankUid()}`)).then(r=>r.json()).then(r=>{
-    $('rankWeek').textContent=`${weekLabel(r.week)} · ${r.n}명 참가`;$('rankHow').textContent=scoreHow(r.week);
+    $('rankWeek').textContent=`${weekLabel(r.week)} · ${r.n}명 참가`;$('rankHow').innerHTML=scoreHow(r.week);
     const top=r.top,nm=e=>`${esc(e.name)}${e.mine?' <span class="me">(나)</span>':''}`;
     /* top three: the 우수 사원 section of an HR report — ruled rows, bigger type, a red stamp on first place */
     $('rankPod').innerHTML=top.length?`<p class="rkcap">이번 주 우수 사원</p><ol>${top.slice(0,3).map((e,i)=>

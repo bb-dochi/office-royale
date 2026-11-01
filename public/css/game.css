@@ -970,6 +970,7 @@ body.desking #lunchBoard,body.phoning #lunchBoard{display:none!important}
 .rkme .nm{flex:1;min-width:0;color:#dfe3e6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rkme em{font:900 17px var(--display);font-style:normal;color:#f3d77a}
 .rkme .btn{margin-left:auto;background:#f3d77a;color:var(--ink);border-color:#f3d77a;padding:6px 12px;font-size:13px}
 .rkhow{margin:10px 0 0;font-size:12px;color:var(--muted)}.rkhow summary{cursor:pointer;font-weight:700}.rkhow p{margin:6px 0 0;line-height:1.55}
+.rkhow table{width:100%;margin-top:6px;border-collapse:collapse}.rkhow td{padding:4px 0;border-bottom:1px solid rgba(29,35,40,.12);line-height:1.4}.rkhow td:first-child{padding-right:12px;font-weight:800;color:var(--ink);white-space:nowrap}.rkhow td:last-child{text-align:right}
 @media (max-width:420px){.rkpod li .rkchip{display:none}.rklist li{grid-template-columns:26px minmax(0,1fr) auto}.rklist li .rkchip{display:none}}
 #rankSheet{z-index:8}
 /* 명예 사원: 2위 1위 3위 on their steps, ‹ › to the other weeks below */
