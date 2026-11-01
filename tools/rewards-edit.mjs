@@ -1,4 +1,4 @@
-// The local /admin?rw=1 page's saves: one change to which 성과 step opens what, written back to public/js/shared/rewards.js,
+// The local /admin?tab=rw page's saves: one change to which 성과 step opens what, written back to public/js/shared/rewards.js,
 // so it goes out with the code like any other edit. Only the dev server has this: a deployed server can't rewrite the game's files.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { AWARDS, REWARD_KINDS } from '../server/src/career.js';

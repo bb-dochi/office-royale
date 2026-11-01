@@ -58,7 +58,7 @@ export class StatsCore {
   async recent() { return this.get('s:recent', []); }
 }
 
-/* ---------- the admin page (server-rendered, no scripts) ---------- */
+/* ---------- the admin page (server-rendered; only the ranking delete and the local reward editor use a script) ---------- */
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dur = s => s >= 3600 ? `${Math.floor(s / 3600)}시간 ${Math.floor(s % 3600 / 60)}분` : `${Math.floor(s / 60)}분 ${String(s % 60).padStart(2, '0')}초`;
 const when = ms => ms ? new Date(ms + 9 * 3600e3).toISOString().slice(5, 16).replace('T', ' ') : '-';
@@ -125,9 +125,17 @@ function lunchPop(games) {
 async function feedbackSection(feedback, link) {
   const all = await feedback.all(), live = all.filter(c => !c.hid).length;
   const rows = all.slice(0, 100).map(c => `<tr${c.hid ? ' class="zero"' : ''}><td class="mut">${when(c.at)}</td><td>${c.post ? `#${c.post}` : '자유 의견'}</td><td>${link(c.uid, c.name)}</td>
-    <td>${esc(c.text)}</td><td class="n"><a href="?${c.hid ? 'fbshow' : 'fbhide'}=${c.id}#fb">${c.hid ? '되살리기' : '숨기기'}</a></td></tr>`).join('');
+    <td>${esc(c.text)}</td><td class="n"><a href="?tab=manage&${c.hid ? 'fbshow' : 'fbhide'}=${c.id}#fb" class="hide">${c.hid ? '되살리기' : '숨기기'}</a></td></tr>`).join('');
   return section(`사내 게시판 댓글 <small>${live}개 보이는 중${all.length > 100 ? ' · 최근 100개' : ''}</small>`,
     all.length ? tbl(`<thead><tr><th>시각</th><th>글</th><th>사원</th><th>내용</th><th class="n"></th></tr></thead><tbody>${rows}</tbody>`) : '<p class="empty">아직 댓글이 없어요.</p>', '', 'fb');
+}
+/* this week's 어려움 ranking, with a link to take a record off (the person's play stats and 성과 stay) */
+async function rankSection(rank, link) {
+  const { week, list } = await rank.records();
+  const rows = list.map((e, i) => `<tr><td class="n">${i + 1}</td><td>${link(e.uid, e.name)}</td><td class="n"><b>${e.score.toLocaleString()}</b></td><td>${e.place}위 ${esc(e.real || e.rank)}</td><td class="n">${e.tasks}</td><td class="n">${e.kills}</td><td class="n">${dur(e.time)}</td><td class="mut">${when(e.at)}</td><td class="mono mut">${esc(e.uid)}</td>
+    <td class="n stick"><a href="?tab=manage&rankdel=${encodeURIComponent(e.uid)}&at=${e.at}#rk" class="del" data-n="${esc(e.name)}" data-s="${e.score.toLocaleString()}">삭제</a></td></tr>`).join('');
+  return section(`이번 주 랭킹 <small>${week} 주 · 어려움 ${list.length}명 · 삭제는 되돌릴 수 없어요</small>`,
+    list.length ? tbl(`<thead><tr><th class="n">순위</th><th>사원</th><th class="n">점수</th><th>결과</th><th class="n">업무</th><th class="n">해고</th><th class="n">시간</th><th>기록 시각</th><th>기기</th><th class="n stick"></th></tr></thead><tbody>${rows}</tbody>`, 'tall') : '<p class="empty">이번 주 기록이 없어요.</p>', '', 'rk');
 }
 /* 성과 of one person: each 성과's number and step, links to put it at any step (test), what it has opened, what they wear */
 const stepName = i => i ? STEPS[i - 1] : '없음';
@@ -172,8 +180,8 @@ function rewardPage(edit) {
     <td>${edit ? `<select class="rwset" data-p="${esc(`${p.kind}:${p.id}`)}">${stepOpts(p)}</select>` : p.aw ? esc(where(p)) : `<span class="mut">${none(p)}</span>`}</td></tr>`).join('');
   const page = section(`성과 단계별 보상 <small>${edit ? '바꾸면 바로 저장돼요 · 게임은 새로고침하면 반영' : '바꾸는 곳은 로컬 관리자 페이지'}</small>`, tbl(`<thead><tr><th>성과</th>${STEPS.map((s, i) => `<th>${i + 1}단계</th>`).join('')}</tr></thead><tbody>${grid}</tbody>`))
     + section(`보상 아이템 <small>${pieces.length}개 · 성과에 붙음 ${pieces.filter(p => p.aw).length}개 · 무료 ${pieces.filter(p => !p.aw && !p.temp && p.kind !== 'color').length}개 · 잠긴 색 ${pieces.filter(p => !p.aw && p.kind === 'color').length}개</small>`, tbl(`<thead><tr><th>종류</th><th>이름</th><th>열리는 단계</th></tr></thead><tbody>${list}</tbody>`));
-  if (!edit) return `<nav class="crumb"><a href="?">← 전체 목록</a></nav>${page}`;
-  return `<nav class="crumb"><a href="?">← 전체 목록</a></nav><div id="rwEdit">${page}</div><style>#rwEdit table{table-layout:fixed;width:100%}.rwtitle{display:block;width:100%;min-width:88px;box-sizing:border-box;margin:4px 0;padding:3px 5px;font:inherit;border:1px solid #d5d9e0;border-radius:4px}.rwchip{display:block;width:100%;margin:2px 0;padding:3px 5px;font:inherit;text-align:left;background:#e8f0fb;color:#1f4f8f;border:0;border-radius:4px;cursor:pointer}.rwadd,.rwset{width:100%;font:inherit;margin-top:2px}</style>
+  if (!edit) return page;
+  return `<div id="rwEdit">${page}</div><style>#rwEdit table{table-layout:fixed;width:100%}.rwtitle{display:block;width:100%;min-width:88px;box-sizing:border-box;margin:4px 0;padding:3px 5px;font:inherit;border:1px solid #d5d9e0;border-radius:4px}.rwchip{display:block;width:100%;margin:2px 0;padding:3px 5px;font:inherit;text-align:left;background:#e8f0fb;color:#1f4f8f;border:0;border-radius:4px;cursor:pointer}.rwadd,.rwset{width:100%;font:inherit;margin-top:2px}</style>
 <script>
 const rwPost=m=>fetch('/admin/rewards',{method:'POST',body:JSON.stringify(m)}).then(r=>{if(!r.ok)throw 0;return fetch(location.href);}).then(r=>r.text()).then(h=>{document.getElementById('rwEdit').innerHTML=new DOMParser().parseFromString(h,'text/html').getElementById('rwEdit').innerHTML;}).catch(()=>alert('저장하지 못했어요'));
 const rwPiece=v=>{const i=v.indexOf(':');return{kind:v.slice(0,i),id:v.slice(i+1)};};
@@ -185,20 +193,29 @@ document.addEventListener('click',e=>{const b=e.target.closest('.rwchip');if(b)r
 </script>`;
 }
 
-export async function adminHTML(stats, q, career, feedback, rewardEdit = false, testTools = false) {
+/* asks before a ranking record goes: the link itself does the delete */
+const ASK = `<dialog class="ask" id="ask"><h4 id="askT"></h4><p id="askS"></p><div><button type="button" id="askNo">취소</button><a id="askGo">삭제하기</a></div></dialog>
+<script>addEventListener('click',e=>{const a=e.target.closest('a.del'),d=document.getElementById('ask');if(e.target.id==='askNo'||e.target===d)return d.close();if(!a)return;e.preventDefault();
+document.getElementById('askT').textContent=a.dataset.n+' 기록을 지울까요?';document.getElementById('askS').textContent=a.dataset.s+'점 · 지우면 되돌릴 수 없어요';document.getElementById('askGo').href=a.href;d.showModal();});</script>`;
+/* the admin's tabs: ?tab=<key>, 플레이 기록 without one; a person's page (?uid=) belongs to 사람 관리 */
+const TABS = [['play', '플레이 기록'], ['people', '사람 관리'], ['manage', '랭킹·게시판 관리'], ['rw', '성과 보상 관리']];
+export async function adminHTML(stats, q, career, feedback, rewardEdit = false, testTools = false, rank = null) {
   const link = (uid, name) => `<a href="?uid=${encodeURIComponent(uid)}">${esc(name)}</a>`;
+  if (rank && q.get('rankdel')) await rank.remove(q.get('rankdel'), +q.get('at')); // 이번 주 랭킹 기록 삭제
   if (feedback && q.get('fbhide')) await feedback.hide(+q.get('fbhide'), true); // 사내 게시판 댓글 숨기기 / 되살리기
   if (feedback && q.get('fbshow')) await feedback.hide(+q.get('fbshow'), false);
   if (career && q.get('uid') && q.get('aw') && await career.awardsOf(q.get('uid'))) await career.setAward(q.get('uid'), q.get('aw'), +q.get('st')); // 성과 단계 조정 (테스트; makes the career first if needed)
   if (career && q.get('uid') && q.get('awreset')) await career.resetAwards(q.get('uid'));
   if (testTools && career && q.get('uid') && q.has('faketop')) await career.setFakeTop(q.get('uid'), +q.get('faketop')); // 지난주 순위 테스트 (test server only)
   if (career && q.get('uid') && q.get('own')) await career.setOwn(q.get('uid'), q.get('own'), q.get('on') === '1');
+  const tab = q.get('uid') ? 'people' : TABS.some(([k]) => k === q.get('tab')) ? q.get('tab') : 'play';
   let body;
-  if (q.get('rw')) body = rewardPage(rewardEdit);
+  if (tab === 'rw') body = rewardPage(rewardEdit);
+  else if (tab === 'manage') body = (rank ? await rankSection(rank, link) : '') + (feedback ? await feedbackSection(feedback, link) : '');
   else if (q.get('uid')) {
     const p = await stats.person(q.get('uid')), code = career && await career.codeOf(q.get('uid'));
     const avgPlace = p && p.recent.length ? (p.recent.reduce((s, g) => s + g.place, 0) / p.recent.length).toFixed(1) : '-';
-    body = `<nav class="crumb"><a href="?">← 전체 목록</a></nav>` + (!p ? '<p class="empty">기록이 없어요.</p>' : `
+    body = `<nav class="crumb"><a href="?tab=people">← 사람 목록</a></nav>` + (!p ? '<p class="empty">기록이 없어요.</p>' : `
       <header class="who"><div class="ava">${esc([...p.name][0] || '?')}</div><div><h2>${esc(p.name)}</h2>
         <p class="sub">${code ? `사원코드 <b>${esc(code)}</b> · ` : ''}${p.names.length ? '예전 이름 ' + p.names.map(esc).join(', ') + ' · ' : ''}<span class="mono">${esc(p.uid)}</span></p></div></header>
       <div class="cards">
@@ -210,16 +227,19 @@ export async function adminHTML(stats, q, career, feedback, rewardEdit = false, 
       </div>
       ${await awardSection(career, q.get('uid'), testTools)}
       ${section(`최근 ${p.recent.length}판`, tbl(GAME_HEAD(false) + `<tbody>${p.recent.map(g => gameRow(g)).join('')}</tbody>`) + lunchPop(p.recent))}`);
+  } else if (tab === 'people') {
+    const people = await stats.people(), sort = q.get('sort') || 'last', ppl = people.sort((a, b) => sort === 'games' ? b.games - a.games : sort === 'time' ? b.sec - a.sec : b.last - a.last);
+    const sorts = [['last', '최근'], ['games', '판 수'], ['time', '플레이 시간']].map(([k, n]) => `<a href="?tab=people&sort=${k}#people"${k === sort ? ' class="on"' : ''}>${n}</a>`).join('');
+    const maxPG = Math.max(1, ...ppl.map(p => p.games));
+    body = section(`사람별 <small>${people.length}명${people.length > 300 ? ' 중 300명' : ''}</small>`, tbl(`<thead><tr><th>사원명</th><th class="w">판</th><th class="n">플레이 시간</th><th class="n">CEO</th><th>처음</th><th>마지막</th></tr></thead><tbody>
+      ${ppl.slice(0, 300).map(p => `<tr><td>${link(p.uid, p.name)}</td><td class="w"><div class="bc">${bar([[p.games, 'solo']], maxPG)}<b>${p.games}</b></div></td><td class="n">${dur(p.sec)}</td><td class="n">${p.wins ? `<span class="place p1">${p.wins}</span>` : '<span class="mut">0</span>'}</td><td class="mut">${when(p.first)}</td><td title="${when(p.last)}">${ago(p.last)}</td></tr>`).join('')}</tbody>`), `<div class="seg">${sorts}</div>`, 'people');
   } else {
     const days = await stats.days(14), trend = days.slice(0, 7).reverse(), people = await stats.people(), rec = await stats.recent();
-    const sort = q.get('sort') || 'last', ppl = people.sort((a, b) => sort === 'games' ? b.games - a.games : sort === 'time' ? b.sec - a.sec : b.last - a.last);
     const nameOf = new Map(people.map(p => [p.uid, p.name])); // games keep the name used then; show who it is now
     const t = days[0], y = days[1], wk = days.slice(0, 7), wkPeople = new Set(wk.flatMap(d => d.people));
     const sum = (a, f) => a.reduce((s, d) => s + f(d), 0);
     const delta = (a, b) => a === b ? '' : `<span class="dl ${a > b ? 'up' : 'dn'}">${a > b ? '▲' : '▼'}${Math.abs(a - b)}</span>`;
-    const maxG = Math.max(1, ...days.map(d => d.games)), maxP = Math.max(1, ...days.map(d => d.people.length));
-    const tabs = [['last', '최근'], ['games', '판 수'], ['time', '플레이 시간']].map(([k, n]) => `<a href="?sort=${k}#people"${k === sort ? ' class="on"' : ''}>${n}</a>`).join('');
-    const maxPG = Math.max(1, ...ppl.map(p => p.games));
+    const maxG = Math.max(1, ...days.map(d => d.games));
     body = `<div class="cards">
         ${card(`${t.games}<u>판</u> ${delta(t.games, y.games)}`, '오늘', `${t.people.length}명 · 혼자 ${t.solo} · 같이 ${t.multi}`)}
         ${card(`${sum(wk, d => d.games)}<u>판</u>`, '최근 7일', `${wkPeople.size}명이 플레이`)}
@@ -227,7 +247,7 @@ export async function adminHTML(stats, q, career, feedback, rewardEdit = false, 
         ${card(t.games ? dur(Math.round(t.sec / t.games)) : '-', '오늘 한 판 평균', y.games ? `어제 ${dur(Math.round(y.sec / y.games))}` : '')}
       </div>
       ${section('추세 <small>최근 7일 · 마우스를 올리면 그날 숫자</small>', `<div class="charts">
-        <div class="chart"><div class="ch"><b>하루 플레이</b><span class="lg"><i class="normal"></i>혼자 판 <i class="easy"></i>같이 판 <i class="lnk"></i>사람</span></div>${playChart(trend)}</div>
+        <div class="chart"><div class="ch"><b>하루 플레이</b><span class="lg"><i class="solo"></i>혼자 판 <i class="multi"></i>같이 판 <i class="lnk"></i>사람</span></div>${playChart(trend)}</div>
         <div class="chart"><div class="ch"><b>한 판 평균 시간</b><span class="lg"><i class="bandk"></i>목표 4–5분</span></div>${timeChart(trend)}</div>
         <div class="chart"><div class="ch"><b>부서 발령</b><span class="lg">최근 7일 합계</span></div>${branchChart(trend)}</div></div>`)}
       ${section('날짜별 <small>최근 14일</small>', tbl(`<thead><tr><th>날짜</th><th class="w">판 <span class="lg"><i class="solo"></i>혼자 <i class="multi"></i>같이</span></th><th class="n">판</th><th class="n">사람</th><th class="w2">난이도 <span class="lg"><i class="easy"></i>쉬움 <i class="normal"></i>보통 <i class="hard"></i>어려움</span></th><th class="n">평균</th></tr></thead><tbody>
@@ -235,80 +255,85 @@ export async function adminHTML(stats, q, career, feedback, rewardEdit = false, 
         <td class="w">${bar([[d.solo, 'solo'], [d.multi, 'multi']], maxG)}</td><td class="n"><b>${d.games}</b></td><td class="n" title="${d.people.length}명">${d.people.length}</td>
         <td class="w2">${d.games ? bar([[d.diff.easy || 0, 'easy'], [d.diff.normal || 0, 'normal'], [d.diff.hard || 0, 'hard']], d.games) + `<span class="mut sm">${d.diff.easy || 0} / ${d.diff.normal || 0} / ${d.diff.hard || 0}</span>` : ''}</td>
         <td class="n mut">${d.games ? dur(Math.round(d.sec / d.games)) : '-'}</td></tr>`; }).join('')}</tbody>`))}
-      ${section(`사람별 <small>${people.length}명${people.length > 300 ? ' 중 300명' : ''}</small>`, tbl(`<thead><tr><th>사원명</th><th class="w">판</th><th class="n">플레이 시간</th><th class="n">CEO</th><th>처음</th><th>마지막</th></tr></thead><tbody>
-      ${ppl.slice(0, 300).map(p => `<tr><td>${link(p.uid, p.name)}</td><td class="w"><div class="bc">${bar([[p.games, 'solo']], maxPG)}<b>${p.games}</b></div></td><td class="n">${dur(p.sec)}</td><td class="n">${p.wins ? `<span class="place p1">${p.wins}</span>` : '<span class="mut">0</span>'}</td><td class="mut">${when(p.first)}</td><td title="${when(p.last)}">${ago(p.last)}</td></tr>`).join('')}</tbody>`, 'tall'), `<div class="seg">${tabs}</div>`, 'people')}
       ${section('최근 판 <small>50판</small>', tbl(GAME_HEAD(true) + `<tbody>${rec.slice(0, 50).map(g => gameRow(g, g => link(g.uid, nameOf.get(g.uid) || g.name))).join('')}</tbody>`, 'tall') + lunchPop(rec))}`;
   }
-  if (feedback && !q.get('uid') && !q.get('rw')) body = await feedbackSection(feedback, link) + body;
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
-<title>오피스 로얄 · 관리</title><link rel="icon" href="/favicon.ico"><style>
-:root{color-scheme:light dark;--bg:#f4f4f3;--fg:#1f2225;--mut:#7a7f84;--card:#fff;--line:#e4e4e2;--head:#fafafa;--acc:#1f2225;--hov:#f2f2f1;
-  --solo:#3a3e43;--multi:#a3a7ab;--easy:#c9cccf;--normal:#8d9196;--hard:#3a3e43;--gold:#1f2225;--goldbg:#e6e6e4;--up:#555a5f;--dn:#555a5f}
-@media (prefers-color-scheme:dark){:root{--bg:#141516;--fg:#e6e7e8;--mut:#8b9095;--card:#1c1d1f;--line:#2c2e31;--head:#212224;--acc:#e6e7e8;--hov:#252729;
-  --solo:#d4d6d8;--multi:#6b7075;--easy:#45494d;--normal:#80858a;--hard:#d4d6d8;--gold:#e6e7e8;--goldbg:#33363a;--up:#a9adb1;--dn:#a9adb1}}
+<title>오피스 로얄 · 관리</title><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"><style>
+:root{color-scheme:light dark;--bg:#f2f4f6;--fg:#191f28;--sub:#4e5968;--mut:#8b95a1;--card:#fff;--line:#e5e8eb;--head:#fff;--acc:#3182f6;--acct:#fff;--tint:#e8f3ff;--hov:#f2f4f6;--red:#f04452;--redt:#ffeeee;
+  --solo:#3182f6;--multi:#90c2ff;--easy:#d1d6db;--normal:#8b95a1;--hard:#191f28;--gold:#1b64da;--goldbg:#e8f3ff;--up:#f04452;--dn:#3182f6;--sh:0 1px 2px rgba(0,27,55,.04)}
+@media (prefers-color-scheme:dark){:root{--bg:#101013;--fg:#ececf0;--sub:#b0b8c1;--mut:#7e7e87;--card:#1c1c21;--line:#2c2c34;--head:#1c1c21;--acc:#3182f6;--acct:#fff;--tint:#1c2c47;--hov:#26262c;--red:#f66570;--redt:#3c2023;
+  --solo:#4b96f8;--multi:#2a5a9c;--easy:#3c3c47;--normal:#7e7e87;--hard:#ececf0;--gold:#90c2ff;--goldbg:#1c2c47;--up:#f66570;--dn:#64a8ff;--sh:none}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;word-break:keep-all}
-.top{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line)}
-.top div{max-width:1200px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:10px}
-.top h1{font-size:16px;margin:0;font-weight:700}.top h1 a{color:inherit;text-decoration:none}.top .mut{margin-left:auto;font-size:12px}
-main{max-width:1200px;margin:0 auto;padding:16px 16px 48px}
-a{color:var(--fg);text-decoration:none;font-weight:500}a:hover{text-decoration:underline}
-.mut{color:var(--mut)}.sm{font-size:12px}.mono{font-family:ui-monospace,Consolas,monospace;font-size:12px}.we{color:var(--mut);font-weight:600}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:2px}
-.card .lbl{font-size:12px;color:var(--mut);font-weight:600}.card b{font-size:26px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-.card b u{text-decoration:none;font-size:14px;font-weight:500;color:var(--mut);margin:0 6px 0 2px}.card small{color:var(--mut);font-size:12px}
-.dl{font-size:12px;font-weight:600;vertical-align:middle}.dl.up{color:var(--up)}.dl.dn{color:var(--dn)}
-section{margin-top:28px;scroll-margin-top:64px}.sh{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-h3{margin:0;font-size:16px}h3 small{font-weight:400;color:var(--mut);font-size:13px;margin-left:4px}
-.seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:2px;margin-left:auto}
-.seg a{padding:4px 12px;border-radius:6px;color:var(--mut);font-size:13px}.seg a:hover{text-decoration:none;color:var(--fg)}.seg a.on{background:var(--acc);color:var(--card);font-weight:600}
-.tw{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:auto}.tw.tall{max-height:560px}
-table{border-collapse:collapse;width:100%}
-th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;font-variant-numeric:tabular-nums}
-tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--hov)}tr.zero td{color:var(--mut)}
-th{position:sticky;top:0;background:var(--head);color:var(--mut);font-weight:600;font-size:12px;z-index:1}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;word-break:keep-all;letter-spacing:-.01em;-webkit-font-smoothing:antialiased}
+.top{position:sticky;top:0;z-index:5;background:var(--card);box-shadow:inset 0 -1px 0 var(--line)}
+.top>div{max-width:1120px;margin:0 auto;padding:0 20px;display:flex;align-items:center;gap:28px;min-height:60px}
+.top h1{font-size:17px;margin:0;font-weight:700;letter-spacing:-.02em;white-space:nowrap}.top h1 a{color:inherit;text-decoration:none}.top>div>.mut{margin-left:auto;font-size:13px;white-space:nowrap}
+main{max-width:1120px;margin:0 auto;padding:28px 20px 72px}
+a{color:var(--fg);text-decoration:none;font-weight:500}a:hover{color:var(--acc)}
+.mut{color:var(--mut)}.sm{font-size:13px}.mono{font-family:ui-monospace,Consolas,monospace;font-size:12px;letter-spacing:0}.we{color:var(--mut);font-weight:600}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:6px;box-shadow:var(--sh)}
+.card .lbl{font-size:14px;color:var(--sub);font-weight:500}.card b{font-size:30px;line-height:1.25;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.card b u{text-decoration:none;font-size:17px;font-weight:600;letter-spacing:-.01em;margin:0 6px 0 2px}.card small{color:var(--mut);font-size:13px}
+.dl{font-size:13px;font-weight:600;letter-spacing:0;vertical-align:middle}.dl.up{color:var(--up)}.dl.dn{color:var(--dn)}
+section{margin-top:40px;scroll-margin-top:84px}section:first-child{margin-top:0}.sh{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+h3{margin:0;font-size:20px;font-weight:700;letter-spacing:-.02em}h3 small{font-weight:400;color:var(--mut);font-size:14px;letter-spacing:-.01em;margin-left:6px}
+.seg{display:inline-flex;background:#e5e8eb;border-radius:10px;padding:3px;margin-left:auto}
+.seg a{padding:5px 13px;border-radius:8px;color:var(--sub);font-size:14px;font-weight:500}.seg a:hover{color:var(--fg)}.seg a.on{background:var(--card);color:var(--fg);font-weight:600;box-shadow:0 1px 3px rgba(0,27,55,.12)}
+.tw{background:var(--card);border-radius:20px;overflow:auto;padding:8px;box-shadow:var(--sh)}.tw.tall{max-height:600px}
+table{border-collapse:separate;border-spacing:0;width:100%}
+th,td{padding:12px 14px;text-align:left;white-space:nowrap;font-variant-numeric:tabular-nums}
+tbody td{transition:background .12s}tbody td:first-child{border-radius:12px 0 0 12px}tbody td:last-child{border-radius:0 12px 12px 0}tbody tr:hover td{background:var(--hov)}tr.zero td{color:var(--mut)}
+th{position:sticky;top:-8px;background:var(--head);color:var(--mut);font-weight:500;font-size:13px;z-index:1}
 .n{text-align:right}td.w{width:40%;min-width:160px}td.w2{min-width:180px}
-.lg{font-weight:400;margin-left:6px}.lg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin:0 2px 0 6px}
-.bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--hov);min-width:80px}.bar i{display:block;height:100%}
+.lg{font-weight:400;margin-left:6px}.lg i{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 3px 0 8px}
+.bar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--hov);min-width:80px}.bar i{display:block;height:100%}
 td.w2 .bar{display:inline-flex;width:110px;vertical-align:middle;margin-right:8px}
 .chart{container-type:inline-size}@container (max-width:440px){.xa i{display:none}}
-.charts{display:grid;grid-template-columns:3fr 2fr 2fr;gap:10px}.chart{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px 10px}
-.ch{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:10px}.ch b{font-size:13px}.ch .lg{color:var(--mut);font-size:12px;margin-left:auto}
-.lg i.lnk{height:2px;width:12px;background:var(--fg);vertical-align:middle}.lg i.bandk{background:var(--goldbg)}
+.charts{display:grid;grid-template-columns:3fr 2fr 2fr;gap:12px}.chart{background:var(--card);border-radius:20px;padding:20px 22px 14px;box-shadow:var(--sh)}
+.ch{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:14px}.ch b{font-size:15px;font-weight:600}.ch .lg{color:var(--mut);font-size:12px;margin-left:auto}
+.lg i.lnk{height:2px;width:12px;border-radius:1px;background:var(--fg);vertical-align:middle}.lg i.bandk{background:var(--goldbg)}
 .plot{display:flex;gap:6px;height:180px}.ya{position:relative;width:30px;flex:none;margin-bottom:20px}.ya span{position:absolute;right:0;transform:translateY(-50%);font-size:11px;color:var(--mut)}
 .pa{position:relative;flex:1;min-width:0}.pa svg{display:block;width:100%;height:calc(100% - 20px);overflow:visible}
 .xa{position:relative;height:20px}.xa i{font-style:normal}.xa span{position:absolute;top:4px;transform:translateX(-50%);font-size:11px;color:var(--mut);white-space:nowrap}
-svg .gl{stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}svg .b1{fill:var(--normal)}svg .b2{fill:var(--easy)}svg .hit{fill:transparent}svg .col:hover .hit{fill:var(--hov)}
+svg .gl{stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}svg .b1{fill:var(--solo)}svg .b2{fill:var(--multi)}svg .hit{fill:transparent}svg .col:hover .hit{fill:var(--hov)}
 svg .ln{fill:none;stroke:var(--fg);stroke-width:1.5;stroke-linejoin:round;vector-effect:non-scaling-stroke}svg .dot{stroke:var(--fg);stroke-width:5;stroke-linecap:round;vector-effect:non-scaling-stroke}
 svg .band{fill:var(--goldbg)}
-.bdev{background:var(--solo)}.bmkt{background:var(--normal)}.bhr{background:var(--easy)}.bdesign{background:var(--multi)}.bnone{background:var(--line);opacity:.6}
-svg .bdev{fill:var(--solo)}svg .bmkt{fill:var(--normal)}svg .bhr{fill:var(--easy)}svg .bdesign{fill:var(--multi)}svg .bnone{fill:var(--line)}
+.bdev{background:var(--solo)}.bmkt{background:var(--multi)}.bhr{background:var(--normal)}.bdesign{background:var(--hard)}.bnone{background:var(--easy);opacity:.6}
+svg .bdev{fill:var(--solo)}svg .bmkt{fill:var(--multi)}svg .bhr{fill:var(--normal)}svg .bdesign{fill:var(--hard)}svg .bnone{fill:var(--easy)}
 .pie{display:flex;align-items:center;gap:14px;min-height:150px}.pie svg{width:min(130px,40%);flex:none}@container (max-width:300px){.pie li small{display:none}}
 .pie circle{fill:none;stroke-width:6.5}.pie .track{stroke:var(--hov)}.pie text{text-anchor:middle;font-size:7px;font-weight:700;fill:var(--fg)}.pie text.u{font-size:3.4px;font-weight:400;fill:var(--mut)}
-.sllighter{stroke:var(--solo)}.slbill{stroke:var(--normal)}.slmeal{stroke:var(--easy)}.slladder{stroke:var(--multi)}.bllighter{background:var(--solo)}.blbill{background:var(--normal)}.blmeal{background:var(--easy)}.blladder{background:var(--multi)}
-.thb{all:unset;cursor:pointer;color:var(--fg);font-weight:600}.thb span{color:var(--mut)}.thb:hover{text-decoration:underline}
-.pop{width:min(360px,calc(100vw - 32px));padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--fg);box-shadow:0 12px 40px rgba(0,0,0,.18)}.pop::backdrop{background:rgba(0,0,0,.12)}
-.sdev{stroke:var(--solo)}.smkt{stroke:var(--normal)}.shr{stroke:var(--easy)}.sdesign{stroke:var(--multi)}.snone{stroke:var(--line);opacity:.6}
+.sllighter{stroke:var(--solo)}.slbill{stroke:var(--multi)}.slmeal{stroke:var(--normal)}.slladder{stroke:var(--hard)}.bllighter{background:var(--solo)}.blbill{background:var(--multi)}.blmeal{background:var(--normal)}.blladder{background:var(--hard)}
+.thb{all:unset;cursor:pointer;color:inherit;font-weight:500}.thb span{color:var(--mut)}.thb:hover{color:var(--acc)}
+.pop{width:min(360px,calc(100vw - 32px));padding:20px;border:0;border-radius:20px;background:var(--card);color:var(--fg);box-shadow:0 12px 40px rgba(0,27,55,.16)}.pop::backdrop{background:rgba(0,0,0,.2)}
+.sdev{stroke:var(--solo)}.smkt{stroke:var(--multi)}.shr{stroke:var(--normal)}.sdesign{stroke:var(--hard)}.snone{stroke:var(--easy);opacity:.6}
 .pie ul{list-style:none;margin:0;padding:0;flex:1;min-width:0;display:grid;gap:6px}.pie li{display:flex;align-items:center;gap:6px;font-size:13px}
-.pie li i{width:10px;height:10px;border-radius:3px;flex:none}.pie li b{margin-left:auto;font-variant-numeric:tabular-nums}.pie li small{color:var(--mut);min-width:3.5em;text-align:right}
+.pie li i{width:10px;height:10px;border-radius:50%;flex:none}.pie li b{margin-left:auto;font-variant-numeric:tabular-nums}.pie li small{color:var(--mut);min-width:3.5em;text-align:right}
 .pie li.faint{color:var(--mut)}.pie li.faint b{color:var(--mut);font-weight:500}.pnote{margin:10px 0 0}.ch .lg b{font-weight:600;color:var(--fg);margin-right:4px}
-.bc{display:flex;align-items:center;gap:8px}.bc .bar{flex:1}.bc b{min-width:2.5em;text-align:right}
+.bc{display:flex;align-items:center;gap:10px}.bc .bar{flex:1}.bc b{min-width:2.5em;text-align:right;font-weight:600}
 .solo{background:var(--solo)}.multi{background:var(--multi)}.easy{background:var(--easy)}.normal{background:var(--normal)}.hard{background:var(--hard)}
-.pill{display:inline-block;padding:0 8px;border-radius:999px;font-size:12px;font-weight:500;color:var(--fg);background:none!important;border:1px solid var(--line)}
-.pill.hard{border-color:var(--mut);font-weight:700}
-.place{display:inline-block;min-width:2.6em;text-align:center;padding:1px 6px;border-radius:6px;font-weight:600;font-size:12px;background:var(--hov)}
-.place{color:var(--mut)}.place.p1{background:var(--goldbg);color:var(--gold);font-weight:700}.place.p3{color:var(--fg)}
-.crumb{margin-bottom:14px}.who{display:flex;align-items:center;gap:14px;margin-bottom:16px}.who h2{margin:0;font-size:22px}.sub{color:var(--mut);margin:2px 0 0}
-.ava{width:52px;height:52px;border-radius:14px;background:var(--acc);color:var(--card);display:grid;place-items:center;font-size:24px;font-weight:700;flex:none}
-.empty{color:var(--mut);padding:40px 0;text-align:center}.empty.sm{padding:16px 0}
-td.wrap{white-space:normal;min-width:120px}.note{margin:0 0 8px}
-.stps{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.stp{padding:3px 8px;font-size:12px;border-left:1px solid var(--line);color:var(--mut)}
-.stp:first-child{border-left:0}.stp.on{background:var(--acc);color:var(--card)}a.stp:hover{background:var(--hov);text-decoration:none;color:var(--fg)}
-.btnl{margin-left:auto;font-size:12px;padding:4px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
-.top nav{margin-left:12px;display:flex;gap:12px;font-size:13px}.top nav a{color:var(--mut)}.top nav a.on{color:var(--fg);font-weight:600}
+.pill{display:inline-block;padding:1px 8px;border-radius:6px;font-size:12px;font-weight:600;color:var(--sub);background:var(--hov)!important}
+.pill.hard{background:var(--redt)!important;color:var(--red)}
+.place{display:inline-block;min-width:2.6em;text-align:center;padding:1px 7px;border-radius:6px;font-weight:600;font-size:12px;background:var(--hov);color:var(--sub)}
+.place.p1{background:var(--tint);color:var(--gold)}.place.p3{color:var(--fg)}
+.crumb{margin-bottom:18px}.crumb a{color:var(--sub);font-size:14px}.who{display:flex;align-items:center;gap:16px;margin-bottom:20px}.who h2{margin:0;font-size:24px;letter-spacing:-.02em}.sub{color:var(--mut);margin:2px 0 0;font-size:14px}
+.ava{width:56px;height:56px;border-radius:50%;background:var(--tint);color:var(--acc);display:grid;place-items:center;font-size:24px;font-weight:700;flex:none}
+.empty{color:var(--mut);padding:44px 0;text-align:center;background:var(--card);border-radius:20px}.empty.sm{padding:18px 0;background:none}
+td.wrap{white-space:normal;min-width:120px}.note{margin:0 0 10px}
+.stps{display:inline-flex;gap:4px}.stp{padding:3px 9px;font-size:12px;border-radius:6px;background:var(--hov);color:var(--sub)}
+.stp.on{background:var(--tint);color:var(--gold);font-weight:600}a.stp:hover{background:var(--line);color:var(--fg)}
+.btnl{margin-left:auto;font-size:13px;font-weight:600;padding:7px 12px;border-radius:9px;background:var(--hov);color:var(--sub)}
+.stick{position:sticky;right:-8px;background:var(--card)}th.stick{z-index:2;background:var(--head)}.del{display:inline-block;padding:5px 10px;border-radius:8px;font-size:13px;font-weight:600;background:var(--redt);color:var(--red)}.del:hover{color:var(--red);filter:brightness(.96)}
+.hide{display:inline-block;padding:5px 10px;border-radius:8px;font-size:13px;font-weight:600;background:var(--hov);color:var(--sub)}
+.top nav{align-self:stretch;display:flex;gap:22px;font-size:15px;overflow-x:auto;scrollbar-width:none}.top nav a{position:relative;display:flex;align-items:center;color:var(--mut);font-weight:500;white-space:nowrap}.top nav a:hover{color:var(--fg)}
+.top nav a.on{color:var(--fg);font-weight:700}.top nav a.on::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--fg)}
+dialog.ask{width:min(360px,calc(100vw - 40px));padding:26px 24px 20px;border:0;border-radius:22px;background:var(--card);color:var(--fg);box-shadow:0 16px 48px rgba(0,27,55,.2)}dialog.ask::backdrop{background:rgba(0,0,0,.4)}
+.ask h4{margin:0;font-size:19px;line-height:1.4;font-weight:700;letter-spacing:-.02em}.ask p{margin:6px 0 22px;color:var(--sub);font-size:15px}.ask div{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ask button,.ask a{display:block;padding:13px 0;border:0;border-radius:12px;font-family:inherit;font-size:16px;font-weight:600;line-height:1.3;text-align:center;cursor:pointer}.ask button{background:var(--hov);color:var(--sub)}.ask a{background:var(--red);color:#fff}.ask a:hover{color:#fff;filter:brightness(.96)}
+@media (prefers-color-scheme:dark){.seg{background:#26262c}}
 @media (max-width:1100px){.charts{grid-template-columns:1fr 1fr}.charts .chart:first-child{grid-column:1/-1}}
+@media (max-width:860px){.top>div{flex-wrap:wrap;gap:0 16px;padding-top:12px}.top nav{order:3;width:100%;height:44px}}
 @media (max-width:800px){.charts{grid-template-columns:1fr}}
-@media (max-width:600px){.plot{height:150px}.xa i{display:none}.cards{grid-template-columns:1fr 1fr;gap:8px}.card{padding:12px}.card b{font-size:20px}.seg{margin-left:0}td.w{min-width:120px}}
-</style></head><body><header class="top"><div><h1><a href="?">오피스 로얄 · 플레이 기록</a></h1><nav><a href="?"${q.get('rw') ? '' : ' class="on"'}>플레이 기록</a><a href="?rw=1"${q.get('rw') ? ' class="on"' : ''}>성과 보상 목록</a></nav><span class="mut">${when(Date.now())} 기준</span></div></header><main>${body}</main></body></html>`;
+@media (max-width:600px){.plot{height:150px}.xa i{display:none}.cards{grid-template-columns:1fr 1fr;gap:8px}.card{padding:16px 18px;border-radius:16px}.card b{font-size:22px}.seg{margin-left:0}td.w{min-width:120px}main{padding:20px 16px 56px}.top>div{padding-left:16px;padding-right:16px}}
+</style></head><body><header class="top"><div><h1><a href="?">오피스 로얄 · 관리</a></h1><nav>${TABS.map(([k, n]) => `<a href="?tab=${k}"${k === tab ? ' class="on"' : ''}>${n}</a>`).join('')}</nav><span class="mut">${when(Date.now())} 기준</span></div></header><main>${body}</main>${tab === 'manage' ? ASK : ''}</body></html>`;
 }

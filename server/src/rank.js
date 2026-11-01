@@ -64,6 +64,15 @@ export class RankCore {
     await this.store.put(`${week}:${e.diff}`, b);
     return { ...this.view(week, e.diff, b, e.uid), score: e.score, best };
   }
+  /* /admin: this week's records with what `pub` keeps back, and taking one off. A record is named by uid and time, so a reload can't take a newer one */
+  async records() { const week = weekOf(), list = await this.board(week, RANKED); return { week, list }; }
+  remove(uid, at) {
+    return (this.q = (this.q || Promise.resolve()).catch(() => {}).then(async () => {
+      const week = weekOf(), b = await this.board(week, RANKED), i = b.findIndex(e => e.uid === uid && e.at === at);
+      if (i < 0) return false;
+      b.splice(i, 1); await this.store.put(`${week}:${RANKED}`, b); return true;
+    }));
+  }
   /* 명예 사원: the first look after a week ends freezes its top 3 with the outfit each career wears at that moment, so
      nothing that happens later changes them. Keys: hall:w → the first week not frozen yet, hall:weeks → [{week, first}]
      (weeks anyone played, oldest first; first: the 1위's name), hall:<week> → the three */

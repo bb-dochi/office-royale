@@ -24,7 +24,7 @@ export class Room extends DurableObject {
     if (url.pathname.startsWith('/api/') || url.pathname === '/admin' || url.pathname.startsWith('/internal/')) {
       const store = { get: k => this.ctx.storage.get(k), put: (k, v) => this.ctx.storage.put(k, v) };
       if (!this.api) { const stats = new StatsCore(store); this.api = { rank: new RankCore(store), stats, career: new CareerCore(store, stats), feedback: new FeedbackCore(store) }; if (this.env.AWARDS === '1') awardsOn(true); }
-      if (url.pathname === '/admin') return new Response(await adminHTML(this.api.stats, url.searchParams, this.api.career, this.api.feedback, false, this.env.TEST_TOOLS === '1'), { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
+      if (url.pathname === '/admin') return new Response(await adminHTML(this.api.stats, url.searchParams, this.api.career, this.api.feedback, false, this.env.TEST_TOOLS === '1', this.api.rank), { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
       if (url.pathname === '/internal/games') return Response.json(await recordMatch(this.api, await request.json()));
       if (url.pathname === '/internal/own') return Response.json(await this.api.career.ownOf(url.searchParams.get('uid') || ''));
       const r = await apiHTTP(this.api, request.method, url, request.method === 'POST' ? (await request.text()).slice(0, 4096) : '');
