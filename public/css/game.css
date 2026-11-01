@@ -599,9 +599,9 @@ body.desking .hud,body.desking #hint,body.desking #keybar,body.desking .rbtn,bod
 #desk .code b{color:#82aaff;font-weight:600}#desk .code em{font-style:normal;color:#ffcb6b;font-size:17px}
 #desk .code u{text-decoration:none;color:#ff6b6b;font-size:12px;margin-left:auto}
 #desk .code s{text-decoration:none;color:#5fd38d;margin-left:auto}
-#desk .code .red code{text-decoration:underline wavy #ff6b6b;text-underline-offset:5px}
+#desk .code .red code{text-decoration:underline wavy #ff6b6b;-webkit-text-decoration:underline wavy #ff6b6b;text-underline-offset:5px}
 #desk .code .cur{background:#2a3242;border-left-color:#e0a458}
-#desk .code .done{opacity:.55}#desk .code .done code{text-decoration:none}
+#desk .code .done{opacity:.55}#desk .code .done code{text-decoration:none;-webkit-text-decoration:none}
 #desk[data-kind=kpi] .sbar{background:#217346}#desk[data-kind=kpi] .rule{color:#217346}#desk[data-kind=kpi] .tm i{background:#217346}
 #desk[data-kind=kpi] .scr{background:#fff}
 #desk .xl td.fr{background:#eef8f2}#desk .xl td.lb.fr{color:#217346;font-weight:900}
