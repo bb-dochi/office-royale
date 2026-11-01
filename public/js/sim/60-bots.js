@@ -47,7 +47,7 @@ function think(b){
   if(b.branch==='hr'&&b.skillCd<=0&&G.t-b.lastHitT<3&&G.actors.some(o=>o!==b&&visibleTo(b,o)&&dist(o,b)<150))useSkill(b);
   if(b.branch==='dev'&&b.skillCd<=0&&G.tasks.some(t=>t.f===b.f&&!t.ready&&dist(t,b)<50))useSkill(b);
   let want=Math.max(b.pref,G.closed);
-  if(f<G.closed||(warnFloor(f)&&G.nextClose<b.greed+tagOf(b)+3))want=Math.max(want,f+1);
+  if(f<G.closed||(f===G.closed&&G.closed<NF-1&&G.nextClose<b.greed+tagOf(b)+3))want=Math.max(want,f+1); // each at their own moment, from well before the warning: leaving together made a crowd at the stairs
   want=Math.min(want,topOpen());
   if(f<want){
     stand(b);const pk=G.fire>0?'stair':b.padPref,pad=PADS[pk];
