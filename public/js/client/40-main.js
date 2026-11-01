@@ -69,7 +69,7 @@ function keybar(){
     return `<${tag} class="kc ${c||''}"${a?` data-a="${a}"`:''}${col?` style="border-color:${col};box-shadow:0 0 12px ${col}"`:''}><kbd>${k}</kbd><span>${t}</span>${cd>0?`<i class="cd" style="width:${cd*100}%"></i>`:''}</${tag}>`;}).join('');
   if(h!==lastKb){lastKb=h;kb.innerHTML=h;}
 }
-function startScreens(){paused=false;$('pause').hidden=true;plazaStop();bgmPlay(Math.random()<.5?'audio/game.mp3':'audio/game2.mp3');if(typeof TUT!=='undefined')tutStop();$('home').hidden=true;$('countdown').hidden=true;lastCd='';$('branchBox').hidden=true;branchT=0;$('cineTower').hidden=false;running=true;lastItem='x';lastPills='x';lastCall=null;
+function startScreens(){paused=false;$('pause').hidden=true;plazaStop();bgmPlay('audio/game.mp3');if(typeof TUT!=='undefined')tutStop();$('home').hidden=true;$('countdown').hidden=true;lastCd='';$('branchBox').hidden=true;branchT=0;$('cineTower').hidden=false;running=true;lastItem='x';lastPills='x';lastCall=null;
   $('lobby').hidden=true;$('result').hidden=true;$('cine').hidden=true;$('notice').hidden=true;$('callBox').hidden=true;$('feed').textContent='';cineT=0;if(isTouch)$('hint').hidden=false;}
 /* ---------- pause (Esc or the ❚❚ on the ID card). Solo: the rules stop, nothing else changes. Online: only a popup, the match runs on ---------- */
 let paused=false;
