@@ -231,7 +231,7 @@ function inTaskRange(a,t){if(!a.alive||a.f!==t.f||a.transit)return false;return 
    The screen differs by kind, the keys never do (2026-10-29): arrow = type the arrows; bug (개발) = red arrows go the
    other way; kpi (마케팅) = ▲ if the number went up from the one before, ▼ if down; hr (인사) = ▶ 합격 if 경력 meets
    the bar, ◀ 반려 if not. With a team every round is its own kind; without one, any kind. */
-const DESK={rounds:3,len:[4,5,6],rew:[4,5,6],cd:30,gap:.7,
+const DESK={rounds:3,len:[4,5,6],rew:[4,5,6],cd:30,gap:.7,lock:2, // lock: s after sitting that E can't stand you up (the habit of mashing E threw you out at once)
   jobs:['메일 답장','보고서 결재','엑셀 정리','기안 작성','회의록 정리','경비 처리']};
 const DESK_BOT={easy:.55,normal:.7,hard:.85};
 const FLIP={U:'D',D:'U',L:'R',R:'L'},rkey=()=>'UDLR'[Math.floor(Math.random()*4)];
@@ -355,6 +355,7 @@ function contextAction(me){
     if(up<NF&&isOpen(up))return{label:`▲ ${FLOORS[up].short}로`,cls:'go',fn:()=>useFloor(me,1)};
     if(dn>=0&&isOpen(dn))return{label:`▼ ${FLOORS[dn].short}로`,cls:'',fn:()=>useFloor(me,-1)};
     if(up<NF)return{label:`${FLOORS[up].short} 잠김`,cls:'',fn:()=>useFloor(me,1)};}
+  if(me.desk&&G.t-me.sitStart<DESK.lock)return{label:'근무 시작!',cls:'off',fn:()=>{}};
   if(me.sit)return{label:me.desk?'일어나기 (근무 끝)':'일어나기',cls:'',fn:()=>stand(me)};
   {const sp=wcSpot(me);if(sp&&me.inRest&&dist(me,sp)<48){
     /* cls 'off': shown greyed out, the button and E do nothing */
