@@ -26,6 +26,8 @@ function bgmSync(fade=.8){
 }
 function bgmPlay(file){BGM.file=file;bgmSync();}
 function bgmStop(){BGM.file='';bgmSync();}
+const GAME_SONGS=['audio/game.mp3','audio/game2.mp3'];
+function bgmGame(){bgmPlay(GAME_SONGS[Math.floor(Math.random()*GAME_SONGS.length)]);} // a song is picked for each match
 function auInit(){
   if(AU.ctx){if(AU.ctx.state!=='running')AU.ctx.resume();}
   else{
