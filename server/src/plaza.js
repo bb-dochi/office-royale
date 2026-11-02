@@ -34,7 +34,7 @@ export class PlazaCore {
     if (m.t === 'pz-pos') {
       const n = v => (typeof v === 'number' && isFinite(v) ? v : 0);
       peer.x = Math.max(0, Math.min(2000, n(m.x))); peer.y = Math.max(0, Math.min(2000, n(m.y)));
-      peer.face = n(m.face); peer.mv = m.mv ? 1 : 0;
+      peer.face = n(m.face); peer.mv = m.mv ? 1 : 0; peer.placed = true;
     } else if (m.t === 'pz-fit') {
       const now = Date.now(); if (now - (peer.fitT || 0) < 500) return; peer.fitT = now;
       peer.fit = cleanFit(m.fit, peer.own); if (peer.fit) for (const p of this.peers) if (p !== peer) this.send(p, { t: 'pz-fit', id: peer.pid, fit: peer.fit });
@@ -54,7 +54,8 @@ export class PlazaCore {
     }
   }
   broadcast() {
-    const list = this.peers.map(p => [p.pid, p.name, p.seed, Math.round(p.x), Math.round(p.y), Math.round(p.face * 100) / 100, p.mv, p.room || 0]);
+    /* nobody shows until their first position: a tab with no animation frames (hidden, in the background) never sends one and would stand at the join spot, on the 안내데스크 */
+    const list = this.peers.filter(p => p.placed).map(p => [p.pid, p.name, p.seed, Math.round(p.x), Math.round(p.y), Math.round(p.face * 100) / 100, p.mv, p.room || 0]);
     const msg = { t: 'pz', n: this.peers.length, p: list };
     for (const p of this.peers) this.send(p, msg);
   }

@@ -4,11 +4,12 @@
    how far the next one is.
    인사관리 reads the career the server keeps per 사원코드 (server/src/career.js, GET /api/career) and links devices:
    다른 기기에서 이어하기 shows a 10-minute 연동 번호, 사원증 불러오기 takes 사원코드 + 연동 번호 from another device. */
-const CR={tab:'wear',view:null,pinT:null,note:'',open:new Set(),doneOpen:false};   // open: the 성과 cards showing their rewards
+const CR={tab:'wear',view:null,pinT:null,note:'',open:new Set(),doneOpen:false,awFresh:new Set()};   // open: the 성과 cards showing their rewards; awFresh: the ones wearing NEW! on this visit to the tab
 const careerURL=(what='')=>rankURL('',what?'career/'+what:'career'); // same server rule as the ranking
 function idTab(t){
   CR.tab=t;$('home').dataset.idtab=t;for(const b of $('idTabs').children)b.classList.toggle('on',b.dataset.t===t);
   $('paneWear').hidden=t!=='wear';$('paneAward').hidden=t!=='award';$('paneCareer').hidden=t!=='career';$('dressReset').hidden=t!=='wear';
+  if(t==='award'){CR.awFresh.clear();idMark();awardRender();}
   if(t==='award'||t==='career')careerLoad();
 }
 $('idTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)idTab(b.dataset.t);});
@@ -35,7 +36,7 @@ function awRewards(aw,st){const R=REWARDS,out=[],at=r=>r.aw===aw&&r.st===st;
   return{title:(R.titles[aw]||[])[st-1]||null,items:out};}
 /* until the server opens them (career.js AWARDS_ON) the tab just says they're coming */
 function awardRender(){if(!CR.view||!CR.view.awards){$('awList').innerHTML='<li class="awsoon"><b>🏅 성과 준비 중</b><small>보상과 함께 곧 열려요!</small></li>';return;}
-  const v=CR.view;if(!v||!v.awards)return;const jobs=[],doneN=v.awards.filter(a=>a.step>=a.at.length).length;let doneSeen=false;
+  const v=CR.view;if(!v||!v.awards)return;const jobs=[],doneN=v.awards.filter(a=>a.step>=a.at.length).length,newTag='<i class="newmark">NEW!</i>',doneNew=v.awards.some(a=>a.step>=a.at.length&&CR.awFresh.has(a.id));let doneSeen=false;
   const fmt=(a,x)=>a.names?a.names[a.at.indexOf(x)]:`${x.toLocaleString()}${a.unit}`;
   /* a step's reward as a tile: a picture of the default outfit wearing it (as in the 옷장), or an icon for a trail */
   const tile=r=>{if(r.icon)return`<figure><b>${r.icon}</b><figcaption>${esc(r.n)}</figcaption></figure>`;
@@ -49,7 +50,7 @@ function awardRender(){if(!CR.view||!CR.view.awards){$('awList').innerHTML='<li 
     const done=a.step>=a.at.length,next=a.at[a.step],prev=a.step?a.at[a.step-1]:0,pct=done?100:Math.max(4,Math.min(100,(a.val-prev)/(next-prev)*100)),now=a.names?(a.names[a.val-1]||'인턴'):a.val.toLocaleString(),open=CR.open.has(a.id);   // 지금 값 / 다음 목표
     const last=awRewards(a.id,a.at.length),lastPic=last.items[0],lastT=REWARDS.titles[a.id].filter(Boolean).pop();   // the top reward shows without opening the card
     const first=done&&!doneSeen;if(done)doneSeen=true;   // finished ones go last, folded under one line
-    return`${first?`<li class="awdonebar" id="awDone">달성한 성과 ${doneN}개 <span>${CR.doneOpen?'접기 ▴':'펼치기 ▾'}</span></li>`:''}<li class="aw${a.step?' got':''}${open?' open':''}${done?' done':''}"${done&&!CR.doneOpen?' hidden':''} data-aw="${a.id}"><div class="awtop"><div class="awm"><div class="awh"><b>${esc(a.n)}</b><span class="awrk">${now} / ${done?fmt(a,a.at[a.at.length-1]):fmt(a,next)}</span></div>
+    return`${first?`<li class="awdonebar" id="awDone">달성한 성과 ${doneN}개${doneNew?newTag:''} <span>${CR.doneOpen?'접기 ▴':'펼치기 ▾'}</span></li>`:''}<li class="aw${a.step?' got':''}${open?' open':''}${done?' done':''}"${done&&!CR.doneOpen?' hidden':''} data-aw="${a.id}"><div class="awtop"><div class="awm"><div class="awh"><b>${esc(a.n)}${CR.awFresh.has(a.id)?newTag:''}</b><span class="awrk">${now} / ${done?fmt(a,a.at[a.at.length-1]):fmt(a,next)}</span></div>
       <small>${esc(a.d)}</small>
       <div class="awsteps">${a.at.map((x,i)=>`<i class="${i<a.step?'on':''}">${fmt(a,x)}</i>`).join('')}</div>
       ${done?'':`<div class="awbar"><span style="width:${pct}%"></span><em>${nextTxt(a)?`다음 보상: ${nextTxt(a)}`:`다음 목표: ${fmt(a,next)}`}</em></div>`}</div><div class="awfin${done?' on':''}">${lastPic?tile(lastPic):`<figure><b class="tt"><span class="tstamp">${esc(lastT)}</span></b><figcaption>칭호</figcaption></figure>`}</div></div>${open?detail(a):''}</li>`;}).join('');
@@ -110,10 +111,16 @@ function careerJoin(){
 }
 /* a device with a 사원코드 picks up outfit / name changes made on its other devices when the page opens */
 if(store.get('or-code'))fetch(careerURL()+`?uid=${rankUid()}`).then(r=>r.json()).then(v=>{if(v&&v.code)profApply(v.prof);}).catch(()=>{});
-/* NEW! on 사원증 while the career owns something this device hasn't looked at yet (opening the 사원증 counts as looking) */
+/* NEW! on 사원증 while the career owns something this device hasn't looked at yet (opening the 사원증 counts as looking),
+   or has a 성과 step it hasn't seen: then the 성과 tab says so too until it is opened, and the card itself for that visit */
 function idMark(){const own=((CR.view&&CR.view.own)||[]).filter(k=>!k.startsWith('halo:'));let seen=[];try{seen=JSON.parse(store.get('or-ownSeen'))||[];}catch{}
   if(typeof PZ!=='undefined'&&PZ.dress){store.set('or-ownSeen',JSON.stringify(own));seen=own;}
-  const on=own.some(k=>!seen.includes(k));for(const el of document.querySelectorAll('.idnew'))el.hidden=!on;}
+  const aws=(CR.view&&CR.view.awards)||[],steps=JSON.stringify(Object.fromEntries(aws.map(a=>[a.id,a.step])));let got=null;try{got=JSON.parse(store.get('or-awSeen'));}catch{}
+  if(!got&&aws.length){store.set('or-awSeen',steps);got=JSON.parse(steps);} // first look on this device: what is already reached isn't news
+  const fresh=aws.filter(a=>got&&a.step>(got[a.id]||0)),looking=!$('dress').hidden&&CR.tab==='award';
+  if(looking&&fresh.length){for(const a of fresh)CR.awFresh.add(a.id);store.set('or-awSeen',steps);}
+  const on=own.some(k=>!seen.includes(k))||(fresh.length>0&&!looking);for(const el of document.querySelectorAll('.idnew'))el.hidden=!on;
+  $('awNew').hidden=looking||!fresh.length;}
 /* 성과 달성: after a solo game a big 도장 comes down on the result (the server answered there), then the list stays. A match, or a result left too soon: a note back in the lobby */
 const NEWS={shown:new Set(),wait:[]},newsKey=x=>`${x.aw}:${x.st}`;
 function newsRows(list){const row=x=>{const r=awRewards(x.aw,x.st),f=r.items[0],pic=f?(f.icon?`<b>${f.icon}</b>`:`<img alt="" src="${charShot(rwShotFit(f.fit[0],f.fit[1]),f.view)}">`):'<b>🏅</b>';

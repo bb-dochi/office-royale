@@ -12,6 +12,9 @@ const GUIDE_TIPS=['신입 씨, 위층부터 올라가세요. 아래층부터 닫
   '젖은 바닥에선 뛰지 마세요. 미끄러져요.','인턴 후배가 물어보면 친절하게 알려 주세요.','내 자리에 앉으면 업무를 할 수 있어요.',
   '화장실에 너무 오래 숨어 있지 마세요.','화장실 변기에 앉으면 폰으로 화캉스를 즐길 수 있어요~','너무 노시면 업무 태만으로 찍혀요.',
   '힘들면 커피 카트 근처로 가 보세요.','직급 높은 사람을 이기면 보상을 더 받아요.','곧 폐쇄되는 층의 업무는 보상이 커요.',
+  '소방 훈련 때는 엘리베이터가 멈춰요. 계단으로 가세요.','감사팀이 온 층에선 아이템 쓰지 마세요. 압수당해요!','결재 서류를 얻으면 부장님께 올리세요. 고과가 올라요.',
+  '전무님은 임원도 봐주지 않아요. 5층부터 조심하세요.','업무하다 자리를 오래 비우면 처음부터 다시 해야 해요.','정전된 층에선 부장님도 앞을 못 봐요.',
+  '청소 아주머니께 인사하면 층에 몇 명 있는지 알려 주세요.','지각한 대리님께 먼저 인사하면 커피를 사 줘요.','쏟아진 커피를 뛰다가 밟으면 크게 다쳐요.','계단은 오르다 맞으면 끊겨요. 주변부터 살피세요.','탕비실 커피 머신이나 정수기 옆에 가면 고과가 조금 차요.',
   '고과 관리 잘하시고 동료들 조심하세요!'];
 const GUIDE_IDLE=['어서 오세요, 신입 씨!','모르는 거 있으면 물어보세요~','첫 출근이죠? 긴장 푸세요.','오늘도 파이팅하세요!'];
 const GUIDE_FIT={hair:'bun',hairC:'#1f1b1a',skin:'#fbd8bb',top:'vest',topC:'#2b4a6b',shirtC:'#f4f6f8',tie:'#d9a441',badge:true,glasses:false,bottom:'pants',bottomC:'#2b3a55'};
@@ -211,7 +214,6 @@ $('dock').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)
   else if(go==='solo')diffOpen();
   else if(go==='multi'){$('home').hidden=true;showLobby();}
   else if(go==='rank')rankOpen();
-  else if(go==='tut')tutStart();
   else if(go==='sound')soundOpen(b);
   else if(go==='dress'){PZ.dressFromDock=true;$('home').classList.remove('closed');dressOpen();}});
 $('hSolo').addEventListener('click',diffOpen);
