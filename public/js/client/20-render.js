@@ -1546,7 +1546,7 @@ function render(dt){
       const c=new THREE.Mesh(GEO.cyl,lam('#cf3626',{emissive:'#cf3626',emissiveIntensity:.5}));c.scale.set(.04,.22,.04);c.position.y=.43;cakeM.add(c);scene.add(cakeM);}
     cakeM.visible=true;cakeM.position.set(G.cake.x*U,0,G.cake.y*U);}else if(cakeM)cakeM.visible=false;
   /* projectiles, bursts, airdrops */
-  syncSet(projM,G.proj.filter(p=>p.f===f),makeProj,(p,m)=>{m.position.set(p.x*U,1.0,p.y*U);m.rotation.y=p.bundle?p.d/40:p.staple||m.userData.aim?toYaw(Math.atan2(p.dy,p.dx)):p.spin;if(m.userData.tumble)m.rotation.x=p.spin;if(m.userData.kids)for(const c of m.userData.kids)c.rotation.y=p.spin;});
+  syncSet(projM,G.proj.filter(p=>p.f===f),makeProj,(p,m)=>{m.visible=!p.gone;m.position.set(p.x*U,1.0,p.y*U);m.rotation.y=p.bundle?p.d/40:p.staple||m.userData.aim?toYaw(Math.atan2(p.dy,p.dx)):p.spin;if(m.userData.tumble)m.rotation.x=p.spin;if(m.userData.kids)for(const c of m.userData.kids)c.rotation.y=p.spin;});
   syncSet(burstM,G.bursts.filter(b=>b.f===f),makeBurst,(b,m)=>{const kk=b.t/.5;m.scale.setScalar((20+kk*80)*U);m.position.set(b.x*U,.05,b.y*U);m.material.opacity=Math.max(0,1-kk);});
   syncSet(smokeM,(G.smokes||[]).filter(s=>s.f===f),s=>{const g=new THREE.Group(),col=s.side==='L'?'#e3eef7':'#c9c4bd';
       for(let i=0;i<7;i++){const b=new THREE.Mesh(GEO.sph,basic(col,{transparent:true,opacity:.5,depthWrite:false}));const a=i/7*6.28;b.position.set(i?Math.cos(a)*.55:0,.5+(i%3)*.25,i?Math.sin(a)*.55:0);b.userData.ph=a;g.add(b);}return g;},

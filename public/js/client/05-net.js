@@ -2,27 +2,27 @@
    Talks to a room server (tools/dev-server.mjs locally, the Worker in server/ when deployed). The server runs the rules;
    this file rebuilds a local G from its snapshots (same object shapes, stable identities) so render/HUD code works unchanged.
    ACT is the one place player actions go: straight into the rules in solo, over the socket online. */
-/* others are drawn INTERP seconds in the past, between two snapshots (10/s), so they move smoothly despite network jitter.
-   INTERP adapts: one snapshot interval plus about three times the measured jitter of their arrival (0.15–0.4 s),
+/* others are drawn INTERP seconds in the past, between two snapshots (15/s), so they move smoothly despite network jitter.
+   INTERP adapts: one snapshot interval plus about three times the measured jitter of their arrival (0.1–0.4 s),
    so a shaky connection trades a little delay for no freezes and jumps */
-let INTERP=.15;
-const NJ={last:0,avg:.1,dev:.02};
+let INTERP=.1;
+const NJ={last:0,avg:.067,dev:.02};
 function netJitter(now){
   if(NJ.last){const g=now-NJ.last;if(g<1){NJ.avg+=(g-NJ.avg)*.1;NJ.dev+=(Math.abs(g-NJ.avg)-NJ.dev)*.1;}}
-  NJ.last=now;const want=Math.max(.15,Math.min(.4,NJ.avg+NJ.dev*3));
+  NJ.last=now;const want=Math.max(.1,Math.min(.4,NJ.avg+NJ.dev*3));
   INTERP+=(want-INTERP)*(want>INTERP?.3:.02); // grow fast, shrink slowly
 }
 const ROOM_MAX=10; // same as MAX_PLAYERS in server/src/room.js
-const NETC={on:false,ws:null,code:'',you:null,room:null,act:null,sentIn:'',sentT:0,snapT:0,off:null,rtt:.12,pingT:0,byA:new Map(),byN:new Map(),byT:new Map(),byE:new Map()};
+const NETC={on:false,ws:null,code:'',you:null,room:null,act:null,sentIn:'',sentT:0,snapT:0,off:null,rtt:.12,pingT:0,byA:new Map(),byN:new Map(),byT:new Map(),byE:new Map(),ghosts:[],fireT:0};
 const ACT={
-  throw:ang=>NETC.on?netSend({t:'cmd',c:'throw',ang}):throwPaper(G.me,ang),
+  throw:ang=>NETC.on?netThrow(ang):throwPaper(G.me,ang),
   interact:()=>NETC.on?netSend({t:'cmd',c:'act'}):interact(G.me),
   item:i=>NETC.on?netSend({t:'cmd',c:'item',i}):useItem(G.me,i),
   skill:()=>NETC.on?netSend({t:'cmd',c:'skill'}):useSkill(G.me),
-  answer:k=>NETC.on?netSend({t:'cmd',c:'answer',k}):answer(G.me,k),
+  answer:k=>NETC.on?netAnswer(k):answer(G.me,k),
   branch:k=>NETC.on?netSend({t:'cmd',c:'branch',k}):chooseBranch(G.me,k),
   floor:dir=>NETC.on?netSend({t:'cmd',c:'floor',dir}):useFloor(G.me,dir),
-  desk:k=>NETC.on?netSend({t:'cmd',c:'desk',k}):deskKey(G.me,k),
+  desk:k=>NETC.on?netDesk(k):deskKey(G.me,k),
   lane:i=>NETC.on?netSend({t:'cmd',c:'lane',i}):pickLane(G.me,i),
 };
 /* 대표님 carries last week's 1위 name (hallLoad in 52-hall.js sets it): screen only, the same in solo and online, so the rules keep saying 대표님 */
@@ -31,6 +31,23 @@ const ceoText=s=>s.replaceAll('대표님',()=>CEO.name);
 /* what the action button would do now: computed by the server online (it sees the whole state) */
 const myAction=()=>NETC.on?NETC.act:contextAction(G.me);
 function netSend(m){if(NETC.ws&&NETC.ws.readyState===1)NETC.ws.send(JSON.stringify(m));}
+/* a right desk key moves the cell at once, since the sequence is already here. The server still checks every key: its answer takes over in netApply */
+function netDesk(k){const d=G.me&&G.me.desk;if(d&&!(d.wait>0)&&d.seq&&d.seq[d.pos]===k){d.pos++;NETC.deskEcho={seq:d.seq,pos:d.pos,t:performance.now()/1000};hudT=0;}netSend({t:'cmd',c:'desk',k});}
+/* the same for a call: the box closes on my answer, and netApply keeps a snapshot sent before it arrived from bringing it back */
+function netAnswer(k){const me=G.me;if(me.call){NETC.callAns={q:me.call.line.q,t:performance.now()/1000};me.call=null;hudT=0;}netSend({t:'cmd',c:'answer',k});}
+/* my own papers fly on my own clock: the server meets my throw half a round trip late and shows it half a round trip later, so its
+   time plus one round trip lines up with the moment I threw. A paper leaves my hand at once as a stand-in, and the server's takes it
+   over in netApply (same object, so the same mesh and one sound). Whether it hits stays the server's call */
+const myClock=now=>now+(NETC.off??0)+NETC.rtt;
+function netGhost(ang){const me=G.me,now=performance.now()/1000;
+  if(!me||!me.alive||me.f<0||me.transit||locked(me)||me.sit||me.chan||me.inRest||(me.items.length&&!(me.ammo>0))||now<NETC.fireT||me.cd-(now-NETC.snapT)>0)return;
+  const{staple,sp,rng}=paperOf(me),dx=Math.cos(ang),dy=Math.sin(ang),x=me.x+dx*(R+4),y=me.y+dy*(R+4);
+  NETC.fireT=now+paperCd(me)*(staple?.35:1);
+  const p={f:me.f,x,y,bx:x,by:y,bt:myClock(now),dx,dy,d:0,sp,rng,spin:Math.random()*6,staple,bundle:false,flyer:false,o:me,ttl:now+Math.max(.6,NETC.rtt*2+.25)};
+  NETC.ghosts.push(p);G.proj.push(p);}
+function netThrow(ang){netGhost(ang);netSend({t:'cmd',c:'throw',ang});}
+/* ahead of the server there's nothing to say my paper stopped, so walls and its range hide it here */
+const paperEnd=(p,d)=>p.d+d>p.rng||p.x<0||p.y<0||p.x>FW||p.y>FH||obsOf(p.f).some(o=>p.x>o.x&&p.x<o.x+o.w&&p.y>o.y&&p.y<o.y+o.h);
 function netURL(code){
   const q=new URLSearchParams(location.search).get('server');
   const host=q||location.host,secure=q?!/^(localhost|127\.|192\.168\.|10\.)/.test(q):location.protocol==='https:';
@@ -71,7 +88,7 @@ const seatAt=r=>r?FLOORS[r[0]].seats[r[1]]||null:null;
 const actorBy=id=>id==null?null:NETC.byA.get(id)||null;
 const npcBy=id=>id==null?null:NETC.byN.get(id)||null;
 function netBegin(){
-  NETC.byA.clear();NETC.byN.clear();NETC.byT.clear();NETC.byE.clear();NETC.act=null;NETC.sentIn='';NETC.off=null;NETC.fT=0;
+  NETC.byA.clear();NETC.byN.clear();NETC.byT.clear();NETC.byE.clear();NETC.act=null;NETC.sentIn='';NETC.off=null;NETC.fT=0;NETC.deskEcho=null;NETC.callAns=null;NETC.ghosts=[];NETC.fireT=0;
   for(const fl of FLOORS){for(const s of fl.seats){s.owner=null;s.occ=null;}let ch=false;for(const d of fl.doors)if(d.open){d.open=false;ch=true;}if(ch)refreshObs(fl);}
   G={t:0,actors:[],me:null,proj:[],items:[],traps:[],tasks:[],drops:[],wet:[],pops:[],dings:[],bursts:[],closed:0,nextClose:INTERVAL,warn:false,final:false,finalT:0,over:false,winner:null,
      npcs:[],doors:[],events:[],notice:null,ceo:null,blackout:null,cake:null,fire:0,star:null,audit:null,lunch:null,airdrops:[],smokes:[],net:true};
@@ -98,7 +115,8 @@ function netApply(m){
   G.npcs=P.N.map(s=>NETC.byN.get(s.id));G.ceo=npcBy(P.ceo);
   G.tasks=P.T.map(s=>{const t=keep(NETC.byT,s.id,()=>({react:{}}));Object.assign(t,s);if('seat' in s)t.seat=seatAt(s.seat);t.by=actorBy(s.by);return t;});
   G.items=listFrom(P.I,'i',(o,s)=>Object.assign(o,s));
-  G.proj=listFrom(P.P,'p',(o,s)=>{Object.assign(o,s);o.bx=s.x;o.by=s.y;o.bt=P.t;o.o=actorBy(s.o);});
+  for(const s of P.P)if(s.o===meId&&!s.bundle&&!s.flyer&&!NETC.byE.has('p'+s.n)){const i=NETC.ghosts.findIndex(g=>g.staple===!!s.staple);if(i>=0)NETC.byE.set('p'+s.n,NETC.ghosts.splice(i,1)[0]);}
+  G.proj=listFrom(P.P,'p',(o,s)=>{Object.assign(o,s);o.bx=s.x;o.by=s.y;o.bt=P.t;o.o=actorBy(s.o);}).concat(NETC.ghosts);
   G.traps=listFrom(P.TR,'r',(o,s)=>{Object.assign(o,s);o.o=actorBy(s.o);});
   G.wet=listFrom(P.W,'w',(o,s)=>Object.assign(o,s));
   G.drops=listFrom(P.D,'d',(o,s)=>Object.assign(o,s));
@@ -115,9 +133,12 @@ function netApply(m){
   const me=m.me?actorBy(m.me.id):null;if(me)G.me=me;
   if(me&&m.me){const px=me.x,py=me.y,pface=me.face,mine=!first&&me.f===m.me.f&&!m.me.transit&&me.alive&&m.me.alive;
     for(const k in m.me){const v=m.me[k];if(k==='seats'||k==='call'||k==='contact'||k==='quest'||k==='killer'||k==='stampNpc'||k==='sit')continue;me[k]=v;}
+    /* a snapshot sent before my key reached the server mustn't step the cell back. No answer within a second: the server's count stands */
+    {const d=me.desk,e=NETC.deskEcho;if(e){if(d&&d.seq===e.seq&&d.pos<e.pos&&now-e.t<1)d.pos=e.pos;else NETC.deskEcho=null;}}
     me.seats={};for(const f in m.me.seats)me.seats[f]=seatAt(m.me.seats[f]);
     me.sit=seatAt(m.me.sit);
     me.call=m.me.call?{n:npcBy(m.me.call.n)||{kind:'boss'},line:m.me.call.line,t:m.me.call.t,max:m.me.call.max}:null;
+    {const c=NETC.callAns;if(c&&me.call&&me.call.line.q===c.q&&now-c.t<1)me.call=null;}
     me.contact=m.me.contact?{n:npcBy(m.me.contact.n)||{kind:'boss'},t:m.me.contact.t,max:m.me.contact.max}:null;
     me.quest=m.me.quest;me.killer=actorBy(m.me.killer);me.stampNpc=npcBy(m.me.stampNpc);
     /* my own position is predicted locally. The server says which moment of my clock its answer matches (ack, from the
@@ -167,7 +188,10 @@ function netFrame(dt){
   const me=G.me;
   for(const a of G.actors)if(a!==me)sampleAt(a,rt);
   for(const n of G.npcs)sampleAt(n,rt);
-  for(const p of G.proj){const d=Math.max(-p.d,p.sp*(rt-p.bt));p.x=p.bx+p.dx*d;p.y=p.by+p.dy*d;p.spin+=dt*14;}
+  if(me&&me.input&&me.input.fire)netGhost(autoAim(me));   // the throw button held down: the server fires by itself as the cooldown ends
+  for(let i=NETC.ghosts.length-1;i>=0;i--)if(now>NETC.ghosts[i].ttl){G.proj.splice(G.proj.indexOf(NETC.ghosts[i]),1);NETC.ghosts.splice(i,1);}   // the server turned the throw down
+  const mt=myClock(now);
+  for(const p of G.proj){const own=p.o===me&&!p.bundle&&!p.flyer,d=Math.max(-p.d,p.sp*((own?mt:rt)-p.bt));p.x=p.bx+p.dx*d;p.y=p.by+p.dy*d;p.spin+=dt*14;if(own&&!p.gone&&paperEnd(p,d))p.gone=true;}
   for(const p of G.pops)p.t+=dt;for(const b of G.bursts)b.t+=dt;for(const d of G.airdrops)d.t+=dt;for(const s of G.smokes||[])s.t+=dt;
   if(!me)return;
   /* my walking uses real elapsed time: the frame loop caps dt at 0.05 s, and on a slow frame the server would get ahead */

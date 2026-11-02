@@ -100,7 +100,7 @@ npx wrangler deploy     # 배포: https://office-royale.bb-dochi.workers.dev (Cl
 배포하면 그 주소 하나로 혼자 하기·같이 하기 둘 다 된다. 다른 곳(예: Pages)에 올린 페이지에서 붙으려면 `?server=호스트` 를 붙인다.
 
 - 무료 플랜에서는 SQLite 저장소를 쓰는 Durable Object만 쓸 수 있고, 하루 요청 10만 건 같은 한도가 있다. 한도를 넘으면 그날은 요청이 실패한다.
-- 클라이언트는 입력(`{vx, vy, run, fire, aim}`)과 행동 명령만 보내고, 서버가 `public/js/sim`을 그대로 돌려(초당 30틱) 초당 10회 상태를 보낸다(한 번에 약 10KB). 규칙 코드를 화면 코드와 분리해 둔 이유가 이것.
+- 클라이언트는 입력(`{vx, vy, run, fire, aim}`)과 행동 명령만 보내고, 서버가 `public/js/sim`을 그대로 돌려(초당 30틱) 초당 15회 상태를 보낸다(한 번에 약 10KB). 규칙 코드를 화면 코드와 분리해 둔 이유가 이것.
 - 지금은 Hibernation API를 쓰지 않는다. 방 상태를 메모리에 두는 대신, 누군가 접속해 있는 동안은 Durable Object 실행 시간이 계속 잡힌다.
 
 로컬에서 서버 뼈대 띄우기: `cd server && npx wrangler dev`

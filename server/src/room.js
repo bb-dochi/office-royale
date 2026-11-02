@@ -3,7 +3,7 @@
 // Transport-agnostic: the host hands in createSim() (a fresh copy of public/js/sim) and send(peer, obj or ready JSON string).
 import { cleanFit } from './outfit.js';
 export const MAX_PLAYERS = 10;
-const TICK = 1 / 30, SEND_EVERY = 3, AFTER_OVER = 8; // 30 steps/s, 10 snapshots/s, back to lobby 8s after the end
+const TICK = 1 / 30, SEND_EVERY = 2, AFTER_OVER = 8; // 30 steps/s, 15 snapshots/s, back to lobby 8s after the end
 
 export class RoomCore {
   /* onGame(results): one person's game for the records (play stats, 성과), when they are out or the match is decided. May answer with

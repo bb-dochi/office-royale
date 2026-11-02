@@ -2,14 +2,16 @@ const aimOf=a=>a.isPlayer&&a.aim!=null?a.aim:autoAim(a);
 /* nobody can hit you in the restroom, so you can't attack from it either (papers, attack items, 마케팅/인사 skills) */
 function restNo(a){if(a.isPlayer&&G.t-(a.restNoT??-9)>2){a.restNoT=G.t;tell(a,'화장실 안에서는 공격할 수 없어요');}}
 /* ================= actions ================= */
+/* the next paper's numbers: online the client flies my own at once with the same ones (netGhost in client/05-net.js) */
+const paperCd=a=>a.isPlayer?(G.final?.38:.6):(G.final?.8:1.5)*diff().cd;
+const paperOf=a=>{const staple=a.ammo>0;return{staple,sp:staple?720:560,rng:(staple?300:340)*(a.branch==='mkt'?1+.25*teamK(a):1)};}; // 마케팅: 멀리 던짐 (대리 +12%, 팀장 +25%)
 function throwPaper(a,ang){
   if(a.cd>0||!a.alive||a.f<0||locked(a)||a.sit||a.chan)return false;
   if(a.inRest){restNo(a);return false;}
-  const base=a.isPlayer?(G.final?.38:.6):(G.final?.8:1.5)*diff().cd,staple=a.ammo>0;
+  const base=paperCd(a),{staple,sp,rng}=paperOf(a);
   /* a human holding an attack item fires it with the attack button (bots decide in botItems) */
   if(a.isPlayer&&a.items.length&&!staple){a.face=ang;a.cd=a.lastCd=base;useItem(a,0,ang);return true;}
   if(staple)a.ammo--;
-  const sp=staple?720:560,rng=(staple?300:340)*(a.branch==='mkt'?1+.25*teamK(a):1); // 마케팅: 멀리 던짐 (대리 +12%, 팀장 +25%)
   if(a.isPlayer)ang=leadAim(a,ang,sp,rng);
   a.cd=base*(staple?.35:1);a.lastCd=a.cd;a.face=ang;a.cloakT=0;
   G.proj.push({f:a.f,x:a.x+Math.cos(ang)*(R+4),y:a.y+Math.sin(ang)*(R+4),ox:a.x,oy:a.y,dx:Math.cos(ang),dy:Math.sin(ang),d:0,o:a,spin:Math.random()*6,staple,sp,rng});
