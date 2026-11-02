@@ -52,7 +52,7 @@ function think(b){
   if(f<want){
     stand(b);const pk=G.fire>0?'stair':b.padPref,pad=PADS[pk];
     const provoked=b.lastHitBy&&b.lastHitBy.alive&&b.lastHitBy.f===f&&G.t-b.lastHitT<2&&f>=G.closed;
-    if(G.killAny&&provoked){b.mode='fight';b.target=b.lastHitBy;b.goal=null;return;} // from the 2026-11-02 ranking week: on the way up too, even on a closing floor (the queue at the stairs was free hits)
+    if(provoked){b.mode='fight';b.target=b.lastHitBy;b.goal=null;return;} // on the way up too, even on a closing floor (the queue at the stairs was free hits)
     if(dist(b,pad)<30){if(!startChan(b,pk,+1)){b.padPref=pk==='stair'?'elev':'stair';}return;}
     if(provoked&&!warnFloor(f)){b.mode='fight';b.target=b.lastHitBy;b.goal=null;return;}
     setGoal(b,pad,'travel');return;
