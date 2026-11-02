@@ -3,7 +3,7 @@
 // Solo games run in the browser, so a score can't be proven: the server recomputes it from the reported numbers and
 // turns away impossible ones. Each device (uid) keeps only its best score of the week.
 export const DIFFS = ['easy', 'normal', 'hard'], RANKED = 'hard';
-const KEEP = 100, SHOW = 50, GAP = 20e3, TOTAL = 20, WEEK = 7 * 864e5;
+const KEEP = 100, SHOW = 50, GAP = 20e3, QUIT_GAP = 2e3, TOTAL = 20, WEEK = 7 * 864e5;
 const HALL_FROM = '2026-10-26'; // the first week the board ran: 명예 사원 starts here
 export const RANKS = ['인턴', '사원', '대리', '팀장', '임원', 'CEO'];
 const RANK_PT = [0, 50, 100, 200, 300, 500];
@@ -100,6 +100,7 @@ export class RankCore {
    GET  /api/rank?uid=…  → this week's board
    GET  /api/hall?uid=…&week=…  → 명예 사원: one finished week's top 3 and the list of weeks
    POST /api/game {uid,name,diff,place,rank,kills,tasks,time,lunch,branch} → a finished solo game: play stats, plus the board if 어려움
+   POST /api/game {…, quit:'restart'|'lobby'} with no place → a solo game left from the pause menu: play stats only
    The host itself records online games (stats.record) and serves the admin page. */
 const okUid = u => typeof u === 'string' && /^[a-z0-9]{8,32}$/.test(u);
 export async function apiHTTP({ rank, stats, career, feedback }, method, url, body) {
@@ -123,6 +124,14 @@ export async function apiHTTP({ rank, stats, career, feedback }, method, url, bo
   }
   if (url.pathname !== '/api/game' || method !== 'POST') return { status: 404, json: { err: 'not found' } };
   let m; try { m = JSON.parse(body); } catch { return { status: 400, json: { err: '잘못된 요청' } }; }
+  if (m && (m.quit === 'restart' || m.quit === 'lobby')) { // has its own gap: it must not hold up the next game's report
+    const q = clean({ ...m, place: TOTAL }), at = Date.now();
+    if (!q) return { status: 400, json: { err: '기록을 확인할 수 없어요' } };
+    if (at - (stats.last.get(q.uid) || 0) < QUIT_GAP) return { status: 429, json: { err: '잠시 뒤에 다시 올려 주세요' } };
+    stats.last.set(q.uid, at);
+    await stats.record({ ...q, place: undefined, mode: 'solo', quit: m.quit, lunch: typeof m.lunch === 'string' ? m.lunch.slice(0, 10) : '', branch: m.branch });
+    return { status: 200, json: {} };
+  }
   const e = clean(m);
   if (!e) return { status: 400, json: { err: '기록을 확인할 수 없어요' } };
   const now = Date.now();

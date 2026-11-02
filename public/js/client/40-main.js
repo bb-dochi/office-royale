@@ -79,8 +79,8 @@ const canPause=()=>running&&G&&G.me&&G.me.alive&&!(typeof TUT!=='undefined'&&TUT
 addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(paused){e.preventDefault();pauseOpen(false);}else if(canPause()){e.preventDefault();pauseOpen(true);}});
 $('pauseBtn').addEventListener('click',e=>{e.stopPropagation();if(canPause())pauseOpen(true);});
 $('pResume').addEventListener('click',()=>pauseOpen(false));
-$('pRestart').addEventListener('click',()=>{pauseOpen(false);start();});
-$('pHome').addEventListener('click',()=>{pauseOpen(false);if(G.net){netSend({t:'quit'});netClose();}running=false;plazaStart();});
+$('pRestart').addEventListener('click',()=>{pauseOpen(false);rankQuit('restart');start();});
+$('pHome').addEventListener('click',()=>{pauseOpen(false);rankQuit('lobby');if(G.net){netSend({t:'quit'});netClose();}running=false;plazaStart();});
 /* solo: d is the difficulty picked on the 난이도 sheet; restarts (다시 출근, pause) reuse the last one */
 function start(d){if((d||store.get('or-diff'))===RANKED&&!hardOpen()){store.set('or-diff','normal');diffOpen();return;} // 어려움 still locked: show why
   netClose();if(DIFF[d])store.set('or-diff',d);$('diffSheet').hidden=true;

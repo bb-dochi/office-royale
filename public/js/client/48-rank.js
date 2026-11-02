@@ -31,6 +31,10 @@ function rankSubmit(win){
     const k=r.rank;if(!k||!k.week)return;
     $('rScore').textContent=`${sc.toLocaleString()}점${k.me?` · 이번 주 ${k.me.pos}위`:''}${k.best?'':' (최고 기록 아님)'}`;}).catch(()=>{});
 }
+/* a solo game left from the pause menu ('restart' or 'lobby'): play stats only, no ranking or 성과 */
+function rankQuit(quit){if(G.net||NETC.room||G.tutorial)return;
+  const me=G.me,lunch=G.events.find(ev=>ev.kind==='lunch');
+  fetch(rankURL('','game'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:rankUid(),name:store.get('or-name')||'신입',diff:G.diff||'normal',quit,rank:me.rank,kills:me.kills||0,tasks:me.tasksDone||0,time:Math.round(G.t),lunch:lunch&&lunch.stage===2?G.lunchKind||'':'',branch:me.branch||''})}).catch(()=>{});}
 /* 같이 하기: the server records my game the moment I'm out, a little ahead of my result screen */
 let newsLate=null;
 function careerOnline(c){if(!c)return;if(!$('result').hidden){careerNews(c);careerLoad();return;}

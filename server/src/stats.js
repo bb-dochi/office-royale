@@ -1,13 +1,15 @@
 // Play stats for the admin page: who played, how much, and how it went.
 // A person is a device (the `or-uid` the browser keeps), shown with the latest 사원명 they used; one person on two
-// devices counts twice. Solo games are reported by the browser when the result screen shows (quitting mid-game is not
-// counted); online games are reported by the room when the match ends, for everyone who started it.
+// devices counts twice. Solo games are reported by the browser when the result screen shows, or when left from the pause
+// menu (g.quit: no place, on lists of their own so they can't push a finished game off); online games are reported by the
+// room when the match ends, for everyone who started it. Closing the tab mid-game is not counted.
 // A game's branch is the team the player was posted to (sim BRANCH; '' = still an intern). Days and games from before
 // it was recorded (and games from pages cached since then) have no branch field at all and aren't counted.
-// Storage keys (all small values): s:day:<date> per KST day, s:p:<uid> per person, s:idx (one line per person), s:recent.
+// Storage keys (all small values): s:day:<date> per KST day, s:p:<uid> per person, s:idx (one line per person), s:recent, s:quits.
 import { AWARDS, AWARDS_ON, STEPS, rewardsOf, REWARD_KINDS } from './career.js'; // the admin's 성과 views (career.js uses dayOf from here: only at run time)
 const BRANCHES = ['dev', 'mkt', 'hr', 'design'];
-const RECENT = 100, PERSON_RECENT = 20, IDX_MAX = 3000, DAY_PEOPLE_MAX = 5000;
+const RECENT = 100, PERSON_RECENT = 50, IDX_MAX = 3000, DAY_PEOPLE_MAX = 5000;
+const QUIT_MIN = 10; // seconds: a game left sooner keeps its row and count, but isn't a game or play time
 export const dayOf = (ms = Date.now()) => new Date(ms + 9 * 3600e3).toISOString().slice(0, 10);
 
 export class StatsCore {
@@ -16,25 +18,32 @@ export class StatsCore {
   async get(k, dflt) { if (!this.cache.has(k)) this.cache.set(k, (await this.store.get(k)) ?? dflt); return this.cache.get(k); }
   put(k, v) { this.cache.set(k, v); return this.store.put(k, v); }
 
-  /* g: {uid, name, mode:'solo'|'multi', diff, place, rank, kills, tasks, time, lunch, room?} (already checked).
+  /* g: {uid, name, mode:'solo'|'multi', diff, place, rank, kills, tasks, time, lunch, room?, quit?:'restart'|'lobby'} (already checked).
      One at a time: a match ends for several people at once, and each write reads what the last one left */
   record(g) { return (this.q = (this.q || Promise.resolve()).then(() => this.write(g)).catch(e => console.error('stats', e))); }
   async write(g) {
-    const now = Date.now(), day = dayOf(now), uid = g.uid || 'anon';
-    const game = { at: now, uid, name: g.name, mode: g.mode, diff: g.diff, place: g.place, rank: g.rank, kills: g.kills, tasks: g.tasks, time: g.time, lunch: g.lunch || '', branch: g.branch === undefined ? undefined : BRANCHES.includes(g.branch) ? g.branch : '', room: g.room || undefined };
+    const now = Date.now(), day = dayOf(now), uid = g.uid || 'anon', played = !g.quit || g.time >= QUIT_MIN;
+    const game = { at: now, uid, name: g.name, mode: g.mode, diff: g.diff, place: g.place, rank: g.rank, kills: g.kills, tasks: g.tasks, time: g.time, lunch: g.lunch || '', branch: g.branch === undefined ? undefined : BRANCHES.includes(g.branch) ? g.branch : '', room: g.room || undefined, quit: g.quit || undefined };
 
     const d = await this.get('s:day:' + day, null) || { games: 0, solo: 0, multi: 0, sec: 0, diff: {}, people: [] };
-    d.games++; d[g.mode]++; d.sec += g.time; d.diff[g.diff] = (d.diff[g.diff] || 0) + 1;
-    if (game.branch !== undefined) { const br = game.branch || 'none'; d.branch ||= {}; d.branch[br] = (d.branch[br] || 0) + 1; } // pages cached from before don't say
+    if (played) {
+      d.games++; d[g.mode]++; d.sec += g.time; d.diff[g.diff] = (d.diff[g.diff] || 0) + 1;
+      if (game.branch !== undefined) { const br = game.branch || 'none'; d.branch ||= {}; d.branch[br] = (d.branch[br] || 0) + 1; } // pages cached from before don't say
+    }
+    if (g.quit) d.quit = (d.quit || 0) + 1;
     if (!d.people.includes(uid) && d.people.length < DAY_PEOPLE_MAX) d.people.push(uid);
     await this.put('s:day:' + day, d);
 
     const p = await this.get('s:p:' + uid, null) || { uid, name: g.name, names: [], first: now, games: 0, solo: 0, multi: 0, wins: 0, sec: 0, kills: 0, tasks: 0, best: null, recent: [] };
     if (p.name !== g.name && !p.names.includes(p.name)) p.names = [p.name, ...p.names].slice(0, 5);
-    p.name = g.name; p.last = now; p.games++; p[g.mode]++; p.sec += g.time; p.kills += g.kills; p.tasks += g.tasks;
-    if (g.place === 1) p.wins++;
-    if (!p.best || g.place < p.best.place) p.best = { place: g.place, rank: g.rank, diff: g.diff, mode: g.mode, at: now };
-    p.recent = [game, ...p.recent].slice(0, PERSON_RECENT);
+    p.name = g.name; p.last = now;
+    if (played) { p.games++; p[g.mode]++; p.sec += g.time; p.kills += g.kills; p.tasks += g.tasks; }
+    if (g.quit) { p.quit = (p.quit || 0) + 1; p.quits = [game, ...(p.quits || [])].slice(0, PERSON_RECENT); }
+    else {
+      if (g.place === 1) p.wins++;
+      if (!p.best || g.place < p.best.place) p.best = { place: g.place, rank: g.rank, diff: g.diff, mode: g.mode, at: now };
+      p.recent = [game, ...p.recent].slice(0, PERSON_RECENT);
+    }
     await this.put('s:p:' + uid, p);
 
     const idx = await this.get('s:idx', {});
@@ -43,9 +52,9 @@ export class StatsCore {
     if (ids.length > IDX_MAX) for (const id of ids.sort((a, b) => idx[a][2] - idx[b][2]).slice(0, ids.length - IDX_MAX)) delete idx[id];
     await this.put('s:idx', idx);
 
-    const rec = await this.get('s:recent', []);
+    const listKey = g.quit ? 's:quits' : 's:recent', rec = await this.get(listKey, []);
     rec.unshift(game); if (rec.length > RECENT) rec.length = RECENT;
-    await this.put('s:recent', rec);
+    await this.put(listKey, rec);
   }
 
   async days(n = 14) {
@@ -56,6 +65,7 @@ export class StatsCore {
   async people() { const idx = await this.get('s:idx', {}); return Object.entries(idx).map(([uid, [name, games, last, sec, wins, first]]) => ({ uid, name, games, last, sec, wins, first })); }
   async person(uid) { return this.get('s:p:' + uid, null); }
   async recent() { return this.get('s:recent', []); }
+  async quits() { return this.get('s:quits', []); }
 }
 
 /* ---------- the admin page (server-rendered; only the ranking delete and the local reward editor use a script) ---------- */
@@ -64,11 +74,12 @@ const dur = s => s >= 3600 ? `${Math.floor(s / 3600)}시간 ${Math.floor(s % 360
 const when = ms => ms ? new Date(ms + 9 * 3600e3).toISOString().slice(5, 16).replace('T', ' ') : '-';
 const ago = ms => { if (!ms) return '-'; const s = (Date.now() - ms) / 1000; return s < 60 ? '방금' : s < 3600 ? `${Math.floor(s / 60)}분 전` : s < 86400 ? `${Math.floor(s / 3600)}시간 전` : s < 86400 * 30 ? `${Math.floor(s / 86400)}일 전` : when(ms).slice(0, 5); };
 const DIFF_N = { easy: '쉬움', normal: '보통', hard: '어려움' }, MODE_N = { solo: '혼자', multi: '같이' };
-const LUNCH_N = { lighter: '라이터', bill: '계산서', meal: '특식', ladder: '사다리' };
+const LUNCH_N = { lighter: '라이터', bill: '계산서', meal: '특식', ladder: '사다리' }, QUIT_N = { restart: '재시작', lobby: '나감' };
+const byTime = (...lists) => lists.flat().sort((a, b) => b.at - a.at);
 const BRANCH_N = { dev: '개발', mkt: '마케팅', hr: '인사', design: '디자인', none: '미발령' }, BR_KEYS = [...BRANCHES, 'none'];
 const pill = (cls, txt) => txt ? `<span class="pill ${cls}">${txt}</span>` : '';
 const place = n => `<span class="place${n === 1 ? ' p1' : n <= 3 ? ' p3' : ''}">${n}위</span>`;
-const gameRow = (g, link) => `<tr><td class="mut" title="${ago(g.at)}">${when(g.at)}</td>${link ? `<td>${link(g)}</td>` : ''}<td>${pill(g.mode, MODE_N[g.mode] || esc(g.mode))}${g.room ? ` <span class="mut">${esc(g.room)}</span>` : ''}</td><td>${pill(g.diff, DIFF_N[g.diff])}</td><td>${place(g.place)}</td><td>${esc(g.rank)}</td><td${g.branch ? '' : ' class="mut"'}>${g.branch == null ? '' : BRANCH_N[g.branch || 'none']}</td><td class="n">${g.tasks}</td><td class="n">${g.kills}</td><td class="n">${dur(g.time)}</td><td class="mut">${LUNCH_N[g.lunch] || ''}</td></tr>`;
+const gameRow = (g, link) => `<tr><td class="mut" title="${ago(g.at)}">${when(g.at)}</td>${link ? `<td>${link(g)}</td>` : ''}<td>${pill(g.mode, MODE_N[g.mode] || esc(g.mode))}${g.room ? ` <span class="mut">${esc(g.room)}</span>` : ''}</td><td>${pill(g.diff, DIFF_N[g.diff])}</td><td>${g.quit ? pill('quit', QUIT_N[g.quit]) : place(g.place)}</td><td>${esc(g.rank)}</td><td${g.branch ? '' : ' class="mut"'}>${g.branch == null ? '' : BRANCH_N[g.branch || 'none']}</td><td class="n">${g.tasks}</td><td class="n">${g.kills}</td><td class="n">${dur(g.time)}</td><td class="mut">${LUNCH_N[g.lunch] || ''}</td></tr>`;
 const GAME_HEAD = link => `<thead><tr><th>시각</th>${link ? '<th>사원</th>' : ''}<th>모드</th><th>난이도</th><th>등수</th><th>직급</th><th>부서</th><th class="n">업무</th><th class="n">해고</th><th class="n">시간</th><th><button class="thb" popovertarget="pieLunch" title="점심 비율 보기">점심 <span>◔</span></button></th></tr></thead>`;
 const card = (big, label, small) => `<div class="card"><span class="lbl">${label}</span><b>${big}</b>${small ? `<small>${small}</small>` : ''}</div>`;
 const section = (title, inner, extra = '', id = '') => `<section${id ? ` id="${id}"` : ''}><div class="sh"><h3>${title}</h3>${extra}</div>${inner}</section>`;
@@ -219,14 +230,14 @@ export async function adminHTML(stats, q, career, feedback, rewardEdit = false, 
       <header class="who"><div class="ava">${esc([...p.name][0] || '?')}</div><div><h2>${esc(p.name)}</h2>
         <p class="sub">${code ? `사원코드 <b>${esc(code)}</b> · ` : ''}${p.names.length ? '예전 이름 ' + p.names.map(esc).join(', ') + ' · ' : ''}<span class="mono">${esc(p.uid)}</span></p></div></header>
       <div class="cards">
-        ${card(`${p.games}<u>판</u>`, '플레이', `혼자 ${p.solo} · 같이 ${p.multi}`)}
+        ${card(`${p.games}<u>판</u>`, '플레이', `혼자 ${p.solo} · 같이 ${p.multi}${p.quit ? ` · 재시작·나감 ${p.quit}` : ''}`)}
         ${card(dur(p.sec), '총 플레이 시간', p.games ? `한 판 평균 ${dur(Math.round(p.sec / p.games))}` : '')}
         ${card(`${p.wins}<u>번</u>`, 'CEO 등극', `승률 ${p.games ? Math.round(p.wins / p.games * 100) : 0}% · 최고 ${p.best ? `${p.best.place}위 ${esc(p.best.rank)}` : '-'}`)}
         ${card(`${p.tasks}<u>업무</u> ${p.kills}<u>해고</u>`, '누적', `최근 ${p.recent.length}판 평균 ${avgPlace}위`)}
         ${card(ago(p.last), '마지막 플레이', `처음 ${when(p.first)}`)}
       </div>
       ${await awardSection(career, q.get('uid'), testTools)}
-      ${section(`최근 ${p.recent.length}판`, tbl(GAME_HEAD(false) + `<tbody>${p.recent.map(g => gameRow(g)).join('')}</tbody>`) + lunchPop(p.recent))}`);
+      ${section(`최근 ${p.recent.length}판${p.quits ? ` <small>재시작·나감 ${p.quits.length}번 함께 표시</small>` : ''}`, tbl(GAME_HEAD(false) + `<tbody>${byTime(p.recent, p.quits || []).map(g => gameRow(g)).join('')}</tbody>`) + lunchPop(p.recent))}`);
   } else if (tab === 'people') {
     const people = await stats.people(), sort = q.get('sort') || 'last', ppl = people.sort((a, b) => sort === 'games' ? b.games - a.games : sort === 'time' ? b.sec - a.sec : b.last - a.last);
     const sorts = [['last', '최근'], ['games', '판 수'], ['time', '플레이 시간']].map(([k, n]) => `<a href="?tab=people&sort=${k}#people"${k === sort ? ' class="on"' : ''}>${n}</a>`).join('');
@@ -234,14 +245,14 @@ export async function adminHTML(stats, q, career, feedback, rewardEdit = false, 
     body = section(`사람별 <small>${people.length}명${people.length > 300 ? ' 중 300명' : ''}</small>`, tbl(`<thead><tr><th>사원명</th><th class="w">판</th><th class="n">플레이 시간</th><th class="n">CEO</th><th>처음</th><th>마지막</th></tr></thead><tbody>
       ${ppl.slice(0, 300).map(p => `<tr><td>${link(p.uid, p.name)}</td><td class="w"><div class="bc">${bar([[p.games, 'solo']], maxPG)}<b>${p.games}</b></div></td><td class="n">${dur(p.sec)}</td><td class="n">${p.wins ? `<span class="place p1">${p.wins}</span>` : '<span class="mut">0</span>'}</td><td class="mut">${when(p.first)}</td><td title="${when(p.last)}">${ago(p.last)}</td></tr>`).join('')}</tbody>`), `<div class="seg">${sorts}</div>`, 'people');
   } else {
-    const days = await stats.days(14), trend = days.slice(0, 7).reverse(), people = await stats.people(), rec = await stats.recent();
+    const days = await stats.days(14), trend = days.slice(0, 7).reverse(), people = await stats.people(), rec = await stats.recent(), quits = await stats.quits();
     const nameOf = new Map(people.map(p => [p.uid, p.name])); // games keep the name used then; show who it is now
     const t = days[0], y = days[1], wk = days.slice(0, 7), wkPeople = new Set(wk.flatMap(d => d.people));
     const sum = (a, f) => a.reduce((s, d) => s + f(d), 0);
     const delta = (a, b) => a === b ? '' : `<span class="dl ${a > b ? 'up' : 'dn'}">${a > b ? '▲' : '▼'}${Math.abs(a - b)}</span>`;
     const maxG = Math.max(1, ...days.map(d => d.games));
     body = `<div class="cards">
-        ${card(`${t.games}<u>판</u> ${delta(t.games, y.games)}`, '오늘', `${t.people.length}명 · 혼자 ${t.solo} · 같이 ${t.multi}`)}
+        ${card(`${t.games}<u>판</u> ${delta(t.games, y.games)}`, '오늘', `${t.people.length}명 · 혼자 ${t.solo} · 같이 ${t.multi}${t.quit ? ` · 재시작·나감 ${t.quit}` : ''}`)}
         ${card(`${sum(wk, d => d.games)}<u>판</u>`, '최근 7일', `${wkPeople.size}명이 플레이`)}
         ${card(`${people.length}<u>명</u>`, '전체 사원', `${sum(people, p => p.games)}판 · ${dur(sum(people, p => p.sec))}`)}
         ${card(t.games ? dur(Math.round(t.sec / t.games)) : '-', '오늘 한 판 평균', y.games ? `어제 ${dur(Math.round(y.sec / y.games))}` : '')}
@@ -255,7 +266,7 @@ export async function adminHTML(stats, q, career, feedback, rewardEdit = false, 
         <td class="w">${bar([[d.solo, 'solo'], [d.multi, 'multi']], maxG)}</td><td class="n"><b>${d.games}</b></td><td class="n" title="${d.people.length}명">${d.people.length}</td>
         <td class="w2">${d.games ? bar([[d.diff.easy || 0, 'easy'], [d.diff.normal || 0, 'normal'], [d.diff.hard || 0, 'hard']], d.games) + `<span class="mut sm">${d.diff.easy || 0} / ${d.diff.normal || 0} / ${d.diff.hard || 0}</span>` : ''}</td>
         <td class="n mut">${d.games ? dur(Math.round(d.sec / d.games)) : '-'}</td></tr>`; }).join('')}</tbody>`))}
-      ${section('최근 판 <small>50판</small>', tbl(GAME_HEAD(true) + `<tbody>${rec.slice(0, 50).map(g => gameRow(g, g => link(g.uid, nameOf.get(g.uid) || g.name))).join('')}</tbody>`, 'tall') + lunchPop(rec))}`;
+      ${section('최근 판 <small>50판</small>', tbl(GAME_HEAD(true) + `<tbody>${byTime(rec, quits).slice(0, 50).map(g => gameRow(g, g => link(g.uid, nameOf.get(g.uid) || g.name))).join('')}</tbody>`, 'tall') + lunchPop(rec))}`;
   }
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <title>오피스 로얄 · 관리</title><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"><style>
