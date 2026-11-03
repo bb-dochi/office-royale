@@ -4,14 +4,16 @@
 import { cleanFit } from './outfit.js';
 export const MAX_PLAYERS = 10;
 const TICK = 1 / 30, SEND_EVERY = 2, AFTER_OVER = 8; // 30 steps/s, 15 snapshots/s, back to lobby 8s after the end
+/* a waiting room nothing has happened in for this long is closed: a Durable Object is billed for as long as any socket is open */
+export const ROOM_IDLE = 10 * 60 * 1000;
 
 export class RoomCore {
   /* onGame(results): one person's game for the records (play stats, 성과), when they are out or the match is decided. May answer with
      their career ({code, news}), which goes to that player, as /api/game does for a solo game */
-  constructor(code, { createSim, send, onEmpty, onGame }) {
-    this.code = code; this.createSim = createSim; this.send = send; this.onEmpty = onEmpty || (() => {}); this.onGame = onGame || (() => {});
+  constructor(code, { createSim, send, drop, onEmpty, onGame, idle = ROOM_IDLE }) {
+    this.code = code; this.createSim = createSim; this.send = send; this.drop = drop; this.idle = idle; this.onEmpty = onEmpty || (() => {}); this.onGame = onGame || (() => {});
     this.peers = []; // {key, name, inGame}
-    this.state = 'lobby'; this.sim = null; this.timer = null; this.tick = 0; this.overT = 0; this.seq = 0;
+    this.state = 'lobby'; this.sim = null; this.timer = null; this.idleT = null; this.tick = 0; this.overT = 0; this.seq = 0;
   }
   /* away: dropped out of a running match. They keep their seat (a bot plays for them) until the match ends, so the same
      browser can come back into it with its resume token */
@@ -22,7 +24,17 @@ export class RoomCore {
     return { t: 'room', code: this.code, state: this.state, max: MAX_PLAYERS,
       players: this.peers.map(p => ({ key: p.key, name: p.name, host: p === host, inGame: !!p.inGame, away: !!p.away })) };
   }
-  broadcastRoster() { const r = this.roster(); for (const p of this.live()) this.send(p, { ...r, you: p.key, token: p.token }); }
+  broadcastRoster() { const r = this.roster(); for (const p of this.live()) this.send(p, { ...r, you: p.key, token: p.token }); this.idleArm(); }
+  /* every change of the room comes through the roster, so that is what restarts the clock */
+  idleArm() {
+    clearTimeout(this.idleT); this.idleT = null;
+    if (this.state === 'lobby' && this.peers.length) this.idleT = setTimeout(() => this.idleClose(), this.idle);
+  }
+  idleClose() {
+    const peers = this.peers; this.peers = [];
+    for (const p of peers) { this.send(p, { t: 'bye', m: '오래 비어 있어서 방을 닫았어요' }); this.drop(p); }
+    this.onEmpty();
+  }
 
   /* returns an error string, or null when the peer joined. resume: the token a peer got in its roster; a match takes
      the new socket in place of the old one (which may not even have noticed it's dead yet) */
@@ -45,7 +57,7 @@ export class RoomCore {
     const i = this.peers.indexOf(peer); if (i < 0 || peer.away) return;
     if (this.sim && peer.inGame) { this.sim.NET.leave(peer.key); peer.away = true; }
     else this.peers.splice(i, 1);
-    if (!this.live().length) { this.stop(); this.peers = []; this.onEmpty(); return; }
+    if (!this.live().length) { this.stop(); this.peers = []; this.idleArm(); this.onEmpty(); return; }
     if (this.state === 'playing' && !this.live().some(p => p.inGame)) this.stop(); // nobody left playing
     this.broadcastRoster();
   }

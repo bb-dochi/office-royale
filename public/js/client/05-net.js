@@ -69,6 +69,7 @@ function netConnect(code,name,onRoom,onFail,tries=0){
     else if(m.t==='s'){if(NETC.on&&G&&G.net)netApply(m);} // never into the lobby world
     else if(m.t==='news')careerOnline(m.career);
     else if(m.t==='pong'){const r=(performance.now()-m.ct)/1000;if(r>=0&&r<3)NETC.rtt=NETC.rtt*.7+r*.3;}
+    else if(m.t==='bye'){NETC.ws=null;NETC.on=false;try{ws.close();}catch{}onFail(m.m);}
     else if(m.t==='err'){onFail(m.m);}};
   ws.onclose=()=>{if(NETC.ws!==ws)return;NETC.ws=null;
     /* dropped mid-match (phone locked, Wi-Fi ↔ LTE): keep the match on screen and dial back in with the token */

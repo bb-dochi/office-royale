@@ -46,9 +46,17 @@ function plazaConnect(){
     if(m.t==='pz-hi'){PZ.pid=m.you;PZ.online=true;PZ.roomSent='';pzRoomSend();const me=G&&G.plaza&&G.me;if(me){me.id=PZ_BASE+m.you;me.name=m.name;dropMesh(me);}}
     else if(m.t==='pz'){PZ.count=m.n;plazaPeople(m.p);}
     else if(m.t==='pz-fit'){const a=PZ.others.get(m.id);PZ.fits.set(m.id,m.fit);if(a){a.fit=cleanFit(m.fit);dropMesh(a);}}
-    else if(m.t==='pz-say'){const a=m.id===PZ.pid?G.me:PZ.others.get(m.id);if(a&&EMOTES[m.i])say(a,EMOTES[m.i]);}};
-  ws.onclose=()=>{if(PZ.ws!==ws)return;PZ.ws=null;PZ.online=false;if(PZ.on)setTimeout(()=>{if(PZ.on&&!PZ.ws)plazaConnect();},4000);};
+    else if(m.t==='pz-say'){const a=m.id===PZ.pid?G.me:PZ.others.get(m.id);if(a&&EMOTES[m.i])say(a,EMOTES[m.i]);}
+    else if(m.t==='pz-bye')pzSleep();};
+  ws.onclose=()=>{if(PZ.ws!==ws)return;PZ.ws=null;PZ.online=false;if(PZ.on)setTimeout(()=>{if(!PZ.on||PZ.ws||PZ.idle)return;if(document.hidden)PZ.idle=true;else plazaConnect();},4000);};
 }
+/* the server is billed for as long as this socket is open, and its lobby keeps ticking for one forgotten tab. So a tab hidden for
+   half a minute lets go (the server does the same to anyone who stands still for 5 minutes), and comes back when someone is there */
+const PZ_HIDE_MS=30000;
+function pzSleep(){const ws=PZ.ws;PZ.ws=null;PZ.online=false;PZ.idle=true;plazaPeople([]);if(ws)try{ws.close();}catch{}}
+function pzWake(){if(PZ.on&&PZ.idle&&!PZ.ws&&!document.hidden){PZ.idle=false;plazaConnect();}}
+document.addEventListener('visibilitychange',()=>{clearTimeout(PZ.hideT);if(document.hidden)PZ.hideT=setTimeout(()=>{if(PZ.on&&PZ.ws)pzSleep();},PZ_HIDE_MS);else pzWake();});
+for(const t of['keydown','pointerdown'])addEventListener(t,pzWake,{capture:true});
 /* 상대방: a spring towards the last position heard. The velocity stays continuous, so uneven network steps don't show as stutter */
 const PZ_FOLLOW=2/.16;
 function pzFollow(a,dt){if(Math.hypot(a.nx-a.x,a.ny-a.y)>260){a.x=a.nx;a.y=a.ny;a.fvx=a.fvy=0;return;}
@@ -65,7 +73,7 @@ function plazaPeople(list){
 }
 /* keepLobby: coming back to a match room's waiting sheet, which docks over the plaza instead of the home card */
 function plazaStart(keepLobby){
-  if(PZ.on)return;PZ.on=true;running=false;
+  if(PZ.on)return;PZ.on=true;PZ.idle=false;running=false;
   plazaWorld();document.body.classList.add('plaza');
   for(const id of['lobby','result','cine','notice','callBox','branchBox','countdown','spec'])if(!(keepLobby&&id==='lobby'))$(id).hidden=true;
   $('home').hidden=!!keepLobby;$('feed').textContent='';PZ.roomSent='';
