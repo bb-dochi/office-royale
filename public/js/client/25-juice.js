@@ -26,8 +26,11 @@ function bgmSync(fade=.8){
 }
 function bgmPlay(file){BGM.file=file;bgmSync();}
 function bgmStop(){BGM.file='';bgmSync();}
-const GAME_SONGS=['audio/game.mp3','audio/game2.mp3'];
-function bgmGame(){bgmPlay(GAME_SONGS[Math.floor(Math.random()*GAME_SONGS.length)]);} // a song is picked for each match
+const GAME_SONGS=[['audio/game.mp3','오피스 로얄: origin'],['audio/game2.mp3','서류는 펄펄'],['audio/game3.mp3','오피스 로얄: 알라딘ver']];
+let gameSong='';try{gameSong=localStorage.getItem('or-game-song')||'';}catch{} // '' = a random one each match
+function bgmGame(){const f=GAME_SONGS.some(s=>s[0]===gameSong)?gameSong:GAME_SONGS[Math.floor(Math.random()*GAME_SONGS.length)][0];bgmPlay(f);}
+function setGameSong(f){gameSong=f;try{localStorage.setItem('or-game-song',f);}catch{}
+  if(GAME_SONGS.some(s=>s[0]===BGM.file))bgmGame();} // picked mid-match: switch now
 function auInit(){
   if(AU.ctx){if(AU.ctx.state!=='running')AU.ctx.resume();}
   else{
@@ -196,9 +199,11 @@ function soundOpen(a){const s=$('sound');if(!s.hidden&&soundAt===a){s.hidden=tru
 for(const b of document.querySelectorAll('.mutebtn'))b.addEventListener('click',e=>{e.stopPropagation();if(b.closest('.msys'))setMute(!AU.mute);else soundOpen(b);}); // on the in-game map: plain on/off
 for(const[id,k]of[['volMusic','music'],['volSfx','sfx']]){const i=$(id),n=i.nextElementSibling;i.value=n.textContent=Math.round(AU[k]*100);
   i.addEventListener('input',()=>{n.textContent=i.value;setVol(k,i.value/100);});}
+{const g=$('gameSong');for(const[f,n]of[['','랜덤'],...GAME_SONGS])g.add(new Option(n,f,false,f===gameSong));
+  g.addEventListener('change',()=>{setGameSong(g.value);g.blur();});}
 $('volSfx').addEventListener('change',()=>SFX.pickup()); // effects are silent in the lobby otherwise: a blip to judge the level by
 $('volMute').addEventListener('click',()=>setMute(!AU.mute));
 addEventListener('pointerdown',e=>{if(!e.target.closest('#sound,.mutebtn,[data-go=sound]'))$('sound').hidden=true;},true);
-addEventListener('pointerup',()=>{const f=document.activeElement;if(f&&f.closest('#sound'))f.blur();},true); // a focused slider would swallow WASD
+addEventListener('pointerup',()=>{const f=document.activeElement;if(f&&f.closest('#sound')&&f.tagName!=='SELECT')f.blur();},true); // a focused slider would swallow WASD (the song list blurs itself once picked)
 addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('sound').hidden){e.stopImmediatePropagation();$('sound').hidden=true;}},true);
 setMute(AU.mute);

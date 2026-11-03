@@ -212,6 +212,8 @@ body.plaza #home.closed:not([hidden]) ~ #dock{display:flex}
 #sound input{width:100%;height:28px;margin:0;accent-color:var(--stamp);touch-action:none;cursor:pointer}
 #sound output{text-align:right;font:800 12px var(--body);color:var(--muted);font-variant-numeric:tabular-nums}
 #sound .tlink{display:block;margin:2px 0 0 auto;font-size:12px}
+#sound .song{grid-template-columns:42px 1fr}
+#sound select{width:100%;height:28px;font:800 12px var(--body);color:var(--ink);background:var(--paper);border:1.5px solid var(--ink);border-radius:4px;cursor:pointer}
 /* first visit: pick a name before anything else; afterwards a small chip to change it */
 .homecard .namerow{display:flex;gap:8px;margin:4px 0 6px}
 .homecard .namerow input{flex:1;min-width:0;box-sizing:border-box;font:900 18px var(--display);color:var(--ink);background:#fff;border:2px solid var(--ink);border-radius:6px;padding:9px 12px;outline:none}
