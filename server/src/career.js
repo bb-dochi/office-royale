@@ -227,11 +227,26 @@ export class CareerCore {
         await this.store.put('e:' + e.code, e);
         return { err: '연동 번호가 맞지 않거나 시간이 지났어요' };
       }
-      const old = await this.store.get('e:u:' + uid), left = old && await this.store.get('e:' + old);
-      if (left) { left.uids = left.uids.filter(u => u !== uid); await this.store.put('e:' + old, left); }
-      e.uids.push(uid); e.pin = null; e.tries = null;
-      await this.store.put('e:' + e.code, e); await this.store.put('e:u:' + uid, e.code);
-      return { ok: true, code: e.code };
+      e.pin = null; e.tries = null;
+      return this.attach(e, uid);
     });
+  }
+  /* admin: this device joins the career with that 사원코드, no 연동 번호 needed (its own career is left behind, as with 사원증 불러오기) */
+  adminJoin(uid, code) {
+    return this.run(async () => {
+      const e = typeof code === 'string' && /^\d{6}-\d{4}$/.test(code) ? await this.store.get('e:' + code) : null;
+      if (!e) return { err: '없는 사원코드예요' };
+      if (e.uids.includes(uid)) return { err: '이미 이 사원코드에 연동된 기기예요' };
+      if (e.uids.length >= DEVICES) return { err: `기기는 ${DEVICES}대까지 연동할 수 있어요` };
+      return this.attach(e, uid);
+    });
+  }
+  /* the device leaves the career it pointed at and points at `e` (inside run) */
+  async attach(e, uid) {
+    const old = await this.store.get('e:u:' + uid), left = old && await this.store.get('e:' + old);
+    if (left) { left.uids = left.uids.filter(u => u !== uid); await this.store.put('e:' + old, left); }
+    e.uids.push(uid);
+    await this.store.put('e:' + e.code, e); await this.store.put('e:u:' + uid, e.code);
+    return { ok: true, code: e.code };
   }
 }

@@ -174,6 +174,16 @@ async function awardSection(career, uid, testTools) {
     note + fake + tbl(`<thead><tr><th>성과</th><th class="n">값</th><th>다음 목표</th><th>단계 <span class="mut">(눌러서 바꾸기)</span></th><th>열린 보상</th></tr></thead><tbody>${rows}</tbody>`) + `<p class="sm note">소지품 ${v.own.length}개 <span class="mut">(파란 것이 가진 것, 눌러서 지급·회수. 회수한 건 단계에 도달해도 다시 안 들어와요)</span></p><div class="stps" style="flex-wrap:wrap">${own.map(piece).join('')}</div>`,
     v.test ? `<a class="btnl" href="${u}&awreset=1#aw">성과 초기화 · 테스트 해제</a>` : '', 'aw');
 }
+/* 기기 연동: the devices on this person's 사원코드, and a form to put this device on another 사원코드 without a 연동 번호 */
+async function linkSection(stats, career, uid, msg) {
+  if (!career) return '';
+  const e = (await career.awardsOf(uid)) && await career.find(uid), others = e ? e.uids.filter(u => u !== uid) : [];
+  const names = await Promise.all(others.map(async u => { const p = await stats.person(u); return `<a href="?uid=${encodeURIComponent(u)}">${esc((p && p.name) || u)}</a>`; }));
+  const form = `<form class="linkf" method="get" action="#link"><input type="hidden" name="uid" value="${esc(uid)}">이 유저를 사원코드 <input name="linkto" placeholder="261028-4821" pattern="\\d{6}-\\d{4}" required> 에 <button>연동</button><span class="mut sm">연동 번호 없이 옮겨요 · 이 유저의 지금 사원증 기록은 두고 가요</span></form>`;
+  const note = msg ? `<p class="lmsg${msg.ok ? '' : ' err'}">${esc(msg.text)}</p><script>history.replaceState(null,'','?uid=${encodeURIComponent(uid)}#link')</script>` : ''; // a reload doesn't link again
+  return section(`기기 연동 <small>${e ? `${e.uids.length}대` : '사원코드 없음'}</small>`,
+    note + form + `<p class="sm note">같은 사원코드의 다른 기기: ${names.length ? names.join(', ') : '<span class="mut">없음</span>'}</p>`, '', 'link');
+}
 /* every 성과 step and what it gives (public/js/shared/rewards.js), and every reward piece. `edit` (the local dev server only:
    a deployed server can't rewrite the game's files) adds the controls; the page's script posts to /admin/rewards, see tools/rewards-edit.mjs */
 function rewardPage(edit) {
@@ -219,6 +229,8 @@ export async function adminHTML(stats, q, career, feedback, rewardEdit = false, 
   if (career && q.get('uid') && q.get('awreset')) await career.resetAwards(q.get('uid'));
   if (testTools && career && q.get('uid') && q.has('faketop')) await career.setFakeTop(q.get('uid'), +q.get('faketop')); // 지난주 순위 테스트 (test server only)
   if (career && q.get('uid') && q.get('own')) await career.setOwn(q.get('uid'), q.get('own'), q.get('on') === '1');
+  let linkMsg = ''; // 기기 연동 (admin, no 연동 번호)
+  if (career && q.get('uid') && q.get('linkto')) { const r = await career.adminJoin(q.get('uid'), q.get('linkto').trim()); linkMsg = r.err ? { text: r.err } : { ok: true, text: `사원코드 ${r.code}에 연동했어요` }; }
   const tab = q.get('uid') ? 'people' : TABS.some(([k]) => k === q.get('tab')) ? q.get('tab') : 'play';
   let body;
   if (tab === 'rw') body = rewardPage(rewardEdit);
@@ -236,6 +248,7 @@ export async function adminHTML(stats, q, career, feedback, rewardEdit = false, 
         ${card(`${p.tasks}<u>업무</u> ${p.kills}<u>해고</u>`, '누적', `최근 ${p.recent.length}판 평균 ${avgPlace}위`)}
         ${card(ago(p.last), '마지막 플레이', `처음 ${when(p.first)}`)}
       </div>
+      ${await linkSection(stats, career, q.get('uid'), linkMsg)}
       ${await awardSection(career, q.get('uid'), testTools)}
       ${section(`최근 ${p.recent.length}판${p.quits ? ` <small>재시작·나감 ${p.quits.length}번 함께 표시</small>` : ''}`, tbl(GAME_HEAD(false) + `<tbody>${byTime(p.recent, p.quits || []).map(g => gameRow(g)).join('')}</tbody>`) + lunchPop(p.recent))}`);
   } else if (tab === 'people') {
@@ -333,6 +346,10 @@ svg .bdev{fill:var(--solo)}svg .bmkt{fill:var(--multi)}svg .bhr{fill:var(--norma
 td.wrap{white-space:normal;min-width:120px}.note{margin:0 0 10px}
 .stps{display:inline-flex;gap:4px}.stp{padding:3px 9px;font-size:12px;border-radius:6px;background:var(--hov);color:var(--sub)}
 .stp.on{background:var(--tint);color:var(--gold);font-weight:600}a.stp:hover{background:var(--line);color:var(--fg)}
+.linkf{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 10px;padding:16px 20px;background:var(--card);border-radius:16px}
+.linkf input{width:130px;font:inherit;padding:7px 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--fg)}.linkf input:focus{outline:2px solid var(--acc);outline-offset:-1px}
+.linkf button{font:inherit;font-weight:600;padding:7px 14px;border:0;border-radius:9px;background:var(--acc);color:var(--acct);cursor:pointer}.linkf .mut{flex-basis:100%}
+.lmsg{margin:0 0 10px;padding:10px 14px;border-radius:10px;background:var(--tint);color:var(--acc);font-weight:600}.lmsg.err{background:var(--redt);color:var(--red)}
 .btnl{margin-left:auto;font-size:13px;font-weight:600;padding:7px 12px;border-radius:9px;background:var(--hov);color:var(--sub)}
 .stick{position:sticky;right:-8px;background:var(--card)}th.stick{z-index:2;background:var(--head)}.del{display:inline-block;padding:5px 10px;border-radius:8px;font-size:13px;font-weight:600;background:var(--redt);color:var(--red)}.del:hover{color:var(--red);filter:brightness(.96)}
 .hide{display:inline-block;padding:5px 10px;border-radius:8px;font-size:13px;font-weight:600;background:var(--hov);color:var(--sub)}
