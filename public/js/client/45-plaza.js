@@ -223,7 +223,7 @@ $('dock').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)
   else if(go==='multi'){$('home').hidden=true;showLobby();}
   else if(go==='rank')rankOpen();
   else if(go==='sound')soundOpen(b);
-  else if(go==='dress'){PZ.dressFromDock=true;$('home').classList.remove('closed');dressOpen();}});
+  else if(go==='dress'){$('home').classList.remove('closed');dressOpen();}});
 $('hSolo').addEventListener('click',diffOpen);
 /* 부서 안내: one card per team, opened from the 팀 보기 link on the guide */
 const TEAM_FIRST={dev:'업무 많이',mkt:'서류 명중 많이',hr:'윗선·동료 응대 많이'},PROP_NAME={dev:'💻',mkt:'📣',hr:'📋'},TEAM_PERK={dev:'업무 속도 ↑',mkt:'서류 사거리 ↑',hr:'받는 피해 ↓'};
@@ -369,7 +369,7 @@ function dressOpen(){if(!PZ.on)return;PZ.dress=true;$('home').classList.add('dre
    G.me.x=best.x;G.me.y=best.y;}
   idMark();G.me.vx=G.me.vy=0;cam={x:G.me.x,y:G.me.y};$('homeMenu').hidden=true;$('dress').hidden=false;DR.tries=[];PZ.yaw=0;PZ.zoom=dressZoom(DR.cat);dressRender();idTab('wear');careerLoad();}   // the 옷장 locks read the 성과 steps
 function dressClose(){if(DR.tries.length){DR.tries=[];dressShow();}PZ.dress=false;$('home').classList.remove('dressing');$('homeMenu').hidden=false;$('dress').hidden=true;
-  if(PZ.dressFromDock){PZ.dressFromDock=false;homeClose(true);}} // opened from the tabs: go back to the tabs
+  homeClose(true);} // 완료 always goes back to the lobby with just the tabs, wherever the 사원증 was opened from (returning to the guide card read as the guide popping up again)
 $('dressRows').addEventListener('change',e=>{if(e.target.id==='dHideLock'){store.set('or-hideLock',e.target.checked?'1':'0');dressRender();}});
 $('dressRows').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.unlock){store.set('or-unlock',rwUnlocked()?'0':'1');DR.tries=[];dressShow();dressRender();return;}dressSet(b.dataset.k,b.dataset.v||null);});
 $('hDress').addEventListener('click',dressOpen);
