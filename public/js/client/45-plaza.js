@@ -198,9 +198,11 @@ function nameStep(on){$('nameStep').hidden=!on;$('homeMenu').hidden=on;$('home')
 function nameSave(){
   const n=$('homeName').value.replace(/[\u0000-\u001f<>]/g,'').trim().slice(0,10);if(!n){$('homeName').focus();return;}
   const first=!store.get('or-name');
-  store.set('or-name',n);$('nameIn').value=n;$('myName').textContent=n;nameStep(false);if(first)tutAsk(true,n);if(!first)profSave();
-  if(G&&G.plaza&&G.me)G.me.name=n;if(PZ.ws&&PZ.ws.readyState===1)PZ.ws.send(JSON.stringify({t:'pz-name',name:n}));
+  nameApply(n);nameStep(false);if(first)tutAsk(true,n);if(!first)profSave();
 }
+/* the new name everywhere it shows: saved, the lobby chip and 신청인, my tag in the 로비 and the others' screens (the 사원증 uses this too) */
+function nameApply(n){store.set('or-name',n);$('nameIn').value=n;$('myName').textContent=n;
+  if(G&&G.plaza&&G.me)G.me.name=n;if(PZ.ws&&PZ.ws.readyState===1)PZ.ws.send(JSON.stringify({t:'pz-name',name:n}));}
 $('myName').textContent=store.get('or-name')||'신입';
 /* first visit: once the name is set, ask whether to do the tutorial before showing the menu */
 function tutAsk(on,n){$('tutAsk').hidden=!on;$('homeMenu').hidden=on;$('home').classList.toggle('asking',on);if(on){$('tutAskH').textContent=`${n}님, 첫 출근이시죠?`;setTimeout(()=>$('tutAskGo').focus(),50);}}

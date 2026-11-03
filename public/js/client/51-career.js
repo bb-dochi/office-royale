@@ -61,15 +61,20 @@ $('awList').addEventListener('click',e=>{if(e.target.closest('#awDone')){CR.done
 const workDays=ms=>{const k=t=>Math.floor((t+9*3600e3)/864e5);return k(Date.now())-k(ms)+1;};
 const ymd=ms=>{const d=new Date(ms+9*3600e3);return`${d.getUTCFullYear()}.${d.getUTCMonth()+1}.${d.getUTCDate()}`;};
 const playTime=s=>s>=3600?`${Math.floor(s/3600)}시간 ${Math.floor(s%3600/60)}분`:`${Math.floor(s/60)}분`;
+/* 사원명 can be changed on the 인사기록카드 too: the pencil turns the name into a box, Enter or leaving it saves (the same
+   rule as the lobby chip — up to 10 characters), Esc gives up. The card is drawn again so the name and photo follow */
+function crNameEdit(on){const i=$('crNameIn');if(!i)return;i.hidden=!on;$('crName').hidden=on;$('crNameEdit').hidden=on;if(on){i.value=store.get('or-name')||'';setTimeout(()=>{i.focus();i.select();},30);}}
+function crNameSave(){const n=$('crNameIn').value.replace(/[\u0000-\u001f<>]/g,'').trim().slice(0,10);crNameEdit(false);if(n&&n!==store.get('or-name')){nameApply(n);profSave();careerRender();}}
 /* 인사관리: an 인사기록카드 (name, 사원코드 with a copy button, 입사일, 최고 직급), a grid of numbers, then 기기 연동 as two
    clear choices — share this one (연동 번호) or bring one in (folded until opened) */
 function careerRender(){
   const v=CR.view,c=v.career,RK=['인턴','사원','대리','팀장','임원','CEO'],best=RK[c.bestRank]||'인턴',name=esc(store.get('or-name')||v.name||'신입'); // the name in use now (the server keeps the one of the last game)
+  const nameRow=`<div class="hrn"><b id="crName">${name}</b><button class="penbtn" id="crNameEdit" aria-label="사원명 바꾸기"><svg class="pencil" viewBox="0 0 16 16" aria-hidden="true"><path d="M11.2 2.3l2.5 2.5-8.4 8.4-3.1.6.6-3.1z"/><path d="M9.6 3.9l2.5 2.5"/></svg></button><input id="crNameIn" maxlength="10" autocomplete="nickname" placeholder="사원명" aria-label="사원명" hidden></div>`;   // the pencil turns the name into a box
   const card=v.code?`<div class="hrcard"><div class="hrh"><span>인사기록카드</span><span class="hrrk">최고 직급 · <b>${best}</b></span></div>
-      <div class="hrb"><div class="hrph" id="crPhoto">${name.slice(0,1)}</div><div><div class="hrn">${name}</div><div class="hrcode">사원코드 <b>${v.code}</b><button class="hrcp" id="crCopy">복사</button></div><div class="hrm">입사 ${ymd(v.joined)} · 근무 ${workDays(v.joined)}일째</div></div></div></div>
+      <div class="hrb"><div class="hrph" id="crPhoto">${name.slice(0,1)}</div><div>${nameRow}<div class="hrcode">사원코드 <b>${v.code}</b><button class="hrcp" id="crCopy">복사</button></div><div class="hrm">입사 ${ymd(v.joined)} · 근무 ${workDays(v.joined)}일째</div></div></div></div>
     <div class="hrgrid"><div><b>${c.games}번</b><span>출근 횟수</span></div><div><b>${c.ceo}</b><span>CEO 입성</span></div><div><b>${playTime(c.sec)}</b><span>버틴 시간</span></div>
       <div><b>${c.tasks}</b><span>누적 업무</span></div><div><b>${c.kills}</b><span>누적 해고</span></div><div><b>${best}</b><span>최고 직급</span></div></div>`
-    :`<div class="hrcard empty"><div class="hrh"><span>인사기록카드</span></div><p>아직 사원코드가 없어요.<br><b>첫 판을 마치면</b> 사원코드가 발급되고 기록이 쌓여요.</p></div>`;
+    :`<div class="hrcard empty"><div class="hrh"><span>인사기록카드</span></div><div class="hrb">${nameRow}</div><p>아직 사원코드가 없어요.<br><b>첫 판을 마치면</b> 사원코드가 발급되고 기록이 쌓여요.</p></div>`;
   $('crBox').innerHTML=card+`<section class="hrsec"><h4 class="hrt">🔗 기기 연동</h4><p class="hrsub">휴대폰과 PC에서 같은 사원증을 써요.</p>
     ${v.code?`<div class="hrbox"><b>이 사원증을 다른 기기에서 쓰기</b><p>연동 번호를 받아, 다른 기기의 <b>사원증 불러오기</b>에 사원코드와 함께 넣어요.</p>
       <button class="btn small" id="crPin">연동 번호 받기</button><p class="crpin" id="crPinOut"></p></div>`:''}
@@ -77,6 +82,9 @@ function careerRender(){
       <div class="crjoin"><input id="crCode" placeholder="사원코드 (예: 261028-4821)" maxlength="11" autocomplete="off"><input id="crPinIn" placeholder="연동 번호 6자리" inputmode="numeric" maxlength="6" autocomplete="off"><button class="btn small" id="crJoin">불러오기</button></div><p class="crmsg" id="crMsg"></p></details></section>`;
   const ph=$('crPhoto');if(ph)try{ph.style.backgroundImage=`url(${charPhoto(myFit())})`;ph.textContent='';}catch{} // the first letter stays if it can't be drawn
   if($('crPin'))$('crPin').addEventListener('click',careerPin);$('crJoin').addEventListener('click',careerJoin);
+  $('crNameEdit').addEventListener('click',()=>crNameEdit(true));
+  $('crNameIn').addEventListener('keydown',e=>{if(e.key==='Enter')crNameSave();else if(e.key==='Escape')crNameEdit(false);});
+  $('crNameIn').addEventListener('blur',()=>{if(!$('crNameIn').hidden)crNameSave();});
   if($('crCopy'))$('crCopy').addEventListener('click',()=>{const b=$('crCopy');(navigator.clipboard?navigator.clipboard.writeText(v.code):Promise.reject()).then(()=>{b.textContent='복사됨';},()=>{b.textContent=v.code;});setTimeout(()=>{if(b.isConnected)b.textContent='복사';},1500);});
   if(CR.note){$('crMsg').textContent=CR.note;$('crMsg').classList.add('ok');$('crMsg').closest('details').open=true;CR.note='';}
 }

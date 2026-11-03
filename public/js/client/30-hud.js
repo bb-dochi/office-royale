@@ -315,7 +315,7 @@ function fxBar(me){
   if(onWet(me))E.push({k:'wet',g:'~',t:'미끄러움',bad:1});
   {const idle=G.t-me.workT;if(!G.tutorial&&!G.lunch&&!G.final&&me.f!==ROOF&&!me.desk&&diff().idle&&idle>IDLE-15)E.push({k:'idle',g:'태',t:idle>IDLE?'업무 태만 · 고과 감소':`업무 태만 ${Math.ceil(IDLE-idle)}초 전`,bad:1});}
   if(me.inRest&&me.restT>6)E.push({k:'rest2',g:'WC',t:me.restT>10?'화장실 오래 · 고과 감소':`화장실 ${Math.ceil(10-me.restT)}초 남음`,bad:1});
-  if(me.rushT>0)E.push({k:'rush',g:'야',c:C('move'),t:`야근 모드 ${sec(me.rushT)}`,bar:me.rushT/(me.rank==='임원'?8:5)});
+  if(me.rushT>0)E.push({k:'rush',g:'크',c:C('move'),t:`크런치 ${sec(me.rushT)}`,bar:me.rushT/(me.rank==='임원'?8:5)});
   if(me.speedT>0&&!(me.rushT>0))E.push({k:'speed',g:I.ticket.g,c:I.ticket.c,t:`빨라짐 ${sec(me.speedT)}`,bar:me.speedT/8});
   if(me.cloakT>0)E.push({k:'cloak',g:'위',c:C('ctl'),t:`위장 ${sec(me.cloakT)}`,bar:Math.min(1,me.cloakT/4)});
   /* phones have no item slots: defense shows here (the attack item is on the 서류 투척 button) */

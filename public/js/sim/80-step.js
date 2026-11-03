@@ -134,7 +134,7 @@ function step(dt){
         let rate=1/t.need;
         if(t.seat&&work.some(a=>t.seat.owner===a&&a.sit===t.seat))rate*=1.5;
         {const d=Math.max(0,...work.map(a=>a.branch==='dev'?teamK(a):0));rate*=1+d;} // 개발: 대리 1.5배, 팀장 2배
-        if(work.some(a=>a.rushT>0))rate*=2; // 개발팀장 야근 모드
+        if(work.some(a=>a.rushT>0))rate*=2; // 개발팀장 크런치
         t.prog+=rate*dt;
         if(t.prog>=1){
           if(t.kind==='print'){const w=work.filter(a=>!a.carry).sort((a,b)=>dist(a,t)-dist(b,t))[0];

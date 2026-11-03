@@ -307,7 +307,10 @@ body.plaza #home.closed:not([hidden]) ~ #dock{display:flex}
 .hrrk b{color:var(--ink)}
 .hrb{display:flex;gap:12px;align-items:center;padding:10px 12px}
 .hrph{flex:none;width:48px;height:58px;border:1px solid #cfcabd;border-radius:4px;background:#eeece4 center/cover no-repeat;display:grid;place-items:center;font:900 21px var(--display);color:var(--muted)}
-.hrn{font:900 18px var(--display)}.hrm{font-size:12px;color:var(--muted);margin-top:2px}
+.hrn{font:900 18px var(--display);display:flex;align-items:center;gap:6px;min-height:26px}.hrn .penbtn{border:0;background:none;padding:0 2px;cursor:pointer}
+.hrn .pencil{width:13px;height:13px;fill:none;stroke:var(--muted);stroke-width:1.6;stroke-linejoin:round;display:block}.hrn .penbtn:hover .pencil{stroke:var(--ink)}
+.hrn input{width:9em;max-width:100%;min-width:0;box-sizing:border-box;font:900 16px var(--display);color:var(--ink);background:#fff;border:1.5px solid var(--ink);border-radius:6px;padding:2px 8px;outline:none}.hrn input:focus{border-color:var(--msg);box-shadow:0 0 0 3px rgba(43,108,176,.18)}
+.hrcard.empty .hrb{padding-bottom:0}.hrm{font-size:12px;color:var(--muted);margin-top:2px}
 .hrcode{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;margin-top:2px}.hrcode b{color:var(--ink);font-size:15px;letter-spacing:.05em}
 .hrcp{font:800 11px var(--body);border:1.5px solid #c9cdd0;background:#fff;border-radius:6px;padding:2px 7px;cursor:pointer}
 .hrcard.empty p{margin:0;padding:14px 12px;font-size:13px;line-height:1.6;color:var(--muted);text-align:center}.hrcard.empty b{color:var(--ink)}

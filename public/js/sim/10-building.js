@@ -171,7 +171,7 @@ function randItem(){let t=0;for(const k of ITEM_KEYS)t+=ITEMS[k].w;let r=Math.ra
    디자인 is kept here but out of TEAMS for now. pt / kt: the passive and the skill in a few words; pw: the weak
    passive a 대리 already gets. Nothing below 대리, weak passive at 대리, full passive + Q skill at 팀장, stronger at 임원 */
 const BRANCH={hr:{n:'인사팀장',pw:'받는 피해 -5%',pt:'받는 피해 -10%',kt:'1명 묶기',pas:'받는 서류 피해 감소',sk:'면담',skd:'근처 1명을 1.5초 묶어 둠',cd:14,c:'#2f9e57'},
-  dev:{n:'개발팀장',pw:'업무 1.5배',pt:'업무 2배',kt:'업무·이동 가속',pas:'업무 속도 2배 · 사원증 태그 0.3초',sk:'야근',skd:'5초간 업무 2배 더 · 이동 빨라짐',cd:18,c:'#2f74c4'},
+  dev:{n:'개발팀장',pw:'업무 1.5배',pt:'업무 2배',kt:'업무·이동 가속',pas:'업무 속도 2배 · 사원증 태그 0.3초',sk:'크런치',skd:'5초간 업무 2배 더 · 이동 빨라짐',cd:18,c:'#2f74c4'},
   mkt:{n:'마케팅팀장',pw:'사거리 +12%',pt:'사거리 +25%',kt:'부채꼴 공격',pas:'서류 사거리 +25%',sk:'전단지',skd:'조준한 쪽으로 전단지 7장 (가까울수록 많이 맞음)',cd:12,c:'#c08a1e'},
   design:{n:'디자인팀장',pw:'부장님 시야 -15%',pt:'부장님 시야 ↓',kt:'4초 투명',pas:'부장님 시야 30% 좁게',sk:'위장',skd:'4초간 투명 (던지면 풀림)',cd:20,c:'#8d4bbf'}};
 const TEAMS=['dev','mkt','hr'];

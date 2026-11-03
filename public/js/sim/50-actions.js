@@ -89,7 +89,7 @@ function useSkill(a){
     const l=ex?2.5:1.5;t.lockT=Math.max(t.lockT,l);t.lockWhy='면담 중';t.vx=t.vy=0;stand(t);
     say(a,pick(['잠깐 면담 좀 하지','자네, 이리 와 봐','인사 평가 얘기 좀 하자']),'#2f7d4f');pop(t.f,t.x,t.y-44,'면담 호출!','#2f7d4f');
     tell(t,`${a.name}에게 면담 호출: ${l}초 묶임`,true);tell(a,`면담 호출: ${t.name} ${l}초 묶음`);}
-  else if(a.branch==='dev'){const t=ex?8:5;a.rushT=t;a.speedT=Math.max(a.speedT,t);pop(a.f,a.x,a.y-44,'야근 모드!','#2b6cb0');tell(a,`야근 모드: ${t}초간 업무 2배 더 · 빨라짐`);}
+  else if(a.branch==='dev'){const t=ex?8:5;a.rushT=t;a.speedT=Math.max(a.speedT,t);pop(a.f,a.x,a.y-44,'크런치!','#2b6cb0');tell(a,`크런치: ${t}초간 업무 2배 더 · 빨라짐`);}
   a.skillCd=B.cd*(ex?EXEC_CD:1);return true;
 }
 function dropItem(a,i=0){
